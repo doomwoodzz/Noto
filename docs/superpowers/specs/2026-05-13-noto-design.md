@@ -1,11 +1,13 @@
-# LectureVault AI Design Spec
+# Noto Design Spec
 
 Date: 2026-05-13
 Status: Ready for user review
 
 ## Purpose
 
-LectureVault AI is a high-fidelity native macOS visual prototype for a local-first Markdown notes workspace with an AI lecture-listening assistant. The product should feel like a serious Mac productivity app and should communicate an Obsidian-like notes architecture without copying Obsidian branding, iconography, or visual identity.
+Noto is a high-fidelity native macOS visual prototype for a local-first Markdown notes workspace with an AI lecture-listening assistant. The product should feel like a serious Mac productivity app and should communicate an Obsidian-like notes architecture without copying Obsidian branding, iconography, or visual identity.
+
+Slogan: "When you listen, Noto remembers."
 
 The prototype focuses on making the knowledge workspace legible:
 
@@ -315,8 +317,8 @@ Suggested source organization:
 
 ```text
 Package.swift
-Sources/LectureVaultAI/
-  LectureVaultAIApp.swift
+Sources/Noto/
+  NotoApp.swift
   AppState.swift
   Data/MockVault.swift
   Models/Vault.swift
