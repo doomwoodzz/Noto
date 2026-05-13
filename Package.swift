@@ -1,5 +1,8 @@
-// swift-tools-version: 6.0
+// swift-tools-version: 6.3
 import PackageDescription
+
+let commandLineToolsDeveloperFrameworks = "/Library/Developer/CommandLineTools/Library/Developer/Frameworks"
+let commandLineToolsDeveloperLibraries = "/Library/Developer/CommandLineTools/Library/Developer/usr/lib"
 
 let package = Package(
     name: "Noto",
@@ -23,7 +26,20 @@ let package = Package(
         .testTarget(
             name: "NotoCoreTests",
             dependencies: ["NotoCore"],
-            path: "Tests/NotoCoreTests"
+            path: "Tests/NotoCoreTests",
+            swiftSettings: [
+                .unsafeFlags(["-F", commandLineToolsDeveloperFrameworks])
+            ],
+            linkerSettings: [
+                .unsafeFlags([
+                    "-F", commandLineToolsDeveloperFrameworks,
+                    "-Xlinker", "-rpath",
+                    "-Xlinker", commandLineToolsDeveloperFrameworks,
+                    "-Xlinker", "-rpath",
+                    "-Xlinker", commandLineToolsDeveloperLibraries
+                ])
+            ]
         )
-    ]
+    ],
+    swiftLanguageModes: [.v6]
 )

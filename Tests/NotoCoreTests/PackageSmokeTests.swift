@@ -1,8 +1,6 @@
-import XCTest
+import Testing
 @testable import NotoCore
 
-final class PackageSmokeTests: XCTestCase {
-    func testCoreModuleLoads() {
-        XCTAssertEqual(NotoCore.moduleName, "NotoCore")
-    }
+@Test func coreModuleLoads() {
+    #expect(NotoCore.moduleName == "NotoCore")
 }
