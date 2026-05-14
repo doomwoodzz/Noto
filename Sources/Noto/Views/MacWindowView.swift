@@ -69,12 +69,6 @@ struct MacWindowView: View {
     }
 }
 
-struct AIRecorderPanelView: View {
-    var body: some View {
-        EmptyView()
-    }
-}
-
 struct CommandPaletteView: View {
     var body: some View {
         EmptyView()
