@@ -1,6 +1,8 @@
-// swift-tools-version: 6.3
+// swift-tools-version: 6.0
 import PackageDescription
 
+// CommandLineTools on this machine provides Swift Testing but not XCTest.
+// Keep these absolute framework paths scoped to the test target only.
 let commandLineToolsDeveloperFrameworks = "/Library/Developer/CommandLineTools/Library/Developer/Frameworks"
 let commandLineToolsDeveloperLibraries = "/Library/Developer/CommandLineTools/Library/Developer/usr/lib"
 
@@ -11,6 +13,7 @@ let package = Package(
     ],
     products: [
         .executable(name: "Noto", targets: ["Noto"]),
+        .executable(name: "NotoCoreChecks", targets: ["NotoCoreChecks"]),
         .library(name: "NotoCore", targets: ["NotoCore"])
     ],
     targets: [
@@ -22,6 +25,11 @@ let package = Package(
             name: "Noto",
             dependencies: ["NotoCore"],
             path: "Sources/Noto"
+        ),
+        .executableTarget(
+            name: "NotoCoreChecks",
+            dependencies: ["NotoCore"],
+            path: "Checks/NotoCoreChecks"
         ),
         .testTarget(
             name: "NotoCoreTests",
@@ -40,6 +48,5 @@ let package = Package(
                 ])
             ]
         )
-    ],
-    swiftLanguageModes: [.v6]
+    ]
 )
