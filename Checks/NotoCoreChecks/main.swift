@@ -1,4 +1,5 @@
 try PackageSmokeChecks.run()
 try MockVaultChecks.run()
 try ModelAPIChecks.run()
+try MarkdownParserChecks.run()
 print("NotoCoreChecks passed")
