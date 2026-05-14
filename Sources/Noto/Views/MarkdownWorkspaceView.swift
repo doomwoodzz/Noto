@@ -49,13 +49,3 @@ struct MarkdownWorkspaceView: View {
         .buttonStyle(.plain)
     }
 }
-
-struct KnowledgeGraphView: View {
-    var body: some View {
-        ContentUnavailableView(
-            "Knowledge Web",
-            systemImage: "point.3.connected.trianglepath.dotted",
-            description: Text("Graph view is added in the next task.")
-        )
-    }
-}
