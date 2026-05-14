@@ -68,9 +68,3 @@ struct MacWindowView: View {
         }
     }
 }
-
-struct CommandPaletteView: View {
-    var body: some View {
-        EmptyView()
-    }
-}
