@@ -51,8 +51,8 @@ public struct GraphEdge: Identifiable, Equatable {
 }
 
 public struct KnowledgeGraph: Equatable {
-    public var nodes: [GraphNode]
-    public var edges: [GraphEdge]
+    public let nodes: [GraphNode]
+    public let edges: [GraphEdge]
 
     public init(nodes: [GraphNode], edges: [GraphEdge]) {
         self.nodes = nodes

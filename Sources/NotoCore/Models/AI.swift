@@ -14,8 +14,8 @@ public enum RecorderPhase: Equatable {
 
 public struct LectureDefinition: Identifiable, Equatable {
     public let id: String
-    public var term: String
-    public var definition: String
+    public private(set) var term: String
+    public private(set) var definition: String
 
     public init(id: String, term: String, definition: String) {
         self.id = id
@@ -25,11 +25,11 @@ public struct LectureDefinition: Identifiable, Equatable {
 }
 
 public struct LectureMemory: Equatable {
-    public var concepts: [String]
-    public var definitions: [LectureDefinition]
-    public var importantPoints: [String]
-    public var possibleQuestions: [String]
-    public var linkedNotes: [String]
+    public private(set) var concepts: [String]
+    public private(set) var definitions: [LectureDefinition]
+    public private(set) var importantPoints: [String]
+    public private(set) var possibleQuestions: [String]
+    public private(set) var linkedNotes: [String]
 
     public init(
         concepts: [String] = [],

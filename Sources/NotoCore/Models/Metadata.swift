@@ -1,8 +1,8 @@
 import Foundation
 
 public struct MetadataCache: Equatable {
-    public var filesById: [String: FileMetadata]
-    public var fileIdByTitle: [String: String]
+    public let filesById: [String: FileMetadata]
+    public let fileIdByTitle: [String: String]
 
     public init(filesById: [String: FileMetadata], fileIdByTitle: [String: String]) {
         self.filesById = filesById
