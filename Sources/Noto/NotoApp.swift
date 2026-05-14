@@ -2,11 +2,15 @@ import SwiftUI
 
 @main
 struct NotoApp: App {
+    @State private var appState = AppState()
+
     var body: some Scene {
         WindowGroup {
-            Text("Noto")
-                .frame(width: 960, height: 640)
+            MacWindowView()
+                .environment(appState)
+                .frame(minWidth: 1180, minHeight: 760)
         }
         .windowStyle(.hiddenTitleBar)
+        .windowResizability(.contentSize)
     }
 }
