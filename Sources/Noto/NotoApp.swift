@@ -12,5 +12,18 @@ struct NotoApp: App {
         }
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
+        .commands {
+            CommandMenu("Noto") {
+                Button("Command Palette") {
+                    appState.toggleCommandPalette()
+                }
+                .keyboardShortcut("k", modifiers: .command)
+
+                Button("AI Recorder") {
+                    appState.toggleRecorder()
+                }
+                .keyboardShortcut("m", modifiers: [.command, .control])
+            }
+        }
     }
 }

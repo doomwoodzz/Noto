@@ -26,6 +26,7 @@ struct MacWindowView: View {
                         .frame(width: 286)
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
