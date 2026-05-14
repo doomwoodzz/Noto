@@ -69,12 +69,6 @@ struct MacWindowView: View {
     }
 }
 
-struct MarkdownWorkspaceView: View {
-    var body: some View {
-        Color.clear
-    }
-}
-
 struct AIRecorderPanelView: View {
     var body: some View {
         EmptyView()
