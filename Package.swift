@@ -1,4 +1,4 @@
-// swift-tools-version: 6.0
+// swift-tools-version: 6.3
 import PackageDescription
 
 // CommandLineTools on this machine provides Swift Testing but not XCTest.
@@ -48,5 +48,6 @@ let package = Package(
                 ])
             ]
         )
-    ]
+    ],
+    swiftLanguageModes: [.v6]
 )

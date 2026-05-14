@@ -1,5 +1,3 @@
-import Foundation
-
 struct CheckFailure: Error, CustomStringConvertible {
     let message: String
 

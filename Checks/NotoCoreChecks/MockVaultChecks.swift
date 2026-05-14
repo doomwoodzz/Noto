@@ -19,7 +19,10 @@ enum MockVaultChecks {
             try expect(vault.files.contains { $0.path == path }, "Missing required note path: \(path)")
         }
 
-        let lecture = vault.files.first { $0.title == "Biology Lecture - May 13" }
+        let lecture = vault.files.first {
+            $0.path == "AI Lecture Notes/Biology Lecture - May 13.md" &&
+            $0.title == "Biology Lecture - May 13"
+        }
         try expect(lecture != nil, "Biology Lecture - May 13 should exist")
         try expect(lecture?.content.contains("[[Chloroplast]]") == true, "Biology lecture should link to Chloroplast")
         try expect(lecture?.content.contains("[[Cell Structure]]") == true, "Biology lecture should link to Cell Structure")
