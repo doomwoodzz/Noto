@@ -69,19 +69,7 @@ struct MacWindowView: View {
     }
 }
 
-struct VaultSidebarView: View {
-    var body: some View {
-        Color.clear
-    }
-}
-
 struct MarkdownWorkspaceView: View {
-    var body: some View {
-        Color.clear
-    }
-}
-
-struct RightContextPanelView: View {
     var body: some View {
         Color.clear
     }
