@@ -16,9 +16,9 @@ struct RightContextPanelView: View {
                 outgoingSection(metadata)
                 aiMemorySection(appState.store.recorder.memory)
             }
-            .padding(16)
+            .padding(20)
         }
-        .background(.ultraThinMaterial)
+        .background(NotoDesign.sidebar)
         .overlay(alignment: .leading) {
             Rectangle()
                 .fill(NotoDesign.line)
@@ -70,7 +70,7 @@ struct RightContextPanelView: View {
                 memory.possibleQuestions.isEmpty &&
                 memory.linkedNotes.isEmpty {
                 Text("Visible after you press Record.")
-                    .font(.system(size: 12))
+                    .font(.system(size: 13))
                     .foregroundStyle(NotoDesign.muted)
                     .padding(10)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -90,12 +90,13 @@ struct RightContextPanelView: View {
             if !values.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(title)
-                        .font(.system(size: 10, weight: .semibold))
+                        .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(NotoDesign.muted)
 
                     ForEach(values, id: \.self) { value in
                         Text(value)
-                            .font(.system(size: 12))
+                            .font(.system(size: 13))
+                            .foregroundStyle(NotoDesign.ink)
                             .padding(10)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .background(memoryCardBackground)
@@ -111,18 +112,19 @@ struct RightContextPanelView: View {
 
             if values.isEmpty {
                 Text(empty)
-                    .font(.system(size: 12))
+                    .font(.system(size: 13))
                     .foregroundStyle(NotoDesign.muted)
             } else {
                 ForEach(values, id: \.self) { value in
                     Text(value)
-                        .font(.system(size: 12))
+                        .font(.system(size: 13))
+                        .foregroundStyle(NotoDesign.ink)
                         .lineLimit(2)
                         .padding(8)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background {
                             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .fill(Color.white.opacity(0.74))
+                                .fill(NotoDesign.card)
                         }
                 }
             }
@@ -142,12 +144,12 @@ struct RightContextPanelView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(Color.white.opacity(0.74))
+                .fill(NotoDesign.card)
         }
     }
 
     private var memoryCardBackground: some View {
         RoundedRectangle(cornerRadius: 8, style: .continuous)
-            .fill(Color.white.opacity(0.74))
+            .fill(NotoDesign.card)
     }
 }

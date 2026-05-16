@@ -70,11 +70,12 @@ struct CommandPaletteView: View {
                 TextField("Search commands", text: $query)
                     .textFieldStyle(.plain)
                     .font(.system(size: 15))
+                    .foregroundStyle(NotoDesign.ink)
             }
             .padding(12)
             .background {
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Color.white.opacity(0.84))
+                    .fill(NotoDesign.field)
             }
 
             VStack(spacing: 4) {
@@ -86,6 +87,7 @@ struct CommandPaletteView: View {
                             Image(systemName: command.icon)
                                 .frame(width: 22)
                             Text(command.title)
+                                .foregroundStyle(NotoDesign.ink)
                             Spacer()
                         }
                         .font(.system(size: 13))
@@ -96,7 +98,7 @@ struct CommandPaletteView: View {
                     .buttonStyle(.plain)
                     .background {
                         RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .fill(Color.white.opacity(0.001))
+                            .fill(Color.clear)
                     }
                 }
             }

@@ -11,7 +11,7 @@ struct MarkdownPreviewView: View {
             VStack(alignment: .leading, spacing: 14) {
                 if let file {
                     Text(file.title)
-                        .font(.system(size: 30, weight: .bold))
+                        .font(.system(size: 34, weight: .bold))
                         .foregroundStyle(NotoDesign.ink)
                         .padding(.bottom, 4)
 
@@ -23,9 +23,9 @@ struct MarkdownPreviewView: View {
                         .foregroundStyle(NotoDesign.muted)
                 }
             }
-            .frame(maxWidth: 760, alignment: .leading)
-            .padding(.horizontal, 38)
-            .padding(.vertical, 30)
+            .frame(maxWidth: 920, alignment: .leading)
+            .padding(.horizontal, 48)
+            .padding(.vertical, 36)
         }
     }
 
@@ -34,13 +34,14 @@ struct MarkdownPreviewView: View {
             switch line.kind {
             case .heading(let level, let text):
                 Text(text)
-                    .font(.system(size: level == 1 ? 24 : 17, weight: .semibold))
+                    .font(.system(size: level == 1 ? 26 : 19, weight: .semibold))
                     .foregroundStyle(NotoDesign.ink)
                     .padding(.top, level == 1 ? 4 : 8)
             case .bullet(let text):
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text("-")
                         .foregroundStyle(NotoDesign.muted)
+                        .font(.system(size: 15))
                     linkedText(text)
                 }
             case .checkbox(let text, let checked):
@@ -77,20 +78,20 @@ struct MarkdownPreviewView: View {
                 switch segment.kind {
                 case .plain:
                     Text(segment.text)
-                        .font(.system(size: 14))
+                        .font(.system(size: 15))
                         .foregroundStyle(NotoDesign.ink)
                 case .wiki:
                     Button {
                         openWikiLink(segment.text)
                     } label: {
                         Text("[[\(segment.text)]]")
-                            .font(.system(size: 13, weight: .medium))
+                            .font(.system(size: 14, weight: .medium))
                             .foregroundStyle(NotoDesign.accent)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
                             .background {
                                 Capsule()
-                                    .fill(NotoDesign.accent.opacity(0.10))
+                                    .fill(NotoDesign.accent.opacity(0.16))
                             }
                     }
                     .buttonStyle(.plain)

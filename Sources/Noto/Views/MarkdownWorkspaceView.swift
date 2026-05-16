@@ -17,8 +17,8 @@ struct MarkdownWorkspaceView: View {
                 Spacer()
             }
             .padding(.horizontal, 18)
-            .frame(height: 40)
-            .background(Color.white.opacity(0.52))
+            .frame(height: 52)
+            .background(NotoDesign.panel)
             .overlay(alignment: .bottom) {
                 Rectangle()
                     .fill(NotoDesign.line)
@@ -39,11 +39,11 @@ struct MarkdownWorkspaceView: View {
             Text(title)
                 .font(.system(size: 12, weight: selected ? .semibold : .regular))
                 .foregroundStyle(selected ? NotoDesign.ink : NotoDesign.muted)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 7)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 9)
                 .background {
                     RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(selected ? Color.white : Color.clear)
+                        .fill(selected ? NotoDesign.card : Color.clear)
                 }
         }
         .buttonStyle(.plain)

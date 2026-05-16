@@ -8,10 +8,12 @@ struct NotoApp: App {
         WindowGroup {
             MacWindowView()
                 .environment(appState)
-                .frame(minWidth: 1180, minHeight: 760)
+                .frame(minWidth: 1320, minHeight: 840)
+                .tint(NotoDesign.accent)
         }
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
+        .defaultSize(width: 1440, height: 900)
         .commands {
             CommandMenu("Noto") {
                 Button("Command Palette") {

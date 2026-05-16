@@ -24,18 +24,18 @@ struct FileTreeView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 14) {
             if files.isEmpty {
                 Text("No notes found.")
-                    .font(.system(size: 12))
+                    .font(.system(size: 13))
                     .foregroundStyle(NotoDesign.muted)
                     .padding(.vertical, 10)
             }
 
             ForEach(grouped, id: \.folder) { group in
-                VStack(alignment: .leading, spacing: 5) {
+                VStack(alignment: .leading, spacing: 7) {
                     Label(group.folder, systemImage: "folder")
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(NotoDesign.muted)
 
                     ForEach(group.files) { file in
@@ -44,15 +44,15 @@ struct FileTreeView: View {
                         } label: {
                             HStack(spacing: 7) {
                                 Image(systemName: "doc.plaintext")
-                                    .font(.system(size: 11))
-                                    .frame(width: 14)
+                                    .font(.system(size: 13))
+                                    .frame(width: 16)
                                 Text(file.title)
                                     .lineLimit(1)
                                 Spacer(minLength: 0)
                             }
-                            .font(.system(size: 12))
-                            .padding(.vertical, 6)
-                            .padding(.horizontal, 8)
+                            .font(.system(size: 14))
+                            .padding(.vertical, 8)
+                            .padding(.horizontal, 10)
                             .background(rowBackground(for: file))
                             .foregroundStyle(file.id == appState.store.activeFileId ? NotoDesign.accent : NotoDesign.ink)
                         }
@@ -65,7 +65,7 @@ struct FileTreeView: View {
 
     private func rowBackground(for file: VaultFile) -> some View {
         RoundedRectangle(cornerRadius: 8, style: .continuous)
-            .fill(file.id == appState.store.activeFileId ? NotoDesign.accent.opacity(0.12) : Color.clear)
+            .fill(file.id == appState.store.activeFileId ? NotoDesign.accent.opacity(0.18) : Color.clear)
     }
 
     private func sortFolders(_ left: String, _ right: String) -> Bool {

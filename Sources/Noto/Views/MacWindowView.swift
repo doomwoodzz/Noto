@@ -5,14 +5,7 @@ struct MacWindowView: View {
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
-            LinearGradient(
-                colors: [
-                    Color(red: 0.88, green: 0.90, blue: 0.94),
-                    Color(red: 0.97, green: 0.98, blue: 0.99)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
+            NotoDesign.background
             .ignoresSafeArea()
 
             VStack(spacing: 0) {
@@ -20,25 +13,18 @@ struct MacWindowView: View {
 
                 HStack(spacing: 0) {
                     VaultSidebarView()
-                        .frame(width: 246)
+                        .frame(width: 300)
                     MarkdownWorkspaceView()
                     RightContextPanelView()
-                        .frame(width: 286)
+                        .frame(width: 340)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .stroke(Color.black.opacity(0.10), lineWidth: 1)
-            }
-            .shadow(color: Color.black.opacity(0.18), radius: 40, x: 0, y: 24)
-            .padding(28)
 
             if appState.isRecorderPresented {
                 AIRecorderPanelView()
-                    .padding(.trailing, 70)
-                    .padding(.bottom, 68)
+                    .padding(.trailing, 34)
+                    .padding(.bottom, 34)
                     .transition(.scale(scale: 0.92).combined(with: .opacity))
             }
         }
@@ -50,6 +36,7 @@ struct MacWindowView: View {
         }
         .animation(.spring(response: 0.28, dampingFraction: 0.86), value: appState.isRecorderPresented)
         .animation(.spring(response: 0.22, dampingFraction: 0.88), value: appState.isCommandPalettePresented)
+        .preferredColorScheme(.dark)
         .focusable()
         .onKeyPress("k", phases: .down) { press in
             guard press.modifiers.contains(.command) else {

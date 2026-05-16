@@ -7,14 +7,14 @@ struct VaultSidebarView: View {
     var body: some View {
         @Bindable var appState = appState
 
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 16) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(appState.store.vault.name)
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.system(size: 18, weight: .semibold))
                         .foregroundStyle(NotoDesign.ink)
                     Text("Local Markdown Vault")
-                        .font(.system(size: 11))
+                        .font(.system(size: 13))
                         .foregroundStyle(NotoDesign.muted)
                 }
 
@@ -23,12 +23,13 @@ struct VaultSidebarView: View {
 
             TextField("Search notes", text: $appState.store.searchQuery)
                 .textFieldStyle(.plain)
-                .font(.system(size: 13))
-                .padding(.horizontal, 10)
-                .frame(height: 30)
+                .font(.system(size: 15))
+                .foregroundStyle(NotoDesign.ink)
+                .padding(.horizontal, 12)
+                .frame(height: 38)
                 .background {
                     RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(Color.white.opacity(0.80))
+                        .fill(NotoDesign.field)
                 }
                 .overlay {
                     RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -48,7 +49,7 @@ struct VaultSidebarView: View {
                 appState.openGraph(filter: .all)
             } label: {
                 Label("Knowledge Web", systemImage: "point.3.connected.trianglepath.dotted")
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.system(size: 14, weight: .medium))
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             .buttonStyle(.plain)
@@ -62,8 +63,8 @@ struct VaultSidebarView: View {
 
             Spacer(minLength: 0)
         }
-        .padding(16)
-        .background(.ultraThinMaterial)
+        .padding(20)
+        .background(NotoDesign.sidebar)
         .overlay(alignment: .trailing) {
             Rectangle()
                 .fill(NotoDesign.line)

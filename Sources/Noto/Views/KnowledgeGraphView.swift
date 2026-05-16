@@ -13,10 +13,10 @@ struct KnowledgeGraphView: View {
             HStack {
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Knowledge Web")
-                        .font(.system(size: 22, weight: .bold))
+                        .font(.system(size: 28, weight: .bold))
                         .foregroundStyle(NotoDesign.ink)
                     Text("Generated from Markdown wiki links and backlinks.")
-                        .font(.system(size: 12))
+                        .font(.system(size: 14))
                         .foregroundStyle(NotoDesign.muted)
                 }
 
@@ -28,9 +28,9 @@ struct KnowledgeGraphView: View {
                     }
                 }
                 .pickerStyle(.segmented)
-                .frame(width: 430)
+                .frame(width: 500)
             }
-            .padding(24)
+            .padding(28)
 
             if graph.nodes.isEmpty {
                 ContentUnavailableView(
@@ -54,7 +54,7 @@ struct KnowledgeGraphView: View {
                                     path.move(to: source)
                                     path.addLine(to: target)
                                 }
-                                .stroke(NotoDesign.accent.opacity(0.22), lineWidth: max(edge.weight, 1))
+                                .stroke(NotoDesign.accent.opacity(0.34), lineWidth: max(edge.weight, 1.2))
                             }
                         }
 
@@ -66,21 +66,21 @@ struct KnowledgeGraphView: View {
                             } label: {
                                 VStack(spacing: 5) {
                                     Circle()
-                                        .fill(node.id == appState.store.activeFileId ? NotoDesign.accent : Color.white)
+                                        .fill(node.id == appState.store.activeFileId ? NotoDesign.accent : NotoDesign.card)
                                         .frame(width: nodeSize(node), height: nodeSize(node))
                                         .overlay {
                                             Circle()
-                                                .stroke(NotoDesign.accent.opacity(0.38), lineWidth: 1)
+                                                .stroke(NotoDesign.accent.opacity(0.62), lineWidth: 1)
                                         }
-                                        .shadow(color: Color.black.opacity(0.10), radius: 8, x: 0, y: 4)
+                                        .shadow(color: Color.black.opacity(0.24), radius: 8, x: 0, y: 4)
                                     Text(node.title)
                                         .font(.system(
-                                            size: 11,
+                                            size: 12,
                                             weight: node.id == appState.store.activeFileId ? .semibold : .regular
                                         ))
                                         .foregroundStyle(NotoDesign.ink)
                                         .lineLimit(1)
-                                        .frame(width: 118)
+                                        .frame(width: 136)
                                 }
                             }
                             .buttonStyle(.plain)
