@@ -76,6 +76,21 @@ public struct WorkspaceStore: Equatable {
         activeTab = .note
     }
 
+    public mutating func updateActiveFileContent(_ content: String, now: Date) {
+        guard let file = activeFile, file.content != content else {
+            return
+        }
+
+        replaceFile(VaultFile(
+            id: file.id,
+            path: file.path,
+            title: file.title,
+            content: content,
+            createdAt: file.createdAt,
+            updatedAt: now
+        ))
+    }
+
     public mutating func stopRecordingAndAppendNotes(now: Date) {
         guard let file = activeFile, recorder.phase.isRecording else {
             return

@@ -63,6 +63,11 @@ struct MarkdownPreviewView: View {
                             .fill(NotoDesign.accent)
                             .frame(width: 3)
                     }
+            case .divider:
+                Rectangle()
+                    .fill(NotoDesign.line)
+                    .frame(height: 1)
+                    .padding(.vertical, 8)
             case .paragraph(let text):
                 linkedText(text)
             case .blank:
@@ -77,7 +82,7 @@ struct MarkdownPreviewView: View {
             ForEach(LinkSegment.segments(from: text)) { segment in
                 switch segment.kind {
                 case .plain:
-                    Text(segment.text)
+                    Text(markdownText(segment.text))
                         .font(.system(size: 15))
                         .foregroundStyle(NotoDesign.ink)
                 case .wiki:
@@ -138,6 +143,8 @@ struct RenderLine: Identifiable {
             kind = .bullet(text: String(text.dropFirst(2)))
         } else if text.hasPrefix(">") {
             kind = .callout(text: text.dropFirst().trimmingCharacters(in: .whitespaces))
+        } else if text == "---" {
+            kind = .divider
         } else {
             kind = .paragraph(text: text)
         }
@@ -171,9 +178,18 @@ struct RenderLine: Identifiable {
         case bullet(text: String)
         case checkbox(text: String, checked: Bool)
         case callout(text: String)
+        case divider
         case paragraph(text: String)
         case blank
     }
+}
+
+private func markdownText(_ text: String) -> AttributedString {
+    var normalized = text
+    normalized = normalized.replacingOccurrences(of: "<u>", with: "")
+    normalized = normalized.replacingOccurrences(of: "</u>", with: "")
+
+    return (try? AttributedString(markdown: normalized)) ?? AttributedString(text)
 }
 
 struct LinkSegment: Identifiable {

@@ -15,8 +15,11 @@ struct MacWindowView: View {
                     VaultSidebarView()
                         .frame(width: 300)
                     MarkdownWorkspaceView()
-                    RightContextPanelView()
-                        .frame(width: 340)
+                    if appState.isRightSidebarPresented {
+                        RightContextPanelView()
+                            .frame(width: 340)
+                            .transition(.move(edge: .trailing).combined(with: .opacity))
+                    }
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -36,6 +39,7 @@ struct MacWindowView: View {
         }
         .animation(.spring(response: 0.28, dampingFraction: 0.86), value: appState.isRecorderPresented)
         .animation(.spring(response: 0.22, dampingFraction: 0.88), value: appState.isCommandPalettePresented)
+        .animation(.spring(response: 0.24, dampingFraction: 0.88), value: appState.isRightSidebarPresented)
         .preferredColorScheme(.dark)
         .focusable()
         .onKeyPress("k", phases: .down) { press in
