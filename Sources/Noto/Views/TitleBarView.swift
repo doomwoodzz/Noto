@@ -28,21 +28,15 @@ struct TitleBarView: View {
             .help(appState.isRightSidebarPresented ? "Hide context sidebar" : "Show context sidebar")
 
             Button {
-                appState.updateAppFromCodeChanges()
+                appState.checkForUpdates()
             } label: {
-                if appState.updateStatus.isUpdating {
-                    ProgressView()
-                        .controlSize(.small)
-                        .frame(width: 16, height: 16)
-                } else {
-                    Label(appState.updateStatus.label, systemImage: "arrow.trianglehead.2.clockwise")
-                        .font(.system(size: 12, weight: .medium))
-                }
+                Label(appState.updater.buttonTitle, systemImage: "arrow.trianglehead.2.clockwise")
+                    .font(.system(size: 12, weight: .medium))
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.small)
-            .disabled(appState.updateStatus.isUpdating)
-            .help(updateHelpText)
+            .disabled(!appState.updater.isConfigured)
+            .help(appState.updater.helpText)
 
             Button {
                 appState.toggleCommandPalette()
@@ -65,14 +59,4 @@ struct TitleBarView: View {
         }
     }
 
-    private var updateHelpText: String {
-        switch appState.updateStatus {
-        case .idle:
-            return "Rebuild and relaunch Noto from the latest source code."
-        case .updating:
-            return "Building the latest source code."
-        case .failed(let message):
-            return message
-        }
-    }
 }

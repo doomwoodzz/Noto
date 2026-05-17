@@ -16,6 +16,9 @@ let package = Package(
         .executable(name: "NotoCoreChecks", targets: ["NotoCoreChecks"]),
         .library(name: "NotoCore", targets: ["NotoCore"])
     ],
+    dependencies: [
+        .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.7.0")
+    ],
     targets: [
         .target(
             name: "NotoCore",
@@ -23,7 +26,10 @@ let package = Package(
         ),
         .executableTarget(
             name: "Noto",
-            dependencies: ["NotoCore"],
+            dependencies: [
+                "NotoCore",
+                .product(name: "Sparkle", package: "Sparkle")
+            ],
             path: "Sources/Noto"
         ),
         .executableTarget(
