@@ -1,0 +1,609 @@
+/* ============================================================
+   Noto macOS UI kit — component styles (embedded preview app)
+   ============================================================ */
+
+.noto-app * { box-sizing: border-box; }
+
+.noto-app {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--color-background);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+/* ---------- Title bar ---------- */
+.noto-titlebar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: var(--height-titlebar);
+  padding: 0 22px 0 var(--pad-titlebar-leading);
+  background: var(--color-panel);
+  border-bottom: 1px solid var(--color-line);
+  position: relative;
+}
+.noto-traffic {
+  position: absolute;
+  left: 22px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  gap: 8px;
+}
+.tl { width: 12px; height: 12px; border-radius: 9999px; display: inline-block; }
+.tl-close { background: #FF5F57; }
+.tl-min   { background: #FEBC2E; }
+.tl-max   { background: #28C840; }
+
+.noto-titlebar-brand {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.noto-titlebar-name {
+  font: var(--weight-semibold) 15px/1.2 var(--font-sans);
+  color: var(--color-ink);
+}
+.noto-titlebar-slogan {
+  font: var(--weight-regular) 12px/1.2 var(--font-sans);
+  color: var(--color-muted);
+}
+
+/* ---------- Buttons ---------- */
+.noto-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font: var(--weight-medium) 12px/1 var(--font-sans);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-spring), transform var(--dur-fast) var(--ease-spring);
+  white-space: nowrap;
+}
+.noto-btn:active { transform: scale(0.98); }
+.noto-btn-primary {
+  background: var(--color-accent);
+  color: white;
+  border-color: transparent;
+}
+.noto-btn-primary:hover { background: #6F9DFC; }
+.noto-btn-bordered {
+  background: var(--color-card);
+  color: var(--color-ink);
+  border-color: var(--color-line-strong);
+}
+.noto-btn-bordered:hover { background: #2A2D32; }
+.noto-btn-ghost {
+  background: transparent;
+  color: var(--color-ink);
+  border-color: var(--color-line);
+  width: 28px;
+  padding: 0;
+  justify-content: center;
+}
+.noto-btn-ghost:hover { background: rgba(255,255,255,0.06); }
+.noto-btn-block { width: 100%; justify-content: center; height: 30px; }
+
+.noto-link-button {
+  background: transparent;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--color-accent);
+  font: var(--weight-medium) 14px/1 var(--font-sans);
+  padding: 4px 2px;
+  cursor: pointer;
+}
+.noto-link-button:hover { color: #7DA7FF; }
+
+/* ---------- Body layout ---------- */
+.noto-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ---------- Sidebar ---------- */
+.noto-sidebar {
+  width: var(--width-sidebar);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  background: var(--color-sidebar);
+  border-right: 1px solid var(--color-line);
+  overflow: hidden;
+}
+.noto-vault-head { display: flex; flex-direction: column; gap: 2px; }
+.noto-vault-name { font: var(--weight-semibold) 18px/1.2 var(--font-sans); color: var(--color-ink); }
+.noto-vault-sub  { font: var(--weight-regular) 13px/1.2 var(--font-sans); color: var(--color-muted); }
+
+.noto-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 12px;
+  background: var(--color-field);
+  border: 1px solid var(--color-line);
+  border-radius: 8px;
+  color: var(--color-ink);
+}
+.noto-field input {
+  flex: 1;
+  background: transparent; border: none; outline: none;
+  color: var(--color-ink);
+  font: var(--weight-regular) 15px/1 var(--font-sans);
+}
+.noto-field input::placeholder { color: var(--color-muted-dim); }
+.noto-field:focus-within {
+  border-color: rgba(87, 143, 250, 0.55);
+  box-shadow: 0 0 0 3px rgba(87, 143, 250, 0.10);
+}
+
+.noto-tree-scroll {
+  flex: 1;
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.12) transparent;
+}
+.noto-tree { display: flex; flex-direction: column; gap: 14px; }
+.noto-tree-group { display: flex; flex-direction: column; gap: 4px; }
+.noto-tree-folder {
+  display: flex; align-items: center; gap: 7px;
+  font: var(--weight-semibold) 13px/1.3 var(--font-sans);
+  color: var(--color-muted);
+  padding: 2px 2px;
+  margin-bottom: 2px;
+}
+.noto-tree-row {
+  display: flex; align-items: center; gap: 7px;
+  background: transparent;
+  border: none;
+  text-align: left;
+  width: 100%;
+  font: var(--weight-regular) 14px/1.3 var(--font-sans);
+  color: var(--color-ink);
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-spring);
+}
+.noto-tree-row:hover { background: rgba(255,255,255,0.04); }
+.noto-tree-row.is-active {
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+.noto-tree-row.is-active span { color: var(--color-accent); }
+.noto-tree-row span { color: var(--color-ink); }
+
+.noto-empty { font: 400 13px/1.4 var(--font-sans); color: var(--color-muted); padding: 8px 2px; }
+
+/* ---------- Workspace ---------- */
+.noto-workspace {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-editor);
+  min-width: 0;
+}
+.noto-tabbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: var(--height-tabbar);
+  padding: 0 18px;
+  background: var(--color-panel);
+  border-bottom: 1px solid var(--color-line);
+}
+.noto-tab {
+  background: transparent;
+  border: none;
+  padding: 9px 14px;
+  border-radius: 8px;
+  font: var(--weight-regular) 12px/1 var(--font-sans);
+  color: var(--color-muted);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-spring);
+}
+.noto-tab:hover { background: rgba(255,255,255,0.04); }
+.noto-tab.is-active { background: var(--color-card); color: var(--color-ink); font-weight: var(--weight-semibold); }
+
+.noto-workspace-body { flex: 1; overflow: auto; min-height: 0; }
+
+/* ---------- Markdown preview ---------- */
+.noto-preview {
+  max-width: var(--width-workspace-max);
+  margin: 0 auto;
+  padding: 36px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.noto-preview-title {
+  font: var(--weight-bold) 34px/1.15 var(--font-sans);
+  color: var(--color-ink);
+  margin: 0 0 4px 0;
+  letter-spacing: -0.012em;
+}
+.noto-preview-body { display: flex; flex-direction: column; gap: 8px; }
+.noto-h1 {
+  font: var(--weight-semibold) 26px/1.25 var(--font-sans);
+  color: var(--color-ink);
+  margin: 12px 0 4px;
+}
+.noto-h2 {
+  font: var(--weight-semibold) 19px/1.3 var(--font-sans);
+  color: var(--color-ink);
+  margin: 14px 0 2px;
+}
+.noto-h3 {
+  font: var(--weight-semibold) 16px/1.35 var(--font-sans);
+  color: var(--color-ink);
+  margin: 8px 0 0;
+}
+.noto-p {
+  font: var(--weight-regular) 15px/1.55 var(--font-sans);
+  color: var(--color-ink);
+  margin: 0;
+}
+.noto-bullet {
+  display: flex; align-items: baseline; gap: 8px;
+  font: var(--weight-regular) 15px/1.55 var(--font-sans);
+}
+.noto-bullet-dash { color: var(--color-muted); }
+.noto-cb {
+  display: flex; align-items: center; gap: 8px;
+  font: var(--weight-regular) 15px/1.55 var(--font-sans);
+  color: var(--color-ink);
+}
+.noto-callout {
+  position: relative;
+  background: var(--color-accent-softer);
+  border-radius: 10px;
+  padding: 12px 14px 12px 18px;
+  margin: 4px 0;
+  font: var(--weight-regular) 15px/1.55 var(--font-sans);
+  color: var(--color-ink);
+  overflow: hidden;
+}
+.noto-callout::before {
+  content: "";
+  position: absolute; left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--color-accent);
+}
+.noto-hr {
+  border: none;
+  height: 1px;
+  background: var(--color-line);
+  margin: 8px 0;
+}
+.noto-wiki {
+  display: inline-flex; align-items: center;
+  background: var(--color-accent-pill);
+  color: var(--color-accent);
+  padding: 3px 8px;
+  border: none;
+  border-radius: 9999px;
+  font: var(--weight-medium) 14px/1.2 var(--font-sans);
+  cursor: pointer;
+  margin: 0 2px;
+  transition: background var(--dur-fast) var(--ease-spring);
+}
+.noto-wiki:hover { background: rgba(87, 143, 250, 0.24); }
+.noto-inline { display: inline; }
+
+/* ---------- Right context panel ---------- */
+.noto-context {
+  width: var(--width-context);
+  background: var(--color-sidebar);
+  border-left: 1px solid var(--color-line);
+  padding: 20px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.noto-label {
+  font: var(--weight-semibold) 10px/1.3 var(--font-sans);
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+}
+.noto-section { display: flex; flex-direction: column; }
+.noto-path {
+  font: var(--weight-regular) 12px/1.4 var(--font-sans);
+  color: var(--color-muted);
+}
+.noto-edited {
+  font: var(--weight-regular) 11px/1.4 var(--font-sans);
+  color: var(--color-muted);
+  margin-top: 2px;
+}
+.noto-stats { display: flex; gap: 8px; margin-top: 8px; }
+.noto-stat {
+  flex: 1;
+  background: var(--color-card);
+  border-radius: 8px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.noto-stat-l {
+  font: var(--weight-semibold) 9px/1.3 var(--font-sans);
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.noto-stat-v {
+  font: var(--weight-semibold) 14px/1.2 var(--font-sans);
+  color: var(--color-ink);
+}
+
+.noto-list { display: flex; flex-direction: column; gap: 5px; }
+.noto-card-row {
+  background: var(--color-card);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font: var(--weight-regular) 13px/1.4 var(--font-sans);
+  color: var(--color-ink);
+}
+.noto-empty-line { font: 400 13px/1.4 var(--font-sans); color: var(--color-muted); }
+
+.noto-memory-empty {
+  background: var(--color-card);
+  border-radius: 8px;
+  padding: 10px;
+  font: var(--weight-regular) 13px/1.4 var(--font-sans);
+  color: var(--color-muted);
+}
+.noto-memory { display: flex; flex-direction: column; gap: 12px; }
+.noto-memory-group { display: flex; flex-direction: column; gap: 6px; }
+.noto-memory-title {
+  font: var(--weight-semibold) 11px/1.3 var(--font-sans);
+  color: var(--color-muted);
+}
+
+/* ---------- Knowledge graph ---------- */
+.noto-graph {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--color-editor);
+}
+.noto-graph-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 28px;
+}
+.noto-graph-title {
+  font: var(--weight-bold) 28px/1.15 var(--font-sans);
+  color: var(--color-ink);
+  margin-bottom: 3px;
+  letter-spacing: -0.01em;
+}
+.noto-graph-sub {
+  font: var(--weight-regular) 14px/1.3 var(--font-sans);
+  color: var(--color-muted);
+}
+.noto-segmented {
+  display: inline-flex;
+  background: var(--color-card);
+  border: 1px solid var(--color-line);
+  border-radius: 8px;
+  padding: 2px;
+}
+.noto-segment {
+  background: transparent;
+  border: none;
+  padding: 6px 12px;
+  font: var(--weight-medium) 12px/1 var(--font-sans);
+  color: var(--color-muted);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-spring), color var(--dur-fast) var(--ease-spring);
+}
+.noto-segment:hover { color: var(--color-ink); }
+.noto-segment.is-active {
+  background: var(--color-field);
+  color: var(--color-ink);
+}
+.noto-graph-svg { flex: 1; padding: 0 28px 28px; }
+
+/* ---------- Recorder ---------- */
+.noto-recorder {
+  position: absolute;
+  bottom: 34px;
+  right: 34px;
+  width: var(--width-recorder);
+  background: rgba(24, 26, 30, 0.94);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-pill);
+  padding: 24px;
+  text-align: center;
+  box-shadow: var(--shadow-floating);
+  z-index: 10;
+  animation: notoRecorderIn var(--dur-slow) var(--ease-spring) both;
+}
+@keyframes notoRecorderIn {
+  from { opacity: 0; transform: scale(0.92) translateY(8px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+.noto-recorder-head {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.noto-rec-dot {
+  width: 8px; height: 8px;
+  background: var(--color-recorder-red);
+  border-radius: 9999px;
+  box-shadow: 0 0 0 4px rgba(245, 71, 64, 0.18);
+  animation: notoPulse 1.6s infinite ease-in-out;
+}
+@keyframes notoPulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(0.78); }
+}
+.noto-recorder-title {
+  font: var(--weight-semibold) 16px/1.2 var(--font-sans);
+  color: var(--color-ink);
+}
+.noto-recorder-status {
+  font: var(--weight-regular) 12px/1.4 var(--font-sans);
+  color: var(--color-muted);
+  margin-top: 4px;
+}
+.noto-wave {
+  display: flex; align-items: center; justify-content: center;
+  gap: 3px;
+  height: 36px;
+  margin: 16px 0 12px;
+  opacity: 0.45;
+}
+.noto-wave.is-on { opacity: 1; }
+.noto-wave span {
+  width: 3px;
+  background: var(--color-accent);
+  border-radius: 2px;
+  height: 8px;
+}
+.noto-wave.is-on span {
+  animation: notoBounce 1.2s infinite ease-in-out;
+  transform-origin: center;
+}
+@keyframes notoBounce {
+  0%, 100% { transform: scaleY(0.45); }
+  50%      { transform: scaleY(1); }
+}
+.noto-recorder-timer {
+  font: var(--weight-semibold) 18px/1 var(--font-mono);
+  color: var(--color-ink);
+  font-variant-numeric: tabular-nums;
+  margin: 4px 0 10px;
+}
+.noto-recorder-btn { display: inline-flex; }
+.noto-recorder-actions { display: flex; justify-content: center; gap: 8px; }
+.noto-concepts {
+  margin-top: 10px;
+  display: flex; flex-direction: column; gap: 3px;
+  text-align: left;
+}
+.noto-concept {
+  font: var(--weight-regular) 11px/1.4 var(--font-sans);
+  color: var(--color-ink);
+}
+.noto-privacy {
+  font: var(--weight-regular) 10px/1.4 var(--font-sans);
+  color: var(--color-muted-dim);
+  margin-top: 14px;
+}
+.noto-spinner {
+  width: 18px; height: 18px;
+  border-radius: 9999px;
+  border: 2px solid var(--color-line-strong);
+  border-top-color: var(--color-accent);
+  margin: 8px auto;
+  animation: notoSpin 0.9s linear infinite;
+}
+@keyframes notoSpin { to { transform: rotate(360deg); } }
+
+/* ---------- Command palette ---------- */
+.noto-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.32);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 120px;
+  z-index: 20;
+  animation: notoFadeIn var(--dur-base) var(--ease-spring) both;
+}
+@keyframes notoFadeIn { from { opacity: 0; } to { opacity: 1; } }
+.noto-palette {
+  width: var(--width-palette);
+  background: rgba(24, 26, 30, 0.94);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-xl);
+  padding: 12px;
+  box-shadow: var(--shadow-palette);
+  animation: notoScaleIn var(--dur-base) var(--ease-spring) both;
+}
+@keyframes notoScaleIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.noto-palette-search {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px;
+  background: var(--color-field);
+  border-radius: var(--radius-lg);
+}
+.noto-palette-search input {
+  flex: 1; background: transparent; border: none; outline: none;
+  color: var(--color-ink);
+  font: var(--weight-regular) 15px/1 var(--font-sans);
+}
+.noto-palette-search input::placeholder { color: var(--color-muted-dim); }
+.noto-palette-list { display: flex; flex-direction: column; gap: 2px; margin-top: 10px; }
+.noto-palette-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px;
+  background: transparent; border: none;
+  border-radius: 8px;
+  font: var(--weight-regular) 13px/1 var(--font-sans);
+  color: var(--color-ink);
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+}
+.noto-palette-item.is-active { background: rgba(87, 143, 250, 0.10); }
+.noto-kbd {
+  margin-left: auto;
+  font: var(--weight-medium) 10px/1 var(--font-mono);
+  color: var(--color-muted);
+  padding: 3px 6px;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.05);
+}
+
+/* ---------- Hint overlay ---------- */
+.noto-hint {
+  position: absolute;
+  bottom: 18px;
+  left: 18px;
+  display: flex;
+  gap: 12px;
+  font: var(--weight-regular) 10px/1 var(--font-sans);
+  color: var(--color-muted-dim);
+  pointer-events: none;
+  letter-spacing: 0.04em;
+}
+.noto-hint kbd {
+  font: var(--weight-semibold) 10px/1 var(--font-mono);
+  color: var(--color-muted);
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--color-line);
+  border-radius: 4px;
+  padding: 2px 5px;
+  margin-right: 4px;
+}
+
+/* ---------- Noto-app scrollbars only ---------- */
+.noto-app ::-webkit-scrollbar { width: 10px; height: 10px; }
+.noto-app ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.10); border-radius: 9999px; border: 2px solid transparent; background-clip: content-box; }
+.noto-app ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.18); background-clip: content-box; border: 2px solid transparent; }

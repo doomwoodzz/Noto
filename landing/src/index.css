@@ -1,0 +1,10 @@
+/* Design tokens & component styles for the Noto landing page.
+   Order matters: tokens (variables) first, then app shell styles,
+   then landing page styles (which override font/background on body). */
+@import "./styles/tokens.css";
+@import "./styles/noto-app.css";
+@import "./styles/landing.css";
+
+html {
+  scroll-behavior: smooth;
+}

@@ -1,0 +1,108 @@
+/* ============================================================
+   Noto Design System — Tokens
+   "When you listen, Noto remembers."
+   Mapped from Sources/Noto/Views/DesignSystem.swift
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap');
+
+:root {
+  /* -------- COLOR · Surfaces (dark, stacked) -------- */
+  --color-background: #0C0D0F;
+  --color-sidebar:    #121316;
+  --color-panel:      #181A1E;
+  --color-editor:     #0F1114;
+  --color-card:       #22252A;
+  --color-field:      #2A2D32;
+
+  /* -------- COLOR · Lines & strokes -------- */
+  --color-line:        rgba(255, 255, 255, 0.08);
+  --color-line-strong: rgba(255, 255, 255, 0.14);
+
+  /* -------- COLOR · Foregrounds -------- */
+  --color-ink:        #EBF0FA;
+  --color-muted:      #8F99AE;
+  --color-muted-dim:  #5C6473;
+
+  /* -------- COLOR · Accent -------- */
+  --color-accent:        #578FFA;
+  --color-accent-soft:   rgba(87, 143, 250, 0.18);
+  --color-accent-softer: rgba(87, 143, 250, 0.08);
+  --color-accent-pill:   rgba(87, 143, 250, 0.16);
+
+  /* -------- COLOR · Status -------- */
+  --color-recorder-red: #F54740;
+
+  /* -------- TYPE · Families -------- */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* -------- TYPE · Sizes -------- */
+  --text-display:  34px;
+  --text-page:     28px;
+  --text-h2:       19px;
+  --text-h3:       16px;
+  --text-vault:    18px;
+  --text-body:     15px;
+  --text-body-sm:  14px;
+  --text-meta:     13px;
+  --text-small:    12px;
+  --text-micro:    11px;
+  --text-mini:     10px;
+  --text-mono:     18px;
+
+  /* -------- TYPE · Weights -------- */
+  --weight-regular:  400;
+  --weight-medium:   500;
+  --weight-semibold: 600;
+  --weight-bold:     700;
+
+  /* -------- TYPE · Line heights -------- */
+  --lh-tight:  1.15;
+  --lh-snug:   1.3;
+  --lh-base:   1.45;
+  --lh-loose:  1.6;
+
+  /* -------- SPACING -------- */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  10px;
+  --space-4:  12px;
+  --space-5:  14px;
+  --space-6:  18px;
+  --space-7:  20px;
+  --space-8:  24px;
+  --space-9:  28px;
+  --space-10: 36px;
+  --space-11: 48px;
+
+  /* -------- RADII -------- */
+  --radius-sm:    8px;
+  --radius-md:    10px;
+  --radius-lg:    12px;
+  --radius-xl:    18px;
+  --radius-pill:  42px;
+  --radius-full:  9999px;
+
+  /* -------- SHADOWS -------- */
+  --shadow-floating: 0 22px 34px rgba(0, 0, 0, 0.22);
+  --shadow-palette:  0 22px 34px rgba(0, 0, 0, 0.20);
+  --shadow-node:     0 4px 8px rgba(0, 0, 0, 0.24);
+
+  /* -------- MOTION -------- */
+  --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-fast:    140ms;
+  --dur-base:    220ms;
+  --dur-slow:    280ms;
+
+  /* -------- LAYOUT -------- */
+  --width-sidebar:       300px;
+  --width-context:       340px;
+  --width-recorder:      340px;
+  --height-recorder:     300px;
+  --width-palette:       460px;
+  --width-workspace-max: 920px;
+  --height-titlebar:      64px;
+  --height-tabbar:        52px;
+  --pad-titlebar-leading: 84px;
+}
