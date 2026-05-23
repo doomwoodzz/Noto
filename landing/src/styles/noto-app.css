@@ -424,6 +424,13 @@
   color: var(--color-ink);
 }
 .noto-graph-svg { flex: 1; padding: 0 28px 28px; }
+.noto-graph-node {
+  touch-action: none;
+  user-select: none;
+}
+.noto-graph-node text {
+  pointer-events: none;
+}
 
 /* ---------- Recorder ---------- */
 .noto-recorder {
