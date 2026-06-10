@@ -26,19 +26,6 @@ export function AppPreview() {
       <div className="l-preview-bg" />
       <div className="l-shell">
         <div className="l-window" data-screen-label="App Preview">
-          <div className="l-window-chrome">
-            <div className="l-window-tl">
-              <span className="l-window-tl-close" />
-              <span className="l-window-tl-min" />
-              <span className="l-window-tl-max" />
-            </div>
-            <div className="l-window-title">Noto — School Vault</div>
-            <div className="l-window-right">
-              <span>Try: </span>
-              <span className="l-window-kbd">⌘K</span>
-              <span className="l-window-kbd">⌃⌘M</span>
-            </div>
-          </div>
           <div className="l-app-host" ref={hostRef} style={{ height: 720 * scale }}>
             <div className="l-app-scaler" style={{ transform: `scale(${scale})` }}>
               <NotoApp />

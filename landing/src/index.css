@@ -4,6 +4,7 @@
 @import "./styles/tokens.css";
 @import "./styles/noto-app.css";
 @import "./styles/landing.css";
+@import "./styles/coming-soon.css";
 
 html {
   scroll-behavior: smooth;
