@@ -304,6 +304,80 @@
 .noto-wiki:hover { background: rgba(87, 143, 250, 0.24); }
 .noto-inline { display: inline; }
 
+/* ---------- AI-written note block ---------- */
+.noto-ai-block {
+  position: relative;
+  margin-top: 18px;
+  padding: 16px 18px;
+  border-radius: 12px;
+  border: 1px solid var(--color-accent-soft);
+  background:
+    linear-gradient(180deg, rgba(87,143,250,0.07), rgba(87,143,250,0.02));
+  overflow: hidden;
+  animation: notoAiBlockIn var(--dur-slow) var(--ease-spring) both;
+}
+@keyframes notoAiBlockIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.noto-ai-block.is-typing {
+  border-color: rgba(87,143,250,0.4);
+  box-shadow: 0 0 0 1px rgba(87,143,250,0.10), 0 10px 30px rgba(87,143,250,0.08);
+}
+.noto-ai-tag {
+  display: inline-flex; align-items: center; gap: 7px;
+  font: var(--weight-semibold) 11px/1 var(--font-sans);
+  color: var(--color-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 10px;
+}
+.noto-ai-spark {
+  width: 8px; height: 8px; border-radius: 9999px;
+  background: var(--color-accent);
+  box-shadow: 0 0 0 4px rgba(87,143,250,0.16);
+}
+.noto-ai-block.is-typing .noto-ai-spark { animation: notoPulse 1.4s infinite ease-in-out; }
+.noto-ai-text { display: flex; flex-direction: column; gap: 6px; position: relative; }
+.noto-ai-caret {
+  display: inline-block;
+  width: 8px; height: 17px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #ffffff, var(--color-accent));
+  margin-top: 2px;
+  animation: notoCaret 1s steps(1, end) infinite;
+}
+@keyframes notoCaret { 0%, 55% { opacity: 1; } 56%, 100% { opacity: 0.15; } }
+
+/* Soft white light sweeping left -> right across the text while it types. */
+.noto-ai-sheen {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    transparent 38%,
+    rgba(255,255,255,0.16) 48%,
+    rgba(255,255,255,0.30) 50%,
+    rgba(255,255,255,0.16) 52%,
+    transparent 62%,
+    transparent 100%
+  );
+  background-size: 220% 100%;
+  background-repeat: no-repeat;
+  mix-blend-mode: screen;
+  animation: notoSheen 1.5s linear infinite;
+}
+@keyframes notoSheen {
+  from { background-position: 130% 0; }
+  to   { background-position: -30% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .noto-ai-sheen { animation: none; opacity: 0; }
+  .noto-ai-caret { animation: none; }
+}
+
 /* ---------- Right context panel ---------- */
 .noto-context {
   width: var(--width-context);
@@ -432,6 +506,42 @@
   pointer-events: none;
 }
 
+/* AI-created links drawing into the web */
+.noto-edge-created { animation: notoEdgeDraw 0.55s var(--ease-spring) both; }
+@keyframes notoEdgeDraw { from { opacity: 0; } to { opacity: 1; } }
+.noto-edge-pulse {
+  pointer-events: none;
+  filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.65));
+  animation: notoEdgePulse 1.4s linear infinite;
+}
+@keyframes notoEdgePulse {
+  from { stroke-dashoffset: 1; }
+  to   { stroke-dashoffset: 0; }
+}
+.noto-graph-node-created circle:not(.noto-node-ring) {
+  animation: notoNodePop 0.5s var(--ease-spring) both;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+@keyframes notoNodePop {
+  from { transform: scale(0.2); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+.noto-node-ring {
+  pointer-events: none;
+  stroke-width: 1.5px;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: notoNodeRing 1.7s ease-out infinite;
+}
+@keyframes notoNodeRing {
+  0%   { transform: scale(1);   stroke-opacity: 0.85; }
+  100% { transform: scale(2.2); stroke-opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .noto-edge-pulse, .noto-node-ring { animation: none; opacity: 0; }
+}
+
 /* ---------- Recorder ---------- */
 .noto-recorder {
   position: absolute;
@@ -513,6 +623,96 @@
   font: var(--weight-regular) 11px/1.4 var(--font-sans);
   color: var(--color-ink);
 }
+
+/* ---------- AI thinking line ---------- */
+.noto-think {
+  display: flex; align-items: center; gap: 7px;
+  margin-top: 14px;
+  padding: 8px 11px;
+  border-radius: 9px;
+  background: rgba(87, 143, 250, 0.08);
+  border: 1px solid var(--color-accent-softer);
+  text-align: left;
+  min-height: 32px;
+}
+.noto-think-icon { color: var(--color-accent); flex-shrink: 0; }
+.noto-think-line {
+  font: var(--weight-regular) 11.5px/1.35 var(--font-sans);
+  color: var(--color-muted);
+  animation: notoThinkIn 0.45s var(--ease-spring) both;
+}
+@keyframes notoThinkIn {
+  from { opacity: 0; transform: translateY(3px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- AI Q&A ---------- */
+.noto-qa {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--color-line);
+  text-align: left;
+}
+.noto-qa-label {
+  font: var(--weight-semibold) 10px/1.3 var(--font-sans);
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 9px;
+}
+.noto-qa-list { display: flex; flex-direction: column; gap: 6px; }
+.noto-qa-chip {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  width: 100%;
+  padding: 8px 11px;
+  background: var(--color-card);
+  border: 1px solid var(--color-line);
+  border-radius: 8px;
+  font: var(--weight-medium) 12px/1.3 var(--font-sans);
+  color: var(--color-ink);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-spring),
+              border-color var(--dur-fast) var(--ease-spring),
+              transform var(--dur-fast) var(--ease-spring);
+}
+.noto-qa-chip svg { color: var(--color-muted); flex-shrink: 0; }
+.noto-qa-chip:hover {
+  background: #2A2D32;
+  border-color: var(--color-accent-soft);
+  transform: translateX(2px);
+}
+.noto-qa-chip:hover svg { color: var(--color-accent); }
+.noto-qa-chip.is-active {
+  border-color: rgba(87, 143, 250, 0.5);
+  background: var(--color-accent-softer);
+}
+.noto-qa-chip.is-active svg { color: var(--color-accent); }
+
+.noto-qa-answer {
+  position: relative;
+  margin-top: 10px;
+  padding: 11px 12px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--color-line);
+  overflow: hidden;
+}
+.noto-qa-answer.is-typing { border-color: rgba(87, 143, 250, 0.35); }
+.noto-qa-answer-text {
+  font: var(--weight-regular) 12.5px/1.5 var(--font-sans);
+  color: var(--color-ink);
+}
+.noto-qa-link {
+  color: var(--color-accent);
+  font-weight: var(--weight-medium);
+}
+.noto-qa-answer .noto-ai-caret {
+  width: 6px; height: 13px;
+  margin: 0 0 -2px 2px;
+  vertical-align: baseline;
+}
+
 .noto-privacy {
   font: var(--weight-regular) 10px/1.4 var(--font-sans);
   color: var(--color-muted-dim);

@@ -17,10 +17,10 @@ export function Footer() {
           <div className="l-footer-col">
             <h4>Product</h4>
             <ul>
-              <li><a href="#features">Features</a></li>
-              <li><a href="#download">Download</a></li>
+              <li><a href="/features.html">Features</a></li>
+              <li><a href="/download.html">Download</a></li>
               <li><a href="#changelog">Changelog</a></li>
-              <li><a href="#roadmap">Roadmap</a></li>
+              <li><a href="/download.html#roadmap">Roadmap</a></li>
             </ul>
           </div>
           <div className="l-footer-col">

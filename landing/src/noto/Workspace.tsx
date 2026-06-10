@@ -12,11 +12,17 @@ interface WorkspaceProps {
   onGraphSelect: (id: string) => void;
   filter: GraphFilter;
   setFilter: (f: GraphFilter) => void;
+  aiText: string;
+  aiTyping: boolean;
+  createdEdgeKeys: Set<string>;
+  createdNodeIds: Set<string>;
+  linksAnimating: boolean;
 }
 
 export function Workspace({
   tab, setTab, activeFile, onWikiOpen, graph, activeFileId,
   onGraphSelect, filter, setFilter,
+  aiText, aiTyping, createdEdgeKeys, createdNodeIds, linksAnimating,
 }: WorkspaceProps) {
   return (
     <div className="noto-workspace">
@@ -37,7 +43,12 @@ export function Workspace({
 
       <div className="noto-workspace-body">
         {tab === "note" ? (
-          <MarkdownPreview file={activeFile} onWikiOpen={onWikiOpen} />
+          <MarkdownPreview
+            file={activeFile}
+            onWikiOpen={onWikiOpen}
+            aiText={aiText}
+            aiTyping={aiTyping}
+          />
         ) : (
           <KnowledgeGraph
             graph={graph}
@@ -45,6 +56,9 @@ export function Workspace({
             onSelect={onGraphSelect}
             filter={filter}
             setFilter={setFilter}
+            createdEdgeKeys={createdEdgeKeys}
+            createdNodeIds={createdNodeIds}
+            linksAnimating={linksAnimating}
           />
         )}
       </div>

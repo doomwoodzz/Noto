@@ -1,6 +1,6 @@
 // Embedded Noto app for the landing-page preview.
 // Ported from /landing-page/project/noto/NotoApp.jsx
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { TitleBar } from "./TitleBar";
 import { VaultSidebar } from "./VaultSidebar";
 import { Workspace } from "./Workspace";
@@ -8,8 +8,12 @@ import { RightContext } from "./RightContext";
 import { CommandPalette } from "./CommandPalette";
 import { AIRecorder } from "./AIRecorder";
 import { NotoData } from "./mockVault";
+import { useTypewriter } from "./useTypewriter";
+import {
+  AI_NEW_EDGES, AI_NEW_NODES, AI_QUESTIONS, AI_SUMMARY_TEXT, edgeKey,
+} from "./aiDemo";
 import type {
-  Graph, GraphFilter, RecorderState, WorkspaceTab,
+  Graph, GraphEdge, GraphFilter, GraphNode, RecorderState, WorkspaceTab,
 } from "./types";
 
 const NOTO_SIMULATED_CONCEPTS = [
@@ -34,6 +38,16 @@ export function NotoApp() {
     phase: "idle", elapsed: 0, concepts: [], targetNoteTitle: "Photosynthesis",
   });
 
+  // AI "doing the work" state: a summary typed into the note plus links the
+  // AI discovers and draws into the Knowledge Web.
+  const noteTyper = useTypewriter(52);
+  const [aiNoteId, setAiNoteId] = useState<string | null>(null);
+  const [aiNodes, setAiNodes] = useState<GraphNode[]>([]);
+  const [aiEdges, setAiEdges] = useState<GraphEdge[]>([]);
+  const [linksAnimating, setLinksAnimating] = useState(false);
+  const [recordSession, setRecordSession] = useState(0);
+  const linkTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const filteredFiles = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return files;
@@ -45,7 +59,22 @@ export function NotoApp() {
   const activeFile = files.find(f => f.id === activeFileId) || null;
   const activeMetadata = metaByFileId(activeFileId);
 
+  // Base graph augmented with the links the AI has drawn in (if any).
+  const liveGraph: Graph = useMemo(() => {
+    if (aiNodes.length === 0 && aiEdges.length === 0) return graph;
+    const nodeIds = new Set(graph.nodes.map(n => n.id));
+    const extraNodes = aiNodes.filter(n => !nodeIds.has(n.id));
+    return {
+      nodes: [...graph.nodes, ...extraNodes],
+      edges: [...graph.edges, ...aiEdges],
+    };
+  }, [graph, aiNodes, aiEdges]);
+
+  const createdEdgeKeys = useMemo(() => new Set(aiEdges.map(edgeKey)), [aiEdges]);
+  const createdNodeIds = useMemo(() => new Set(aiNodes.map(n => n.id)), [aiNodes]);
+
   const visibleGraph: Graph = useMemo(() => {
+    const graph = liveGraph;
     if (graphFilter === "all") return graph;
     if (graphFilter === "lecture") {
       const nodes = graph.nodes.filter(n => {
@@ -70,7 +99,7 @@ export function NotoApp() {
       return { nodes, edges: graph.edges.filter(e => ids.has(e.source) && ids.has(e.target)) };
     }
     return graph;
-  }, [graphFilter, graph, files, activeFileId]);
+  }, [graphFilter, liveGraph, files, activeFileId]);
 
   // Recorder tick.
   useEffect(() => {
@@ -116,7 +145,19 @@ export function NotoApp() {
     if (cmd === "local-graph") { setTab("graph"); setGraphFilter("local"); }
   }
 
+  // Wipe everything the AI produced (typed note + drawn links).
+  function clearAIWork() {
+    if (linkTimer.current) clearTimeout(linkTimer.current);
+    noteTyper.reset();
+    setAiNoteId(null);
+    setAiNodes([]);
+    setAiEdges([]);
+    setLinksAnimating(false);
+  }
+
   function recorderStart() {
+    clearAIWork();
+    setRecordSession(s => s + 1);
     setRecorder({
       phase: "recording", elapsed: 0, concepts: [],
       targetNoteTitle: activeFile ? activeFile.title : "Current Note",
@@ -124,18 +165,34 @@ export function NotoApp() {
   }
   function recorderStop() {
     setRecorder(r => ({ ...r, phase: "processing" }));
-    setTimeout(() => setRecorder(r => ({ ...r, phase: "complete" })), 700);
+    setAiNoteId(activeFileId);
+    setTimeout(() => {
+      setRecorder(r => ({ ...r, phase: "complete" }));
+      // The AI now "writes" its summary into the note and draws the new
+      // links it found into the Knowledge Web.
+      noteTyper.run(AI_SUMMARY_TEXT);
+      setAiNodes(AI_NEW_NODES);
+      setAiEdges(AI_NEW_EDGES);
+      setLinksAnimating(true);
+      linkTimer.current = setTimeout(() => setLinksAnimating(false), 5600);
+    }, 900);
   }
   function recorderReset() {
+    clearAIWork();
+    setRecordSession(s => s + 1);
     setRecorder({
       phase: "idle", elapsed: 0, concepts: [],
       targetNoteTitle: activeFile ? activeFile.title : "Current Note",
     });
   }
 
+  useEffect(() => () => { if (linkTimer.current) clearTimeout(linkTimer.current); }, []);
+
   const aiMemory = {
     concepts: recorder.concepts,
-    linked: recorder.concepts.length > 0 ? ["Chloroplast", "Glucose", "Carbon Dioxide"] : [],
+    linked: recorder.concepts.length > 0
+      ? ["Chloroplast", "Glucose", "Carbon Dioxide", ...(aiEdges.length > 0 ? ["Calvin Cycle", "Enzymes"] : [])]
+      : [],
   };
 
   return (
@@ -168,6 +225,11 @@ export function NotoApp() {
           onGraphSelect={(id) => { setActiveFileId(id); setTab("note"); }}
           filter={graphFilter}
           setFilter={setGraphFilter}
+          aiText={activeFileId === aiNoteId ? noteTyper.text : ""}
+          aiTyping={activeFileId === aiNoteId && !noteTyper.done}
+          createdEdgeKeys={createdEdgeKeys}
+          createdNodeIds={createdNodeIds}
+          linksAnimating={linksAnimating}
         />
         {rightSidebarOn && (
           <RightContext metadata={activeMetadata} aiMemory={aiMemory} />
@@ -176,13 +238,16 @@ export function NotoApp() {
 
       {recorderOpen && (
         <AIRecorder
+          key={recordSession}
           phase={recorder.phase}
           elapsed={recorder.elapsed}
           concepts={recorder.concepts}
           targetNoteTitle={recorder.targetNoteTitle}
+          questions={AI_QUESTIONS}
           onStart={recorderStart}
           onStop={recorderStop}
-          onOpenNote={() => { setTab("note"); setRecorderOpen(false); }}
+          onOpenNote={() => { setTab("note"); }}
+          onViewLinks={() => setTab("graph")}
           onRecordMore={recorderReset}
         />
       )}

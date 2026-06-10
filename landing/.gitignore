@@ -12,6 +12,12 @@ dist
 dist-ssr
 *.local
 
+# Secrets & local data
+.env
+.env.*
+!.env.example
+server/data/
+
 # Local Claude Code preview config
 .claude/
 

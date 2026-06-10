@@ -15,7 +15,6 @@ interface FeaturesDropdownProps {
 interface FeatureItem {
   eyebrow: string;
   title: string;
-  desc: string;
   href: string;
   icon: LucideIcon;
 }
@@ -24,43 +23,37 @@ const FEATURES: FeatureItem[] = [
   {
     eyebrow: "Lecture AI",
     title: "Listen, transcribe, organize",
-    desc: "Lecture AI drafts structured notes while you focus on the room.",
-    href: "#features",
+    href: "/features.html#lecture-ai",
     icon: Mic,
   },
   {
     eyebrow: "Knowledge Web",
     title: "Watch ideas connect",
-    desc: "Wiki links and backlinks generate a graph of how your notes relate.",
-    href: "#features",
+    href: "/features.html#graph",
     icon: Waypoints,
   },
   {
     eyebrow: "Wiki Links",
     title: "Two square brackets",
-    desc: "Type [[Chloroplast]] and the destination knows it's been linked.",
-    href: "#features",
+    href: "/features.html#wiki",
     icon: LinkIcon,
   },
   {
     eyebrow: "Command Menu",
     title: "Everything by keystroke",
-    desc: "⌘K jumps notes, opens the graph, or toggles the recorder.",
-    href: "#features",
+    href: "/features.html#palette",
     icon: Command,
   },
   {
     eyebrow: "Local Vault",
     title: "Your files. Your folders.",
-    desc: "Plain Markdown on disk. Open in any editor. Sync any way you like.",
-    href: "#features",
+    href: "/features.html#vault",
     icon: Folder,
   },
   {
     eyebrow: "Markdown Editor",
     title: "Native macOS editing",
-    desc: "Inline formatting, list continuation, callouts, and live wiki pills.",
-    href: "#features",
+    href: "/features.html#editor",
     icon: SquarePen,
   },
 ];
@@ -86,7 +79,6 @@ export function FeaturesDropdown({ open, onMouseEnter, onMouseLeave }: FeaturesD
                 <div className="l-features-item-text">
                   <div className="l-features-item-eyebrow">{f.eyebrow}</div>
                   <div className="l-features-item-title">{f.title}</div>
-                  <div className="l-features-item-desc">{f.desc}</div>
                 </div>
               </a>
             );
@@ -106,7 +98,7 @@ export function FeaturesDropdown({ open, onMouseEnter, onMouseLeave }: FeaturesD
           <div className="l-features-featured-card">
             <VisRecorder />
           </div>
-          <a href="#features" className="l-features-featured-link">
+          <a href="/features.html#lecture-ai" className="l-features-featured-link">
             See it in action
             <ArrowUpRight size={13} strokeWidth={1.7} />
           </a>
@@ -118,7 +110,7 @@ export function FeaturesDropdown({ open, onMouseEnter, onMouseLeave }: FeaturesD
           <span className="l-features-featured-dot" />
           New: AI Recorder is live in 1.4
         </span>
-        <a href="#changelog" className="l-features-dd-footer-link">Changelog →</a>
+        <a href="/features.html" className="l-features-dd-footer-link">All features →</a>
       </div>
     </div>
   );

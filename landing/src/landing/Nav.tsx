@@ -45,10 +45,10 @@ export function Nav({ theme, setTheme }: NavProps) {
     <header className="l-nav">
       <div className="l-shell" style={{ opacity: 1 }}>
         <div className="l-nav-row">
-          <div className="l-brand">
+          <a className="l-brand" href="/" aria-label="Noto home">
             <span className="l-brand-mark"><Box size={13} strokeWidth={1.7} /></span>
             <span>NOTO</span>
-          </div>
+          </a>
           <nav>
             <ul className="l-nav-links">
               <li
@@ -74,7 +74,8 @@ export function Nav({ theme, setTheme }: NavProps) {
                 />
               </li>
               <li><a href="#how">How it works</a></li>
-              <li><a href="#download">Download</a></li>
+              <li><a href="/download.html">Download</a></li>
+              <li><a href="/download.html#roadmap">Roadmap</a></li>
               <li><a href="#changelog">Changelog</a></li>
             </ul>
           </nav>
@@ -89,9 +90,9 @@ export function Nav({ theme, setTheme }: NavProps) {
                 ? <Moon size={15} strokeWidth={1.7} />
                 : <Sun size={15} strokeWidth={1.7} />}
             </button>
-            <a className="l-btn l-btn-ghost" href="#signin">Sign in</a>
+            <a className="l-btn l-btn-ghost" href="/get-started.html?mode=signin">Sign in</a>
             <a className="l-btn l-btn-outline" href="#help">Help</a>
-            <a className="l-btn l-btn-primary" href="#download">
+            <a className="l-btn l-btn-primary" href="/download.html">
               <Download size={14} strokeWidth={1.7} />
               Download
             </a>
