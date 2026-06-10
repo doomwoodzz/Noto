@@ -4,9 +4,13 @@ import type { VaultFile } from "./types";
 interface MarkdownPreviewProps {
   file: VaultFile | null;
   onWikiOpen: (title: string) => void;
+  /** Text the AI is streaming into the note (already partially revealed). */
+  aiText?: string;
+  /** True while the AI is still typing — drives the white sheen sweep. */
+  aiTyping?: boolean;
 }
 
-export function MarkdownPreview({ file, onWikiOpen }: MarkdownPreviewProps) {
+export function MarkdownPreview({ file, onWikiOpen, aiText = "", aiTyping = false }: MarkdownPreviewProps) {
   if (!file) {
     return <div className="noto-empty noto-preview"><div>No note selected.</div></div>;
   }
@@ -28,7 +32,25 @@ export function MarkdownPreview({ file, onWikiOpen }: MarkdownPreviewProps) {
       <h1 className="noto-preview-title">{file.title}</h1>
       <div className="noto-preview-body">
         {renderable.map((line, i) => <Line key={i} text={line} onWikiOpen={onWikiOpen} />)}
+        {aiText && <AIBlock text={aiText} typing={aiTyping} onWikiOpen={onWikiOpen} />}
       </div>
+    </div>
+  );
+}
+
+function AIBlock({ text, typing, onWikiOpen }: { text: string; typing: boolean; onWikiOpen: (title: string) => void }) {
+  const aiLines = text.split("\n");
+  return (
+    <div className={"noto-ai-block" + (typing ? " is-typing" : "")}>
+      <div className="noto-ai-tag">
+        <span className="noto-ai-spark" />
+        Written by Lecture AI
+      </div>
+      <div className="noto-ai-text">
+        {aiLines.map((line, i) => <Line key={i} text={line.trim()} onWikiOpen={onWikiOpen} />)}
+        {typing && <span className="noto-ai-caret" aria-hidden="true" />}
+      </div>
+      {typing && <span className="noto-ai-sheen" aria-hidden="true" />}
     </div>
   );
 }
