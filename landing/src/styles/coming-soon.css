@@ -108,6 +108,14 @@
   align-items: flex-start;
   gap: clamp(12px, 2.4vw, 30px);
 }
+/* Launched state (countdown done): shown in place of the timer. */
+.cs-launch-note {
+  margin: 4px 0 0;
+  max-width: 32ch;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--page-muted);
+}
 .cs-timer-unit {
   display: flex;
   flex-direction: column;

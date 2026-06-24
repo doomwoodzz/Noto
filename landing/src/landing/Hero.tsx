@@ -1,4 +1,5 @@
 import { ArrowRight, Check, Download } from "lucide-react";
+import { VERSION_LABEL } from "../shared/release";
 
 export function Hero() {
   return (
@@ -6,7 +7,7 @@ export function Hero() {
       <div className="l-shell">
         <div className="l-eyebrow">
           <span className="l-eyebrow-dot" />
-          Noto 1.4 — Local Markdown Vault with Lecture AI
+          {VERSION_LABEL} — Local Markdown Vault with Lecture AI
         </div>
         <h1 className="l-hero-title">
           When you listen, <em>Noto remembers.</em>
