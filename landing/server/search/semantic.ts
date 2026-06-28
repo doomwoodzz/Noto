@@ -19,12 +19,13 @@ export async function semanticSearchNotes(userId: string, query: string, limit: 
       const rows = getUserPassageVectors(userId);
       if (rows.length > 0) {
         const [qv] = await embedder.embed([q]);
-        return rows
+        const hits = rows
           .map((r) => ({ r, score: dot(qv, r.vec) }))
           .filter((s) => s.score >= FLOOR)
           .sort((a, b) => b.score - a.score)
           .slice(0, limit)
           .map((s) => ({ fileId: s.r.fileId, title: s.r.title, path: s.r.path, headingPath: s.r.headingPath, snippet: s.r.text.slice(0, 160), score: s.score }));
+        if (hits.length > 0) return hits;
       }
     } catch { /* fall through to lexical */ }
   }
@@ -46,8 +47,10 @@ export async function semanticRecall(userId: string, scopes: string[], query: st
           .filter((s) => s.score >= FLOOR)
           .sort((a, b) => b.score - a.score)
           .slice(0, limit);
-        bumpMemoryUsage(scored.map((s) => s.r.mem.id));
-        return scored.map((s) => ({ ...s.r.mem, score: s.score }));
+        if (scored.length > 0) {
+          bumpMemoryUsage(scored.map((s) => s.r.mem.id));
+          return scored.map((s) => ({ ...s.r.mem, score: s.score }));
+        }
       }
     } catch { /* fall through to lexical */ }
   }

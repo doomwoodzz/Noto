@@ -46,6 +46,16 @@ describe("semantic recall", () => {
     const res = await pat.req("POST", "/api/memory", { text: "survives", scope: "p" });
     expect(res.status).toBe(201);
   });
+
+  it("falls back to lexical when no embedded row clears the 0.25 floor (no keyword-search regression)", async () => {
+    // memory → topic 2; the bare query 'redis' → topic 3 (orthogonal → semantic empty) but shares the keyword.
+    setEmbedder(fakeEmbedder((t) => (/^redis$/i.test(t.trim()) ? 3 : 2)));
+    const { pat } = await setup("sem-floor-fallback@example.com");
+    await pat.req("POST", "/api/memory", { text: "redis is our caching layer", scope: "p" }); // topic 2
+    const r = await pat.req("GET", "/api/memory?q=redis&scope=p"); // query topic 3 → semantic empty → lexical FTS('redis') hits
+    const { memories } = (await r.json()) as { memories: { text: string }[] };
+    expect(memories.some((m) => m.text === "redis is our caching layer")).toBe(true);
+  });
 });
 
 describe("semantic search_notes", () => {
