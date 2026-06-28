@@ -1,9 +1,13 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { startTestServer, signup, mintToken, makePatClient, type TestServer } from "../test-helpers.ts";
+import { setEmbedder, realEmbedder } from "./embedder.ts";
 
 let s: TestServer;
 beforeAll(async () => { s = await startTestServer(); });
 afterAll(() => s.close());
+
+beforeEach(() => setEmbedder({ ready: () => false, embed: async (texts) => texts.map(() => new Float32Array(384)) }));
+afterEach(() => setEmbedder(realEmbedder));
 
 async function seed(email: string) {
   const cookie = await signup(s.baseURL, email);
