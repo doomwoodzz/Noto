@@ -114,8 +114,20 @@ db.exec(`
     last_used_at   INTEGER NOT NULL,
     use_count      INTEGER NOT NULL DEFAULT 1,
     status         TEXT NOT NULL DEFAULT 'active',
-    supersedes_id  TEXT
+    supersedes_id  TEXT,
+    embedding      BLOB
   );
+
+  CREATE TABLE IF NOT EXISTS note_passages (
+    id           TEXT PRIMARY KEY,                       -- 'fileId#index'
+    file_id      TEXT NOT NULL REFERENCES files(id) ON DELETE CASCADE,
+    idx          INTEGER NOT NULL,
+    heading_path TEXT NOT NULL,                          -- JSON string[]
+    text         TEXT NOT NULL,
+    char_start   INTEGER NOT NULL,
+    embedding    BLOB
+  );
+  CREATE INDEX IF NOT EXISTS idx_passages_file ON note_passages(file_id);
   CREATE INDEX IF NOT EXISTS idx_memories_scope ON memories(user_id, scope, status);
   CREATE UNIQUE INDEX IF NOT EXISTS idx_memories_dedup ON memories(user_id, scope, norm_text) WHERE status = 'active';
 
@@ -163,6 +175,14 @@ db.exec(`
   }
   if (!cols.some((c) => c.name === "source_client")) {
     db.exec("ALTER TABLE audit_log ADD COLUMN source_client TEXT");
+  }
+}
+
+// Additive migration: SP5a semantic memory. Older DBs predate the embedding column.
+{
+  const cols = db.prepare("PRAGMA table_info(memories)").all() as Array<{ name: string }>;
+  if (!cols.some((c) => c.name === "embedding")) {
+    db.exec("ALTER TABLE memories ADD COLUMN embedding BLOB");
   }
 }
 
@@ -867,6 +887,74 @@ const stmtRecentNotes = db.prepare(
 );
 export function listNoteRefs(userId: string, limit: number): NoteRef[] {
   return stmtRecentNotes.all(userId, limit) as unknown as NoteRef[];
+}
+
+/* ----------------------------- embeddings ----------------------------- */
+export function floatsToBlob(v: Float32Array): Uint8Array {
+  return new Uint8Array(v.buffer, v.byteOffset, v.byteLength);
+}
+export function blobToFloats(b: Uint8Array): Float32Array {
+  // Copy into an aligned buffer (sqlite BLOBs may not be 4-byte aligned).
+  const copy = new Uint8Array(b.byteLength);
+  copy.set(b);
+  return new Float32Array(copy.buffer);
+}
+
+const stmtDeletePassages = db.prepare("DELETE FROM note_passages WHERE file_id = ?");
+const stmtInsertPassage = db.prepare(
+  "INSERT INTO note_passages (id, file_id, idx, heading_path, text, char_start, embedding) VALUES (?, ?, ?, ?, ?, ?, ?)",
+);
+export interface PassageInput { id: string; index: number; headingPath: string[]; text: string; charStart: number }
+export function replaceNotePassages(fileId: string, passages: PassageInput[], vectors: (Float32Array | null)[]): void {
+  stmtDeletePassages.run(fileId);
+  passages.forEach((p, i) => {
+    const vec = vectors[i] ?? null;
+    stmtInsertPassage.run(p.id, fileId, p.index, JSON.stringify(p.headingPath), p.text, p.charStart, vec ? floatsToBlob(vec) : null);
+  });
+}
+
+const stmtSetMemoryEmbedding = db.prepare("UPDATE memories SET embedding = ? WHERE id = ?");
+export function setMemoryEmbedding(memoryId: string, vec: Float32Array): void {
+  stmtSetMemoryEmbedding.run(floatsToBlob(vec), memoryId);
+}
+
+export interface PassageVector { passageId: string; fileId: string; title: string; path: string; headingPath: string[]; text: string; vec: Float32Array }
+const stmtUserPassages = db.prepare(
+  `SELECT p.id AS passageId, p.file_id AS fileId, f.title AS title, f.path AS path,
+          p.heading_path AS headingPath, p.text AS text, p.embedding AS embedding
+     FROM note_passages p JOIN files f ON f.id = p.file_id JOIN vaults v ON v.id = f.vault_id
+    WHERE v.user_id = ? AND p.embedding IS NOT NULL`,
+);
+export function getUserPassageVectors(userId: string): PassageVector[] {
+  const rows = stmtUserPassages.all(userId) as unknown as Array<{ passageId: string; fileId: string; title: string; path: string; headingPath: string; text: string; embedding: Uint8Array }>;
+  return rows.map((r) => ({ passageId: r.passageId, fileId: r.fileId, title: r.title, path: r.path, headingPath: JSON.parse(r.headingPath) as string[], text: r.text, vec: blobToFloats(r.embedding) }));
+}
+
+export function getUserMemoryVectors(userId: string, scopes: string[], type: string | undefined): { mem: PublicMemory; vec: Float32Array }[] {
+  const scopeList = [...new Set([...scopes, "global"])];
+  const ph = scopeList.map(() => "?").join(",");
+  const typeClause = type ? "AND type = ?" : "";
+  const sql = `SELECT * FROM memories WHERE user_id = ? AND status = 'active' AND scope IN (${ph}) ${typeClause} AND embedding IS NOT NULL`;
+  const args = [userId, ...scopeList, ...(type ? [type] : [])];
+  const rows = prepareCached(sql).all(...args) as unknown as (MemoryRow & { embedding: Uint8Array })[];
+  return rows.map((r) => ({ mem: toPublicMemory(r), vec: blobToFloats(r.embedding) }));
+}
+
+export function bumpMemoryUsage(ids: string[]): void {
+  if (!ids.length) return;
+  const ph = ids.map(() => "?").join(",");
+  prepareCached(`UPDATE memories SET last_used_at = ?, use_count = use_count + 1 WHERE id IN (${ph})`).run(now(), ...ids);
+}
+
+/* backfill loaders */
+export function getMemoriesMissingEmbedding(limit = 1000): { id: string; text: string }[] {
+  return db.prepare("SELECT id, text FROM memories WHERE embedding IS NULL AND status = 'active' LIMIT ?").all(limit) as unknown as { id: string; text: string }[];
+}
+export function getFileIdsMissingPassages(limit = 1000): string[] {
+  return (db.prepare("SELECT f.id FROM files f WHERE f.id NOT IN (SELECT DISTINCT file_id FROM note_passages) LIMIT ?").all(limit) as Array<{ id: string }>).map((r) => r.id);
+}
+export function getFileContent(fileId: string): { id: string; content: string } | undefined {
+  return db.prepare("SELECT id, content FROM files WHERE id = ?").get(fileId) as { id: string; content: string } | undefined;
 }
 
 export { db };
