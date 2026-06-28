@@ -1,8 +1,3 @@
-import inject from "light-my-request";
-
-/** Whatever light-my-request's inject() accepts as its dispatch target (a DispatchFunc | http.Server | string). Avoids depending on a specific exported type name. */
-export type InjectDispatch = Parameters<typeof inject>[0];
-
 // Mirrors noto-mcp/src/notoClient.ts return types (the frozen tool contract).
 export interface SearchResult { fileId: string; title: string; headingPath: string[]; snippet: string; score: number }
 export interface NoteRef { fileId: string; title: string; path: string; updatedAt: number }
@@ -25,19 +20,28 @@ const qs = (o: Record<string, string | number | undefined>) =>
     .map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`).join("&");
 
 /**
- * Build a NotoBridgeClient whose calls are replayed in-process through `dispatch`
- * (the Express app) via light-my-request. `token` is the verbatim Authorization
- * header ("Bearer noto_pat_…"); `client` becomes X-Noto-Client for provenance.
+ * Build a NotoBridgeClient whose calls are replayed through the app's own /api
+ * stack over a 127.0.0.1 loopback `fetch`. `baseUrl` is the app's loopback origin
+ * (e.g. `http://127.0.0.1:8787`); `token` is the verbatim Authorization header
+ * ("Bearer noto_pat_…"); `client` becomes X-Noto-Client for provenance.
+ *
+ * We loop back over a real socket rather than dispatching in-process: a synthetic
+ * in-process request nested inside the real /mcp request leaves `req.headers`
+ * undefined and entangles the mock request with the real socket's lifecycle
+ * (light-my-request `inject(app)` is only safe at the top level, not re-entrantly
+ * inside a live request). A localhost roundtrip is negligible and reuses every
+ * SP1–SP3 guard (PAT auth bypasses CSRF, Memory/ confinement, scope checks, audit)
+ * with zero duplication.
  */
-export function makeInjectClient(dispatch: InjectDispatch, opts: { token: string; client: string }): NotoBridgeClient {
+export function makeLoopbackClient(baseUrl: string, opts: { token: string; client: string }): NotoBridgeClient {
   async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
     const headers: Record<string, string> = { authorization: opts.token, "x-noto-client": opts.client };
     if (body !== undefined) headers["content-type"] = "application/json";
-    const res = await inject(dispatch, { method: method as "GET", url: path, headers, payload: body !== undefined ? JSON.stringify(body) : undefined });
+    const res = await fetch(baseUrl + path, { method, headers, body: body !== undefined ? JSON.stringify(body) : undefined });
     let data: unknown = null;
-    try { data = JSON.parse(res.payload); } catch { /* empty body */ }
-    if (res.statusCode < 200 || res.statusCode >= 300) {
-      throw new Error((data as { error?: string } | null)?.error ?? `Noto request failed (${res.statusCode})`);
+    try { data = JSON.parse(await res.text()); } catch { /* empty body */ }
+    if (!res.ok) {
+      throw new Error((data as { error?: string } | null)?.error ?? `Noto request failed (${res.status})`);
     }
     return data as T;
   }

@@ -29,7 +29,6 @@
     "express-rate-limit": "^8.5.2",
     "framer-motion": "^12.39.0",
     "helmet": "^8.2.0",
-    "light-my-request": "^6.6.0",
     "lucide-react": "^1.16.0",
     "openai": "^6.44.0",
     "react": "^19.2.6",
