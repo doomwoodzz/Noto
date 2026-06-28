@@ -15,7 +15,35 @@
 
 **Why this is SP1.** The wedge maps onto a five-phase MCP memory layer. Rather than spec all of it, the work is decomposed into independently shippable sub-projects (SP1–SP5). **This doc specs SP1 only:** the foundational, lowest-risk slice — an AI tool can **read your notes** and **share atomic memory** (`remember`/`recall`) across sessions, on Claude Code, with provenance recorded from day one.
 
-**Dependency note — the MCP memory layer does NOT exist in code yet.** The companion doc (`2026-06-27`) is a decision document; no server endpoints, no `noto-mcp` package, and none of the new tables have been built. SP1 is greenfield against the existing `landing/` app. SP1 builds the Phase-0 server additions *and* the Phase-1 stdio server together as one shippable unit.
+**Dependency note — partial server scaffolding already exists (corrected 2026-06-28 after reading the code; see the Addendum below).** Earlier this doc assumed greenfield; that is wrong. PAT auth, the `/api/tokens` routes, the `pat_tokens` and `audit_log` tables, single-note GET, and section GET/PATCH already exist and are tested. SP1 *reuses* them and builds only the memory store, FTS search, notes-list, the `noto-mcp` package, and the client/Settings UI. The `noto-mcp` package does not exist; `@modelcontextprotocol/sdk` is not yet a dependency.
+
+---
+
+## 0b. Addendum — reconciliation with existing code (AUTHORITATIVE; overrides §4–§6 where they conflict)
+
+A pre-implementation read of `landing/server/` found substantial scaffolding already built and tested. **This addendum is the source of truth; where §4–§6 below describe these as new, treat them as existing.**
+
+### Already exists — REUSE, do not rebuild
+- **PAT auth** — `landing/server/auth/pat.ts`: `PAT_PREFIX="noto_pat_"`, `type Scope = "read"|"write"|"destructive"`, `hashPatToken` (sha256), `generatePatToken` (256-bit base64url), `resolveApiToken` middleware (mounted in `app.ts` **before** CSRF; sets `req.apiUser={userId,scopes,tokenId}`), `requireApiUser(req,res)` (401), `requireScope(req,res,scope)` (403).
+- **Token management API** — `landing/server/tokens/routes.ts` mounted at `/api/tokens`: `POST /` mint (returns plaintext **once** as `{id, token, name, scopes}`; zod `mintSchema`), `GET /` list (`{tokens:[{id,name,scopes[],createdAt,lastUsedAt}]}`), `DELETE /:id` revoke (204). Cookie-authed.
+- **`pat_tokens` table + helpers** in `db.ts`: `createPat`, `usePat` (touches `last_used_at`), `listPatsForUser`, `revokePat`, `PatRow`.
+- **`audit_log` table + helpers** in `db.ts`: columns `(id, user_id, token_id, tool, target, before_hash, created_at)`; `writeAudit({userId, tokenId, tool, target, beforeHash})` and `listAuditForUser(userId, limit)`. **Reuse this for memory writes** — do NOT create a separate `audit` table.
+- **Read endpoints** in `notes/routes.ts`: `GET /api/files/:fileId` (PAT `read` scope → `{file: PublicFile}`) and `GET /api/files/:fileId/section?heading=A/B` (→ `{fileId, headingPath[], content}`; 404 `{error, headings:[...]}` on miss). **`get_note`/`get_section` MCP tools just wrap these.**
+- **Section write** `PATCH /api/files/:fileId/section` (optimistic concurrency via `expectUpdatedAt`, `requireScope("write")`, calls `writeAudit`) and `landing/server/notes/sections.ts` (`getSection`, `replaceSection`, `listHeadings`). *(Section write is SP2 surface; the endpoint already exists but SP1's `noto-mcp` does not expose an `update_section` tool.)*
+- **`resolveUserId(req,res)`** pattern (PAT or cookie) in `notes/routes.ts`; `sha256Hex` + `toPublicFile` in `db.ts`.
+- **Test harness** — `landing/server/test-helpers.ts`: `startTestServer()`, `makeCookieClient`, `makePatClient(baseURL, token)`, `signup(baseURL, email)`, `mintToken(client, scopes, name)`. Tests run on `:memory:` SQLite via `vitest.config.ts`.
+
+### Scope reconciliation (supersedes §2 D1 / §4.1)
+Existing PAT scopes are `read | write | destructive`. **Add a fourth, least-privilege `memory` scope** (additive: extend the `Scope` union in `auth/pat.ts` and the `mintSchema` enum in `tokens/routes.ts`). SP1 mapping:
+- Read tools (`search_notes`, `list_notes`, `get_note`, `get_section`) → `requireScope("read")`.
+- `remember` → `requireScope("memory")`.
+- A `read,memory` token reads notes and writes memory but **cannot** write note bodies (it lacks `write`) — this is exactly the SP1 "atomic-only" boundary, now enforced by the scope system. The default minted SP1 token is `read,memory`; a `read`-only token is also offered.
+
+### Audit reconciliation (supersedes §4.3)
+**Do not create a new `audit` table.** Reuse the existing `audit_log` + `writeAudit`. On `remember`/supersede, call `writeAudit({userId, tokenId, tool:"remember"|"supersede", target: memoryId, beforeHash: <sha256 of superseded text or null>})`. Provenance for the "what did X write" filter lives on **`memories.source_client`** (set from the `X-Noto-Client` header, default `claude-code`); `audit_log.token_id → pat_tokens.name` gives the human-named device.
+
+### Net NEW work for SP1
+Server: the `memory` scope; the `memories` table + `memories_fts` + triggers + `db.ts` helpers; `/api/memory` (POST remember, GET recall) + `/api/memory/list`; `files_fts` + triggers + `GET /api/search`; `GET /api/notes` (refs list). Package: `noto-mcp` (stdio server, `notoClient`, scope detection, 6 tools) + add `@modelcontextprotocol/sdk`. Client/UI: `api.pat.*` + `api.memory.list`; the "Connect AI tools (MCP)" Settings panel (mint/copy/read-only memory list) wired into `Sidebar.tsx`'s `AccountFooter`.
 
 ---
 
