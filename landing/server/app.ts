@@ -28,6 +28,7 @@ import { tokensRouter } from "./tokens/routes.ts";
 import { memoryRouter } from "./memory/routes.ts";
 import { searchRouter } from "./search/routes.ts";
 import { activityRouter } from "./audit/routes.ts";
+import { mountMcp } from "./mcp/routes.ts";
 
 export function createApp(): Express {
   const app = express();
@@ -114,6 +115,10 @@ export function createApp(): Express {
   app.use("/api/memory", memoryRouter);
   app.use("/api", searchRouter);
   app.use("/api/activity", activityRouter);
+
+  // Remote MCP: a stateless Streamable-HTTP shell that replays each tool call
+  // in-process through the /api stack above (bearer PAT, no CSRF/cookies).
+  mountMcp(app);
 
   /* ----------------------------- static frontend ------------------------- */
   // In production, serve the Vite build. In dev, Vite owns the frontend and
