@@ -43,14 +43,16 @@ export function ActivityView({ client, initialFileId, onClose, onOpenNote }: Pro
 
   const load = useCallback(() => {
     setLoading(true);
+    let cancelled = false;
     client
       .list({ tool: tool || undefined, source: source || undefined, fileId: initialFileId })
-      .then((rows) => { setEntries(rows); setErr(null); })
-      .catch((e) => setErr(e instanceof Error ? e.message : "Could not load activity."))
-      .finally(() => setLoading(false));
+      .then((rows) => { if (!cancelled) { setEntries(rows); setErr(null); } })
+      .catch((e) => { if (!cancelled) setErr(e instanceof Error ? e.message : "Could not load activity."); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [client, tool, source, initialFileId]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => load(), [load]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") (confirm ? setConfirm(null) : onClose()); };
     window.addEventListener("keydown", onKey);
@@ -80,7 +82,7 @@ export function ActivityView({ client, initialFileId, onClose, onOpenNote }: Pro
   return (
     <>
       <div className="nw-menu-scrim" onClick={onClose} />
-      <div className="nw-act-panel" role="dialog" aria-labelledby="act-title">
+      <div className="nw-act-panel" role="dialog" aria-modal="true" aria-labelledby="act-title">
         <header className="nw-act-head">
           <h2 id="act-title">AI Activity</h2>
           <button className="nw-mcp-x" onClick={onClose} aria-label="Close">×</button>
@@ -114,7 +116,7 @@ export function ActivityView({ client, initialFileId, onClose, onOpenNote }: Pro
                   <button className="nw-act-link" onClick={() => { onOpenNote(e.target.id as string); onClose(); }}>Open</button>
                 )}
                 {e.revertible ? (
-                  <button className="nw-act-revert" onClick={() => openConfirm(e)}>Revert</button>
+                  <button className="nw-act-revert" onClick={() => openConfirm(e)} disabled={busy}>Revert</button>
                 ) : e.tool === "revert" ? (
                   <span className="nw-act-badge">undo</span>
                 ) : (
@@ -128,8 +130,8 @@ export function ActivityView({ client, initialFileId, onClose, onOpenNote }: Pro
 
       {confirm && (
         <>
-          <div className="nw-menu-scrim" onClick={() => setConfirm(null)} />
-          <div className="nw-act-confirm" role="dialog" aria-labelledby="act-confirm-title">
+          <div className="nw-act-confirm-scrim" onClick={() => setConfirm(null)} />
+          <div className="nw-act-confirm" role="dialog" aria-modal="true" aria-labelledby="act-confirm-title">
             <h3 id="act-confirm-title">{confirm.conflict ? "This changed since the AI wrote it" : "Revert this change?"}</h3>
             <p className="nw-act-desc">{describeActivity(confirm.entry)}</p>
             {confirm.conflict && <p className="nw-mcp-err">Reverting will discard edits made after the AI write.</p>}

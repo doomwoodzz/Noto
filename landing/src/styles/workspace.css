@@ -778,8 +778,9 @@ html[data-theme="light"] .nw-ai { box-shadow: 0 30px 60px rgba(15, 22, 35, 0.22)
 .nw-act-revert:disabled { opacity: .5; cursor: default; }
 .nw-act-link { background: none; border: 1px solid var(--nw-border, var(--nw-line-3)); color: var(--nw-text, var(--nw-ink)); border-radius: 7px; padding: 5px 10px; font-size: .8rem; cursor: pointer; }
 .nw-act-badge { font-size: .72rem; color: var(--nw-text-dim, var(--nw-dim)); border: 1px solid var(--nw-border, var(--nw-line-3)); border-radius: 6px; padding: 3px 7px; }
+.nw-act-confirm-scrim { position: fixed; inset: 0; z-index: 61; }
 .nw-act-confirm {
-  position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 61;
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 62;
   width: min(620px, 92vw); max-height: 84vh; overflow-y: auto;
   background: var(--nw-surface, var(--nw-field)); border: 1px solid var(--nw-border, var(--nw-line-3)); border-radius: 14px; padding: 20px 22px;
   box-shadow: var(--nw-shadow-lg, 0 24px 60px rgba(0,0,0,.28));
@@ -792,5 +793,6 @@ html[data-theme="light"] .nw-ai { box-shadow: 0 30px 60px rgba(15, 22, 35, 0.22)
   border-radius: 8px; padding: 10px; max-height: 240px; overflow: auto;
   font-size: .8rem; white-space: pre-wrap; word-break: break-word; margin: 0;
 }
+.nw-act-confirm .nw-act-desc { white-space: normal; overflow: visible; text-overflow: clip; }
 .nw-act-confirm-actions { display: flex; justify-content: flex-end; gap: 10px; }
 .nw-act-confirm-actions button { border-radius: 7px; padding: 6px 14px; font-size: .85rem; cursor: pointer; border: 1px solid var(--nw-border, var(--nw-line-3)); background: none; color: var(--nw-text, var(--nw-ink)); }
