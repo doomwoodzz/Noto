@@ -1,8 +1,9 @@
-import { Router, type Request, type Response } from "express";
+import express, { Router, type Request, type Response } from "express";
+import { z } from "zod";
 import rateLimit from "express-rate-limit";
 import { getCurrentUser } from "../auth/session.ts";
 import { listActivity, getOwnedAuditRow } from "../db.ts";
-import { toActivityEntry, previewRevert } from "./activity.ts";
+import { toActivityEntry, previewRevert, performRevert } from "./activity.ts";
 
 export const activityRouter = Router();
 
@@ -13,6 +14,9 @@ const limiter = rateLimit({
   legacyHeaders: false,
   message: { error: "Too many requests." },
 });
+
+const jsonBody = express.json({ limit: "16kb" });
+const revertSchema = z.object({ force: z.boolean().optional() });
 
 /** The activity/trust surface is human-only: a PAT must never browse or revert. */
 function requireCookieUser(req: Request, res: Response): string | null {
@@ -37,6 +41,22 @@ activityRouter.get("/:auditId/preview", limiter, (req: Request, res: Response) =
     return;
   }
   res.json(previewRevert(uid, audit));
+});
+
+activityRouter.post("/:auditId/revert", limiter, jsonBody, (req: Request, res: Response) => {
+  const uid = requireCookieUser(req, res);
+  if (!uid) return;
+  const audit = getOwnedAuditRow(uid, req.params.auditId as string);
+  if (!audit) {
+    res.status(404).json({ error: "Activity not found" });
+    return;
+  }
+  const parsed = revertSchema.safeParse(req.body ?? {});
+  const force = parsed.success ? parsed.data.force ?? false : false;
+  const result = performRevert(uid, audit, force);
+  if (result.status === "conflict") { res.status(409).json(result); return; }
+  if (result.status === "not_revertible") { res.status(422).json(result); return; }
+  res.json(result);
 });
 
 activityRouter.get("/", limiter, (req: Request, res: Response) => {

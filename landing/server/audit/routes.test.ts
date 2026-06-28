@@ -120,6 +120,65 @@ describe("GET /api/activity/:id/preview", () => {
   });
 });
 
+describe("POST /api/activity/:id/revert — create_note", () => {
+  async function setup4(email: string) {
+    const cookie = await signup(srv.baseURL, email);
+    const token = await mintToken(cookie, ["read", "write", "memory"], "Claude Code");
+    return { cookie, pat: makePatClient(srv.baseURL, token), token };
+  }
+
+  it("deletes the AI-created note and records a revert row", async () => {
+    const { cookie, pat } = await setup4("rev-create@example.com");
+    const create = await pat.req("POST", "/api/notes", { path: "Memory/del.md", title: "Del", content: "hi" });
+    const { fileId } = (await create.json()) as { fileId: string };
+    const { activity } = (await (await cookie.req("GET", "/api/activity")).json()) as { activity: Array<{ id: string; tool: string; revertible: boolean }> };
+    const row = activity.find((a) => a.tool === "create_note")!;
+
+    const res = await cookie.req("POST", `/api/activity/${row.id}/revert`, {});
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as { status: string }).status).toBe("reverted");
+
+    expect((await pat.req("GET", `/api/files/${fileId}`)).status).toBe(404);
+    const after = (await (await cookie.req("GET", "/api/activity")).json()) as { activity: Array<{ tool: string; revertible: boolean }> };
+    expect(after.activity.some((a) => a.tool === "revert")).toBe(true);
+    expect(after.activity.find((a) => a.tool === "create_note")!.revertible).toBe(false);
+  });
+
+  it("rejects a PAT caller with 403", async () => {
+    const { cookie, pat } = await setup4("rev-pat@example.com");
+    await pat.req("POST", "/api/notes", { path: "Memory/x.md", title: "X", content: "x" });
+    const { activity } = (await (await cookie.req("GET", "/api/activity")).json()) as { activity: Array<{ id: string }> };
+    const res = await pat.req("POST", `/api/activity/${activity[0].id}/revert`, {});
+    expect(res.status).toBe(403);
+  });
+
+  it("404s a foreign audit id", async () => {
+    const a = await setup4("rev-iso-a@example.com");
+    const b = await setup4("rev-iso-b@example.com");
+    await a.pat.req("POST", "/api/notes", { path: "Memory/x.md", title: "X", content: "x" });
+    const { activity } = (await (await a.cookie.req("GET", "/api/activity")).json()) as { activity: Array<{ id: string }> };
+    const res = await b.cookie.req("POST", `/api/activity/${activity[0].id}/revert`, {});
+    expect(res.status).toBe(404);
+  });
+
+  it("409 conflict when the note changed since the AI created it; force deletes", async () => {
+    const { cookie, pat } = await setup4("rev-conflict@example.com");
+    const create = await pat.req("POST", "/api/notes", { path: "Memory/c.md", title: "C", content: "orig" });
+    const { fileId } = (await create.json()) as { fileId: string };
+    await cookie.req("PATCH", `/api/files/${fileId}`, { content: "human changed it" });
+    const { activity } = (await (await cookie.req("GET", "/api/activity")).json()) as { activity: Array<{ id: string; tool: string }> };
+    const row = activity.find((a) => a.tool === "create_note")!;
+
+    const conflict = await cookie.req("POST", `/api/activity/${row.id}/revert`, {});
+    expect(conflict.status).toBe(409);
+    expect(((await conflict.json()) as { status: string }).status).toBe("conflict");
+
+    const forced = await cookie.req("POST", `/api/activity/${row.id}/revert`, { force: true });
+    expect(forced.status).toBe(200);
+    expect((await pat.req("GET", `/api/files/${fileId}`)).status).toBe(404);
+  });
+});
+
 describe("provenance population", () => {
   async function setup2(email: string, tokenName = "Claude Code") {
     const cookie = await signup(srv.baseURL, email);

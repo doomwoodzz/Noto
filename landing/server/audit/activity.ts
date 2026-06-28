@@ -1,4 +1,7 @@
-import { getOwnedFile, getSnapshot, getOwnedMemory, type AuditRow, type ActivityRaw } from "../db.ts";
+import {
+  getOwnedFile, getSnapshot, getOwnedMemory, deleteFile, sha256Hex, writeAudit,
+  type AuditRow, type ActivityRaw,
+} from "../db.ts";
 
 export interface ActivityTarget {
   kind: "note" | "memory";
@@ -43,13 +46,39 @@ export function previewRevert(userId: string, audit: AuditRow): { before: string
   return { before: null, current: null };
 }
 
+export type RevertResult =
+  | { status: "reverted" }
+  | { status: "conflict"; before: string | null; current: string | null }
+  | { status: "not_revertible"; reason: string };
+
+// Ownership precondition: callers MUST pass an `audit` row already verified to
+// belong to `userId` (via getOwnedAuditRow). getSnapshot below is keyed by
+// audit id only, so this validation is what scopes snapshot/target access.
+export function performRevert(userId: string, audit: AuditRow, force: boolean): RevertResult {
+  switch (audit.tool) {
+    case "create_note": {
+      if (!audit.target) return { status: "not_revertible", reason: "no target" };
+      const file = getOwnedFile(userId, audit.target);
+      if (!file) return { status: "not_revertible", reason: "note already removed" };
+      if (!force && audit.after_hash && sha256Hex(file.content) !== audit.after_hash) {
+        return { status: "conflict", before: null, current: file.content };
+      }
+      deleteFile(file.id);
+      writeAudit({ userId, tokenId: null, tool: "revert", target: audit.target, sourceClient: "web" });
+      return { status: "reverted" };
+    }
+    default:
+      return { status: "not_revertible", reason: "not a revertible action" };
+  }
+}
+
 export function toActivityEntry(r: ActivityRaw): ActivityEntry {
   const hasSnapshot = r.has_snapshot === 1;
   const kind: "note" | "memory" = NOTE_TOOLS.has(r.tool)
     ? "note"
     : MEMORY_TOOLS.has(r.tool)
       ? "memory"
-      : r.memory_text !== null ? "memory" : "note"; // 'revert' rows: infer from the surviving target
+      : r.memory_text !== null ? "memory" : "note"; // 'revert' rows: infer kind from the surviving target. Memories are never hard-deleted (soft 'superseded'), so memory_text persists; notes can be deleted → falls to "note", which is correct.
   const exists = kind === "note" ? r.file_title !== null : r.memory_status !== null;
   const target: ActivityTarget = {
     kind,
