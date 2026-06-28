@@ -31,6 +31,7 @@ import {
   toPublicFile,
   updateFile,
   writeAudit,
+  writeSnapshot,
   sha256Hex,
 } from "../db.ts";
 import { requireScope } from "../auth/pat.ts";
@@ -117,6 +118,11 @@ function resolveUserId(req: Request, res: Response): string | null {
   return requireUserId(req, res); // existing cookie path (sends 401 on miss)
 }
 
+/** The AI client that authored a write (for provenance), from the header. */
+function clientOf(req: Request): string {
+  return (req.get("x-noto-client") || (req.apiUser ? "claude-code" : "web")).slice(0, 40);
+}
+
 /* -------------------------------- routes ------------------------------- */
 
 // List the user's vaults (bootstraps an empty default vault + Welcome note
@@ -200,7 +206,15 @@ notesRouter.post("/notes", writeLimiter, jsonBody, (req: Request, res: Response)
     return;
   }
   const file = createFile(vault.id, parsed.data);
-  writeAudit({ userId: uid, tokenId: req.apiUser?.tokenId ?? null, tool: "create_note", target: file.id, beforeHash: null });
+  writeAudit({
+    userId: uid,
+    tokenId: req.apiUser?.tokenId ?? null,
+    tool: "create_note",
+    target: file.id,
+    beforeHash: null,
+    afterHash: sha256Hex(file.content),
+    sourceClient: clientOf(req),
+  });
   res.status(201).json({ fileId: file.id, path: file.path });
 });
 
@@ -305,13 +319,16 @@ notesRouter.patch("/files/:fileId/section", writeLimiter, jsonBody, (req: Reques
     res.status(404).json({ error: "Section not found", headings: listHeadings(file.content).map((h) => h.path) });
     return;
   }
-  writeAudit({
+  const auditId = writeAudit({
     userId: uid,
     tokenId: req.apiUser?.tokenId ?? null,
     tool: "update_section",
     target: file.id,
     beforeHash: sha256Hex(file.content),
+    afterHash: sha256Hex(nextContent),
+    sourceClient: clientOf(req),
   });
+  writeSnapshot(auditId, file.content);
   const updated = updateFile(file.id, { content: nextContent });
   res.json({ fileId: updated.id, updatedAt: updated.updatedAt });
 });
@@ -362,7 +379,16 @@ notesRouter.post("/files/:fileId/append", writeLimiter, jsonBody, (req: Request,
     const base = file.content.replace(/\s+$/, "");
     nextContent = base ? `${base}\n\n${parsed.data.text}\n` : `${parsed.data.text}\n`;
   }
-  writeAudit({ userId: uid, tokenId: req.apiUser?.tokenId ?? null, tool: "append_note", target: file.id, beforeHash: sha256Hex(file.content) });
+  const auditId = writeAudit({
+    userId: uid,
+    tokenId: req.apiUser?.tokenId ?? null,
+    tool: "append_note",
+    target: file.id,
+    beforeHash: sha256Hex(file.content),
+    afterHash: sha256Hex(nextContent),
+    sourceClient: clientOf(req),
+  });
+  writeSnapshot(auditId, file.content);
   const updated = updateFile(file.id, { content: nextContent });
   res.json({ fileId: updated.id, updatedAt: updated.updatedAt });
 });

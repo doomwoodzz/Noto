@@ -52,6 +52,7 @@ memoryRouter.post("/", memoryLimiter, jsonBody, (req: Request, res: Response) =>
     userId: uid, tokenId: req.apiUser?.tokenId ?? null,
     tool: parsed.data.supersedes ? "supersede" : "remember",
     target: memory.id, beforeHash: null,
+    sourceClient,
   });
   res.status(201).json({ memoryId: memory.id, deduped });
 });

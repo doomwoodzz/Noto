@@ -45,8 +45,8 @@ describe("GET /api/activity (browse)", () => {
     expect(create_.revertible).toBe(true);
 
     const append_ = activity.find((a) => a.tool === "append_note");
-    // No snapshot populated yet (Task 2 adds it) → not revertible until then.
-    expect(append_.revertible).toBe(false);
+    // Task 2 populates the snapshot → append_note is now revertible.
+    expect(append_.revertible).toBe(true);
 
     const remember_ = activity.find((a) => a.tool === "remember");
     expect(remember_.target.kind).toBe("memory");
@@ -86,5 +86,39 @@ describe("GET /api/activity (browse)", () => {
     const { pat } = await setup("act-pat@example.com");
     const res = await pat.req("GET", "/api/activity");
     expect(res.status).toBe(403);
+  });
+});
+
+describe("provenance population", () => {
+  async function setup2(email: string, tokenName = "Claude Code") {
+    const cookie = await signup(srv.baseURL, email);
+    const token = await mintToken(cookie, ["read", "write", "memory"], tokenName);
+    return { cookie, pat: makePatClient(srv.baseURL, token) };
+  }
+
+  it("stamps source_client and makes appends revertible via a snapshot", async () => {
+    const { cookie, pat } = await setup2("act-prov@example.com");
+    const create = await pat.req("POST", "/api/notes", { path: "Memory/log.md", title: "Log", content: "# Log\n" });
+    const { fileId } = (await create.json()) as { fileId: string };
+    await pat.req("POST", `/api/files/${fileId}/append`, { text: "line" });
+    await pat.req("POST", "/api/memory", { text: "uses redis", scope: "p" });
+
+    const { activity } = (await (await cookie.req("GET", "/api/activity")).json()) as {
+      activity: Array<{ client: string | null; tool: string; hasSnapshot: boolean; revertible: boolean }>;
+    };
+    for (const a of activity) expect(a.client).toBe("claude-code");
+    const append_ = activity.find((a) => a.tool === "append_note")!;
+    expect(append_.hasSnapshot).toBe(true);
+    expect(append_.revertible).toBe(true);
+  });
+
+  it("honours the X-Noto-Client header for the source filter", async () => {
+    const { cookie, pat } = await setup2("act-cursor@example.com");
+    await pat.req("POST", "/api/notes", { path: "Memory/c.md", title: "C", content: "x" }, { "X-Noto-Client": "cursor" });
+    const { activity } = (await (await cookie.req("GET", "/api/activity?source=cursor")).json()) as {
+      activity: Array<{ client: string | null }>;
+    };
+    expect(activity.length).toBe(1);
+    expect(activity[0].client).toBe("cursor");
   });
 });
