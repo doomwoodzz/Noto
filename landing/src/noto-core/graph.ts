@@ -52,6 +52,10 @@ export function filterGraph(
   switch (mode) {
     case "all":
       return graph;
+    case "linked": {
+      const ids = new Set(graph.nodes.filter((n) => n.degree > 0).map((n) => n.id));
+      return subgraph(graph, ids);
+    }
     case "local":
       return subgraph(graph, localNodeIds(graph, activeFileId));
     case "lectureOnly": {

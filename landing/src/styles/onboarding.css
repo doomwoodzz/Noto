@@ -19,8 +19,9 @@
   --page-line:         rgba(12, 13, 15, 0.10);
   --page-line-strong:  rgba(12, 13, 15, 0.16);
   --page-line-soft:    rgba(12, 13, 15, 0.06);
-  --page-blue:         #578FFA;
-  --page-blue-deep:    #3E78E7;
+  /* Accent aliases the canonical tokens — same brand blue as the marketing site. */
+  --page-blue:         var(--color-accent);
+  --page-blue-deep:    var(--color-accent-hover);
   --page-blue-soft:    rgba(87, 143, 250, 0.12);
 
   --ob-radius:    18px;
@@ -168,7 +169,7 @@ html[data-theme="dark"] .ob-root::before {
 }
 .ob-title em {
   font-style: normal;
-  font-family: 'Tiempos', 'Georgia', 'Times New Roman', serif;
+  font-family: var(--font-serif);
   font-weight: 500;
   color: var(--page-blue-deep);
   letter-spacing: -0.02em;
@@ -203,7 +204,7 @@ html[data-theme="dark"] .ob-title em { color: #7FA8FF; }
   height: 52px;
   padding: 0 22px;
   width: 100%;
-  border-radius: 14px;
+  border-radius: 9999px; /* pill — unified with the marketing .l-btn system */
   font: 600 15px/1 var(--font-sans);
   border: 1px solid transparent;
   cursor: pointer;
@@ -251,7 +252,7 @@ html[data-theme="dark"] .ob-btn-outline:hover { background: #16181D; }
 }
 .ob-btn-quiet:hover { color: var(--page-blue-deep); }
 
-.ob-btn-sm { height: 46px; border-radius: 12px; font-size: 14.5px; }
+.ob-btn-sm { height: 46px; border-radius: 9999px; font-size: 14px; }
 .ob-google-g { width: 18px; height: 18px; flex-shrink: 0; }
 
 /* error banner from the server */

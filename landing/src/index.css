@@ -1,8 +1,8 @@
 /* Design tokens & component styles for the Noto landing page.
-   Order matters: tokens (variables) first, then app shell styles,
-   then landing page styles (which override font/background on body). */
+   Order matters: tokens (variables) first, then landing page styles
+   (which override font/background on body). The embedded app preview
+   pulls in workspace.css itself via NotoWindow. */
 @import "./styles/tokens.css";
-@import "./styles/noto-app.css";
 @import "./styles/landing.css";
 @import "./styles/coming-soon.css";
 

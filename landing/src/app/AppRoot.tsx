@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, type PublicUser } from "./api";
 import { NotoWorkspace } from "./NotoWorkspace";
+import { AppLoading } from "./AppStatus";
 import type { Theme } from "../landing/useTheme";
 
 const SIGN_IN_DEST = "/get-started";
@@ -63,7 +64,7 @@ export function AppRoot() {
   }
 
   if (!ready || !user) {
-    return <div className="app-loading">Loading Noto…</div>;
+    return <AppLoading message="Loading Noto…" />;
   }
 
   return <NotoWorkspace user={user} theme={theme} onToggleTheme={toggleTheme} onLogout={logout} />;

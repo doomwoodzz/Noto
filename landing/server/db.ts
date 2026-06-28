@@ -64,12 +64,99 @@ db.exec(`
     path        TEXT NOT NULL,
     title       TEXT NOT NULL,
     content     TEXT NOT NULL,
+    pinned      INTEGER NOT NULL DEFAULT 0,
     created_at  INTEGER NOT NULL,
     updated_at  INTEGER NOT NULL
   );
   CREATE INDEX IF NOT EXISTS idx_files_vault ON files(vault_id);
   CREATE UNIQUE INDEX IF NOT EXISTS idx_files_vault_path ON files(vault_id, path);
+
+  CREATE TABLE IF NOT EXISTS pat_tokens (
+    id            TEXT PRIMARY KEY,            -- opaque UUID handle (safe to expose)
+    token_hash    TEXT NOT NULL UNIQUE,        -- sha256(plaintext token); the verifier
+    user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name          TEXT NOT NULL,
+    scopes        TEXT NOT NULL,               -- comma-separated: read,write,destructive
+    created_at    INTEGER NOT NULL,
+    last_used_at  INTEGER,
+    revoked_at    INTEGER
+  );
+  CREATE INDEX IF NOT EXISTS idx_pat_user ON pat_tokens(user_id);
+  CREATE INDEX IF NOT EXISTS idx_pat_hash ON pat_tokens(token_hash);
+
+  CREATE TABLE IF NOT EXISTS audit_log (
+    id           TEXT PRIMARY KEY,
+    user_id      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token_id     TEXT,
+    tool         TEXT NOT NULL,          -- update_section | remember | ...
+    target       TEXT,                   -- fileId or memoryId
+    before_hash  TEXT,                   -- sha256 of pre-image (note edits)
+    created_at   INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_log(user_id, created_at);
+
+  CREATE TABLE IF NOT EXISTS memories (
+    id             TEXT PRIMARY KEY,
+    user_id        TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    text           TEXT NOT NULL,
+    type           TEXT NOT NULL DEFAULT 'fact',
+    scope          TEXT NOT NULL,
+    source_client  TEXT NOT NULL DEFAULT 'web',
+    norm_text      TEXT NOT NULL,
+    created_at     INTEGER NOT NULL,
+    last_used_at   INTEGER NOT NULL,
+    use_count      INTEGER NOT NULL DEFAULT 1,
+    status         TEXT NOT NULL DEFAULT 'active',
+    supersedes_id  TEXT
+  );
+  CREATE INDEX IF NOT EXISTS idx_memories_scope ON memories(user_id, scope, status);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_memories_dedup ON memories(user_id, scope, norm_text) WHERE status = 'active';
+
+  CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts USING fts5(memory_id UNINDEXED, text);
+
+  CREATE TRIGGER IF NOT EXISTS memories_ai AFTER INSERT ON memories BEGIN
+    INSERT INTO memories_fts(memory_id, text) VALUES (new.id, new.text);
+  END;
+  CREATE TRIGGER IF NOT EXISTS memories_ad AFTER DELETE ON memories BEGIN
+    DELETE FROM memories_fts WHERE memory_id = old.id;
+  END;
+  CREATE TRIGGER IF NOT EXISTS memories_au AFTER UPDATE OF text ON memories BEGIN
+    DELETE FROM memories_fts WHERE memory_id = old.id;
+    INSERT INTO memories_fts(memory_id, text) VALUES (new.id, new.text);
+  END;
+
+  CREATE VIRTUAL TABLE IF NOT EXISTS files_fts USING fts5(file_id UNINDEXED, vault_id UNINDEXED, title, content);
+
+  CREATE TRIGGER IF NOT EXISTS files_ai AFTER INSERT ON files BEGIN
+    INSERT INTO files_fts(file_id, vault_id, title, content) VALUES (new.id, new.vault_id, new.title, new.content);
+  END;
+  CREATE TRIGGER IF NOT EXISTS files_ad AFTER DELETE ON files BEGIN
+    DELETE FROM files_fts WHERE file_id = old.id;
+  END;
+  CREATE TRIGGER IF NOT EXISTS files_au AFTER UPDATE OF title, content ON files BEGIN
+    DELETE FROM files_fts WHERE file_id = old.id;
+    INSERT INTO files_fts(file_id, vault_id, title, content) VALUES (new.id, new.vault_id, new.title, new.content);
+  END;
 `);
+
+// Additive migration: older databases predate the `pinned` column. Add it once
+// if missing (CREATE TABLE IF NOT EXISTS above never alters an existing table).
+{
+  const cols = db.prepare("PRAGMA table_info(files)").all() as Array<{ name: string }>;
+  if (!cols.some((c) => c.name === "pinned")) {
+    db.exec("ALTER TABLE files ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0");
+  }
+}
+
+// O(n) scan on boot; fine for the MAX_FILES_PER_VAULT * MAX_VAULTS_PER_USER ceiling.
+// Backfill files_fts for any notes created before the FTS table existed.
+{
+  const missing = db.prepare(
+    "SELECT f.id, f.vault_id, f.title, f.content FROM files f WHERE f.id NOT IN (SELECT file_id FROM files_fts)",
+  ).all() as Array<{ id: string; vault_id: string; title: string; content: string }>;
+  const ins = db.prepare("INSERT INTO files_fts(file_id, vault_id, title, content) VALUES (?, ?, ?, ?)");
+  for (const f of missing) ins.run(f.id, f.vault_id, f.title, f.content);
+}
 
 export interface User {
   id: string;
@@ -116,6 +203,13 @@ export function toPublicUser(u: User): PublicUser {
 
 const now = () => Date.now();
 const newId = () => crypto.randomUUID();
+
+/** Turn arbitrary user text into a safe FTS5 MATCH query: quote each token, OR them, prefix-match. */
+export function ftsQuery(raw: string): string {
+  const tokens = raw.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
+  if (tokens.length === 0) return '""';
+  return tokens.map((t) => `"${t}"*`).join(" OR ");
+}
 
 /* ----------------------------- Users ----------------------------- */
 
@@ -231,6 +325,7 @@ export interface FileRow {
   path: string;
   title: string;
   content: string;
+  pinned: number;
   created_at: number;
   updated_at: number;
 }
@@ -241,6 +336,7 @@ export interface PublicFile {
   path: string;
   title: string;
   content: string;
+  pinned: boolean;
   createdAt: number;
   updatedAt: number;
 }
@@ -256,6 +352,7 @@ export function toPublicFile(f: FileRow): PublicFile {
     path: f.path,
     title: f.title,
     content: f.content,
+    pinned: Boolean(f.pinned),
     createdAt: f.created_at,
     updatedAt: f.updated_at,
   };
@@ -347,7 +444,7 @@ export function createFile(
 
 export function updateFile(
   fileId: string,
-  patch: { path?: string; title?: string; content?: string },
+  patch: { path?: string; title?: string; content?: string; pinned?: boolean },
 ): PublicFile {
   const existing = stmtFileById.get(fileId) as unknown as FileRow;
   const ts = now();
@@ -356,15 +453,12 @@ export function updateFile(
     path: patch.path ?? existing.path,
     title: patch.title ?? existing.title,
     content: patch.content ?? existing.content,
+    pinned: patch.pinned === undefined ? existing.pinned : patch.pinned ? 1 : 0,
     updated_at: ts,
   };
-  db.prepare("UPDATE files SET path = ?, title = ?, content = ?, updated_at = ? WHERE id = ?").run(
-    next.path,
-    next.title,
-    next.content,
-    ts,
-    fileId,
-  );
+  db.prepare(
+    "UPDATE files SET path = ?, title = ?, content = ?, pinned = ?, updated_at = ? WHERE id = ?",
+  ).run(next.path, next.title, next.content, next.pinned, ts, fileId);
   stmtTouchVault.run(ts, existing.vault_id);
   return toPublicFile(next);
 }
@@ -408,16 +502,268 @@ When you listen, Noto remembers.
 This is your private vault. Every note is plain Markdown and saves to your account automatically as you type.
 
 ## Quick start
-- Link notes with double brackets, like [[My First Lecture]] — clicking a link that doesn't exist yet will offer to create that note.
-- Press the Edit / Preview toggle above the note to switch between writing and reading.
-- Press Cmd K to open the command menu.
-- Press Ctrl Cmd M to open the Lecture AI recorder. Press Record, then Stop, and Noto writes structured notes into the current note.
-- Open the Knowledge Web tab to see your notes and their links as a live graph.
+- Write in Markdown right here — headings, lists, quotes and **bold** style as you type.
+- Link notes with double brackets, like [[My First Lecture]] — clicking a link that doesn't exist yet creates that note for you.
+- Press Cmd K to open the command palette, or search from the bar up top.
+- Click Ask AI (or press Ctrl Cmd M) to chat with Noto AI and capture a lecture live.
+- Open the Knowledge Web to see your notes and their links as a graph.
 
 ## Good to know
 - Everything here is private to your account.
+- Open notes in tabs, and use Open beside to view two notes side by side.
 - Create folders by naming a note with a path prefix, e.g. a note in the Biology folder.
 
 #welcome`;
+
+/* ------------------------------ PAT tokens ----------------------------- */
+
+export interface PatRow {
+  id: string;
+  token_hash: string;
+  user_id: string;
+  name: string;
+  scopes: string;
+  created_at: number;
+  last_used_at: number | null;
+  revoked_at: number | null;
+}
+
+const stmtInsertPat = db.prepare(
+  "INSERT INTO pat_tokens (id, token_hash, user_id, name, scopes, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+);
+const stmtPatById = db.prepare("SELECT * FROM pat_tokens WHERE id = ?");
+const stmtPatByHash = db.prepare("SELECT * FROM pat_tokens WHERE token_hash = ?");
+const stmtPatsForUser = db.prepare(
+  "SELECT * FROM pat_tokens WHERE user_id = ? AND revoked_at IS NULL ORDER BY created_at DESC",
+);
+const stmtTouchPat = db.prepare("UPDATE pat_tokens SET last_used_at = ? WHERE id = ?");
+const stmtRevokePat = db.prepare(
+  "UPDATE pat_tokens SET revoked_at = ? WHERE id = ? AND user_id = ? AND revoked_at IS NULL",
+);
+
+/** Store a token by its hash. `tokenHash` = sha256(plaintext). */
+export function createPat(input: {
+  tokenHash: string;
+  userId: string;
+  name: string;
+  scopes: string[];
+}): PatRow {
+  const id = newId();
+  stmtInsertPat.run(id, input.tokenHash, input.userId, input.name, input.scopes.join(","), now());
+  return stmtPatById.get(id) as unknown as PatRow;
+}
+
+/** Look up a live (non-revoked) token by hash and bump last_used_at (throttled). */
+export function usePat(tokenHash: string): PatRow | undefined {
+  const row = stmtPatByHash.get(tokenHash) as unknown as PatRow | undefined;
+  if (!row || row.revoked_at !== null) return undefined;
+  if (row.last_used_at === null || row.last_used_at < now() - 60_000) {
+    stmtTouchPat.run(now(), row.id);
+  }
+  return row;
+}
+
+export function listPatsForUser(userId: string): PatRow[] {
+  return stmtPatsForUser.all(userId) as unknown as PatRow[];
+}
+
+/** Returns true if a live token was revoked. */
+export function revokePat(userId: string, tokenId: string): boolean {
+  return stmtRevokePat.run(now(), tokenId, userId).changes > 0;
+}
+
+/* ------------------------------- Audit log ----------------------------- */
+
+export interface AuditRow {
+  id: string;
+  user_id: string;
+  token_id: string | null;
+  tool: string;
+  target: string | null;
+  before_hash: string | null;
+  created_at: number;
+}
+
+const stmtInsertAudit = db.prepare(
+  "INSERT INTO audit_log (id, user_id, token_id, tool, target, before_hash, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+);
+const stmtAuditForUser = db.prepare(
+  "SELECT * FROM audit_log WHERE user_id = ? ORDER BY created_at DESC LIMIT ?",
+);
+
+export function writeAudit(entry: {
+  userId: string;
+  tokenId?: string | null;
+  tool: string;
+  target?: string | null;
+  beforeHash?: string | null;
+}): void {
+  stmtInsertAudit.run(
+    newId(),
+    entry.userId,
+    entry.tokenId ?? null,
+    entry.tool,
+    entry.target ?? null,
+    entry.beforeHash ?? null,
+    now(),
+  );
+}
+
+export function listAuditForUser(userId: string, limit = 100): AuditRow[] {
+  return stmtAuditForUser.all(userId, limit) as unknown as AuditRow[];
+}
+
+export function sha256Hex(s: string): string {
+  return crypto.createHash("sha256").update(s).digest("hex");
+}
+
+/* ------------------------------ Memories ----------------------------- */
+
+export interface MemoryRow {
+  id: string; user_id: string; text: string; type: string; scope: string;
+  source_client: string; norm_text: string; created_at: number; last_used_at: number;
+  use_count: number; status: string; supersedes_id: string | null;
+}
+export interface PublicMemory {
+  id: string; text: string; type: string; scope: string;
+  sourceClient: string; lastUsed: number; useCount: number;
+}
+
+function normalizeMemoryText(s: string): string {
+  return s.toLowerCase().replace(/\s+/g, " ").trim();
+}
+function toPublicMemory(r: MemoryRow): PublicMemory {
+  return { id: r.id, text: r.text, type: r.type, scope: r.scope,
+    sourceClient: r.source_client, lastUsed: r.last_used_at, useCount: r.use_count };
+}
+
+const stmtActiveByNorm = db.prepare(
+  "SELECT * FROM memories WHERE user_id = ? AND scope = ? AND norm_text = ? AND status = 'active'",
+);
+const stmtBumpMemory = db.prepare(
+  "UPDATE memories SET use_count = use_count + 1, last_used_at = ? WHERE id = ?",
+);
+const stmtInsertMemory = db.prepare(
+  `INSERT INTO memories (id, user_id, text, type, scope, source_client, norm_text,
+     created_at, last_used_at, use_count, status, supersedes_id)
+   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'active', ?)`,
+);
+const stmtSupersede = db.prepare("UPDATE memories SET status = 'superseded' WHERE id = ? AND user_id = ?");
+const stmtMemoryById = db.prepare("SELECT * FROM memories WHERE id = ?");
+
+export function rememberMemory(input: {
+  userId: string; text: string; type?: string; scope?: string;
+  sourceClient?: string; supersedesId?: string;
+}): { memory: PublicMemory; deduped: boolean } {
+  // Omitted scope → "global". The "current project" default is the MCP client's
+  // responsibility (it detects + sends the project scope); the server stores exactly
+  // what it's given and never fans a write across scopes.
+  const scope = input.scope && input.scope.trim() ? input.scope.trim() : "global";
+  const type = input.type ?? "fact";
+  const sourceClient = input.sourceClient ?? "web";
+  const norm = normalizeMemoryText(input.text);
+  const ts = now();
+
+  // Correction: retire the superseded fact (kept for audit, hidden from recall).
+  if (input.supersedesId) {
+    stmtSupersede.run(input.supersedesId, input.userId);
+  }
+  // Exact-normalized dedup within scope → bump instead of inserting a duplicate.
+  // Run unconditionally (even when superseding) so a collision with another active
+  // memory on the same norm_text doesn't throw a UNIQUE constraint violation.
+  const existing = stmtActiveByNorm.get(input.userId, scope, norm) as unknown as MemoryRow | undefined;
+  if (existing) {
+    stmtBumpMemory.run(ts, existing.id);
+    return { memory: toPublicMemory({ ...existing, use_count: existing.use_count + 1, last_used_at: ts }), deduped: true };
+  }
+  const id = newId();
+  stmtInsertMemory.run(id, input.userId, input.text, type, scope, sourceClient, norm, ts, ts, input.supersedesId ?? null);
+  return { memory: toPublicMemory(stmtMemoryById.get(id) as unknown as MemoryRow), deduped: false };
+}
+
+const stmtCache = new Map<string, ReturnType<typeof db.prepare>>();
+function prepareCached(sql: string) {
+  let s = stmtCache.get(sql);
+  if (!s) { s = db.prepare(sql); stmtCache.set(sql, s); }
+  return s;
+}
+
+/** Recall by FTS (bm25) + recency, filtered to status='active' and the given scopes. */
+export function recallMemories(
+  userId: string, scopes: string[], query: string, type: string | undefined, limit: number,
+): (PublicMemory & { score: number })[] {
+  const scopeList = [...new Set([...scopes, "global"])];
+  const scopePlaceholders = scopeList.map(() => "?").join(",");
+  const typeClause = type ? "AND m.type = ?" : "";
+  const q = query.trim();
+  let rows: (MemoryRow & { score: number })[];
+  if (q) {
+    const sql =
+      `SELECT m.*, bm25(memories_fts) AS score
+       FROM memories_fts JOIN memories m ON m.id = memories_fts.memory_id
+       WHERE memories_fts MATCH ? AND m.user_id = ? AND m.status = 'active'
+         AND m.scope IN (${scopePlaceholders}) ${typeClause}
+       ORDER BY score ASC, m.last_used_at DESC LIMIT ?`;
+    const args = [ftsQuery(q), userId, ...scopeList, ...(type ? [type] : []), limit];
+    rows = prepareCached(sql).all(...args) as unknown as (MemoryRow & { score: number })[];
+  } else {
+    const sql =
+      `SELECT m.*, 0 AS score FROM memories m
+       WHERE m.user_id = ? AND m.status = 'active' AND m.scope IN (${scopePlaceholders}) ${typeClause}
+       ORDER BY m.last_used_at DESC LIMIT ?`;
+    const args = [userId, ...scopeList, ...(type ? [type] : []), limit];
+    rows = prepareCached(sql).all(...args) as unknown as (MemoryRow & { score: number })[];
+  }
+  const ts = now();
+  if (rows.length > 0) {
+    const placeholders = rows.map(() => "?").join(",");
+    prepareCached(`UPDATE memories SET last_used_at = ?, use_count = use_count + 1 WHERE id IN (${placeholders})`)
+      .run(ts, ...rows.map((r) => r.id));
+  }
+  return rows.map((r) => ({ ...toPublicMemory(r), score: r.score }));
+}
+
+/** Recency-ordered browse for the Settings UI (no query). */
+export function listMemories(
+  userId: string, scope: string | undefined, type: string | undefined, limit: number,
+): PublicMemory[] {
+  const clauses = ["user_id = ?", "status = 'active'"];
+  const args: (string | number)[] = [userId];
+  if (scope) { clauses.push("scope IN (?, 'global')"); args.push(scope); }
+  if (type) { clauses.push("type = ?"); args.push(type); }
+  args.push(limit);
+  const rows = prepareCached(
+    `SELECT * FROM memories WHERE ${clauses.join(" AND ")} ORDER BY last_used_at DESC LIMIT ?`,
+  ).all(...args) as unknown as MemoryRow[];
+  return rows.map(toPublicMemory);
+}
+
+/* ------------------------------ File FTS search ----------------------------- */
+
+export interface SearchHit { fileId: string; title: string; path: string; content: string; score: number }
+
+const stmtSearch = db.prepare(
+  `SELECT f.id AS fileId, f.title AS title, f.path AS path, f.content AS content, bm25(files_fts) AS score
+   FROM files_fts
+   JOIN files f ON f.id = files_fts.file_id
+   JOIN vaults v ON v.id = f.vault_id
+   WHERE files_fts MATCH ? AND v.user_id = ?
+   ORDER BY score ASC LIMIT ?`,
+);
+export function searchFiles(userId: string, query: string, limit: number): SearchHit[] {
+  const q = query.trim();
+  if (!q) return [];
+  return stmtSearch.all(ftsQuery(q), userId, limit) as unknown as SearchHit[];
+}
+
+export interface NoteRef { fileId: string; title: string; path: string; updatedAt: number }
+const stmtRecentNotes = db.prepare(
+  `SELECT f.id AS fileId, f.title AS title, f.path AS path, f.updated_at AS updatedAt
+   FROM files f JOIN vaults v ON v.id = f.vault_id
+   WHERE v.user_id = ? ORDER BY f.updated_at DESC LIMIT ?`,
+);
+export function listNoteRefs(userId: string, limit: number): NoteRef[] {
+  return stmtRecentNotes.all(userId, limit) as unknown as NoteRef[];
+}
 
 export { db };

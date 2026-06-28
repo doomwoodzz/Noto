@@ -50,7 +50,7 @@
 .cs-title em {
   font-style: normal;
   color: var(--page-blue-deep);
-  font-family: 'Tiempos', 'Georgia', 'Times New Roman', serif;
+  font-family: var(--font-serif);
   font-weight: 500;
   letter-spacing: -0.02em;
 }

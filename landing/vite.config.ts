@@ -12,6 +12,18 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  // Smart Search runs a local embedding model in a Web Worker that dynamically
+  // imports onnxruntime-web. An ES-module worker is required for that code-split,
+  // and @huggingface/transformers is excluded from dep pre-bundling (its wasm/node
+  // shims break esbuild's optimizer).
+  worker: { format: 'es' },
+  optimizeDeps: { exclude: ['@huggingface/transformers'] },
+  // framer-motion (used by the block editor) is pre-bundled by esbuild; dedupe
+  // React so it and the app share a single React instance (otherwise hooks
+  // throw "Invalid hook call").
+  resolve: {
+    dedupe: ['react', 'react-dom'],
+  },
   server: {
     proxy: {
       '/api': {

@@ -7,7 +7,7 @@ import type { VaultFile } from "./types";
 export const MOCK_BASE_DATE = 1_715_587_200 * 1000;
 
 function note(id: string, path: string, title: string, content: string): VaultFile {
-  return { id, path, title, content, createdAt: MOCK_BASE_DATE, updatedAt: MOCK_BASE_DATE };
+  return { id, path, title, content, pinned: false, createdAt: MOCK_BASE_DATE, updatedAt: MOCK_BASE_DATE };
 }
 
 export const SCHOOL_VAULT_FILES: VaultFile[] = [

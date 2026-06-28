@@ -43,6 +43,13 @@ const schema = z.object({
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
   GOOGLE_REDIRECT_URI: z.string().url().optional(),
+
+  /**
+   * OpenAI — optional; the authenticated AI features (chat, summarize,
+   * flashcards, find-links, lecture transcription) return a clear 503 until
+   * this is set. Never sent to the browser; all AI calls are server-side.
+   */
+  OPENAI_API_KEY: z.string().optional(),
 });
 
 const parsed = schema.safeParse(process.env);
@@ -76,6 +83,7 @@ export const env = {
   googleConfigured: Boolean(
     raw.GOOGLE_CLIENT_ID && raw.GOOGLE_CLIENT_SECRET && raw.GOOGLE_REDIRECT_URI,
   ),
+  openaiConfigured: Boolean(raw.OPENAI_API_KEY),
 } as const;
 
 export type Env = typeof env;

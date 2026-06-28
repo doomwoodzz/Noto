@@ -15,10 +15,11 @@
   --page-line:         rgba(12, 13, 15, 0.10);
   --page-line-strong:  rgba(12, 13, 15, 0.16);
   --page-line-soft:    rgba(12, 13, 15, 0.06);
-  --page-blue:         #578FFA;
-  --page-blue-deep:    #3E78E7;
+  /* Accent + status alias the canonical tokens (tokens.css) — one brand blue. */
+  --page-blue:         var(--color-accent);
+  --page-blue-deep:    var(--color-accent-hover);
   --page-blue-soft:    rgba(87, 143, 250, 0.12);
-  --page-rec-red:      #F54740;
+  --page-rec-red:      var(--color-recorder-red);
 
   --landing-radius:    18px;
   --landing-radius-sm: 10px;
@@ -115,6 +116,45 @@ button { font-family: inherit; }
   align-items: center;
   gap: 12px;
   justify-content: flex-end;
+}
+.l-nav-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+/* Hamburger: hidden on desktop, shown ≤720px (see media query). */
+.l-nav-hamburger {
+  display: none;
+  width: 38px;
+  height: 38px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--page-line);
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--page-ink);
+  cursor: pointer;
+}
+.l-nav-mobile {
+  display: none; /* shown ≤720px; never on desktop (e.g. after a resize) */
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 20px 18px;
+  border-top: 1px solid var(--page-line);
+  background: var(--page-bg);
+}
+.l-nav-mobile a:not(.l-btn) {
+  padding: 12px 4px;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--page-ink);
+  border-radius: 8px;
+}
+.l-nav-mobile a:not(.l-btn):hover { color: var(--page-blue-deep); }
+.l-nav-mobile-cta {
+  margin-top: 8px;
+  height: 48px;
+  justify-content: center;
 }
 
 /* ============================================================
@@ -294,6 +334,7 @@ button { font-family: inherit; }
   padding-top: 4px;
 }
 .l-features-featured-link:hover { color: var(--page-blue); }
+html[data-theme="dark"] .l-features-featured { background: var(--page-bg-deep); }
 
 .l-features-dd-footer {
   display: flex;
@@ -439,7 +480,7 @@ button { font-family: inherit; }
 .l-hero-title em {
   font-style: normal;
   color: var(--page-blue-deep);
-  font-family: 'Tiempos', 'Georgia', 'Times New Roman', serif;
+  font-family: var(--font-serif);
   font-weight: 500;
   letter-spacing: -0.02em;
 }
@@ -483,15 +524,8 @@ button { font-family: inherit; }
   margin: 8px 0 64px;
   padding-top: 24px;
 }
-.l-preview-bg {
-  position: absolute;
-  inset: 80px -200px auto -200px;
-  height: 70%;
-  background:
-    radial-gradient(60% 60% at 50% 0%, rgba(87,143,250,0.10), transparent 70%),
-    radial-gradient(40% 50% at 90% 30%, rgba(245, 200, 100, 0.10), transparent 70%);
-  pointer-events: none;
-  z-index: 0;
+.l-preview-wrap .l-shell {
+  max-width: 1340px;
 }
 
 .l-window {
@@ -504,7 +538,6 @@ button { font-family: inherit; }
     0 1px 1px rgba(12,13,15,0.10),
     0 8px 24px rgba(12,13,15,0.10),
     0 30px 80px rgba(12,13,15,0.18);
-  border: 1px solid var(--page-line-strong);
   overflow: hidden;
 }
 .l-app-host {
@@ -512,11 +545,13 @@ button { font-family: inherit; }
   background: var(--color-background);
   position: relative;
   overflow: hidden;
+  display: flex;
+  justify-content: center;
 }
 .l-app-scaler {
   width: 1200px;
   height: 720px;
-  transform-origin: top left;
+  transform-origin: top center;
   position: relative;
 }
 
@@ -811,6 +846,13 @@ button { font-family: inherit; }
   height: 100%;
 }
 
+/* Knowledge Web cell: white in light theme, surface bg in dark theme */
+.l-cell-graph { background: #FFFFFF; }
+html[data-theme="dark"] .l-cell-graph { background: var(--page-bg-soft); }
+html[data-theme="dark"] .lr-graph-node { fill: var(--page-bg-soft); }
+html[data-theme="dark"] .lr-graph-node-active { fill: #578FFA; }
+html[data-theme="dark"] .lr-graph-label { fill: var(--page-ink); }
+
 /* ============================================================
    Bento — File tree / vault visual
    ============================================================ */
@@ -1069,7 +1111,7 @@ button { font-family: inherit; }
 }
 .l-finalcta-title em {
   font-style: normal;
-  font-family: 'Tiempos', Georgia, serif;
+  font-family: var(--font-serif);
   font-weight: 500;
   color: var(--page-blue-deep);
   letter-spacing: -0.02em;
@@ -1169,6 +1211,10 @@ button { font-family: inherit; }
 @media (max-width: 720px) {
   .l-shell { padding: 0 20px; }
   .l-nav-links { display: none; }
+  /* Swap the desktop action cluster for a hamburger + drawer. */
+  .l-nav-actions { display: none; }
+  .l-nav-hamburger { display: inline-flex; }
+  .l-nav-mobile { display: flex; }
   .l-bento { grid-template-columns: 1fr; }
   .l-cell-2, .l-cell-3 { grid-column: span 1; }
   .l-hero { padding: 56px 0 32px; }
@@ -1245,11 +1291,11 @@ html[data-theme="dark"] .lr-privacy {
   z-index: -1;
   background:
     linear-gradient(90deg,
-      rgba(6, 10, 18, 0.66) 0%,
-      rgba(6, 10, 18, 0.34) 44%,
-      rgba(6, 10, 18, 0.06) 72%),
+      rgba(6, 10, 18, 0.74) 0%,
+      rgba(6, 10, 18, 0.54) 48%,
+      rgba(6, 10, 18, 0.34) 100%),
     linear-gradient(180deg,
-      rgba(6, 10, 18, 0.30) 0%,
+      rgba(6, 10, 18, 0.34) 0%,
       rgba(6, 10, 18, 0.00) 26%,
       rgba(6, 10, 18, 0.00) 52%,
       var(--page-bg) 100%);
@@ -1293,7 +1339,7 @@ html[data-theme="dark"] .lr-privacy {
 }
 .f-hero-title em {
   font-style: normal;
-  font-family: 'Tiempos', 'Georgia', 'Times New Roman', serif;
+  font-family: var(--font-serif);
   font-weight: 500;
   letter-spacing: -0.02em;
   color: #DCE8FF;
@@ -1466,7 +1512,7 @@ html[data-theme="dark"] .lr-privacy {
 }
 .f-feature-title em {
   font-style: normal;
-  font-family: 'Tiempos', Georgia, serif;
+  font-family: var(--font-serif);
   font-weight: 500;
   color: var(--page-blue-deep);
   letter-spacing: -0.015em;
@@ -1594,7 +1640,7 @@ html[data-theme="dark"] .lr-privacy {
   border-radius: 4px;
 }
 .f-ed-task { color: var(--color-muted); }
-.f-ed-task.done { color: #5BC98B; }
+.f-ed-task.done { color: var(--color-success); }
 .f-ed-caret {
   display: inline-block;
   width: 2px;

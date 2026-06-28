@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Box, Download, Moon, Sun, ChevronDown } from "lucide-react";
+import { Download, Moon, Sun, ChevronDown, Menu, X } from "lucide-react";
 import type { Theme } from "./useTheme";
 import { FeaturesDropdown } from "./FeaturesDropdown";
+import { BrandMark } from "../shared/BrandMark";
 
 interface NavProps {
   theme: Theme;
@@ -12,8 +13,17 @@ interface NavProps {
 // Long enough that diagonal mouse paths from button → panel don't dismiss it.
 const CLOSE_DELAY_MS = 120;
 
+// Primary nav links (the redundant top-level "Download" entry was removed — the
+// persistent Download button on the right covers it).
+const NAV_LINKS = [
+  { label: "How it works", href: "#how" },
+  { label: "Roadmap", href: "/download.html#roadmap" },
+  { label: "Changelog", href: "#changelog" },
+];
+
 export function Nav({ theme, setTheme }: NavProps) {
   const [featuresOpen, setFeaturesOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const closeTimer = useRef<number | null>(null);
 
   function open() {
@@ -31,22 +41,24 @@ export function Nav({ theme, setTheme }: NavProps) {
     }, CLOSE_DELAY_MS);
   }
 
-  // Escape closes the dropdown.
+  // Escape closes the dropdown and the mobile menu.
   useEffect(() => {
-    if (!featuresOpen) return;
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setFeaturesOpen(false);
+      if (e.key === "Escape") {
+        setFeaturesOpen(false);
+        setMenuOpen(false);
+      }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [featuresOpen]);
+  }, []);
 
   return (
     <header className="l-nav">
       <div className="l-shell" style={{ opacity: 1 }}>
         <div className="l-nav-row">
           <a className="l-brand" href="/" aria-label="Noto home">
-            <span className="l-brand-mark"><Box size={13} strokeWidth={1.7} /></span>
+            <span className="l-brand-mark"><BrandMark size={14} /></span>
             <span>NOTO</span>
           </a>
           <nav>
@@ -73,10 +85,9 @@ export function Nav({ theme, setTheme }: NavProps) {
                   onMouseLeave={closeSoon}
                 />
               </li>
-              <li><a href="#how">How it works</a></li>
-              <li><a href="/download.html">Download</a></li>
-              <li><a href="/download.html#roadmap">Roadmap</a></li>
-              <li><a href="#changelog">Changelog</a></li>
+              {NAV_LINKS.map((l) => (
+                <li key={l.href}><a href={l.href}>{l.label}</a></li>
+              ))}
             </ul>
           </nav>
           <div className="l-nav-right">
@@ -90,15 +101,40 @@ export function Nav({ theme, setTheme }: NavProps) {
                 ? <Moon size={15} strokeWidth={1.7} />
                 : <Sun size={15} strokeWidth={1.7} />}
             </button>
-            <a className="l-btn l-btn-ghost" href="/get-started.html?mode=signin">Sign in</a>
-            <a className="l-btn l-btn-outline" href="#help">Help</a>
-            <a className="l-btn l-btn-primary" href="/download.html">
-              <Download size={14} strokeWidth={1.7} />
-              Download
-            </a>
+            <span className="l-nav-actions">
+              <a className="l-btn l-btn-ghost" href="/get-started.html?mode=signin">Sign in</a>
+              <a className="l-btn l-btn-outline" href="#help">Help</a>
+              <a className="l-btn l-btn-primary" href="/download.html">
+                <Download size={14} strokeWidth={1.7} />
+                Download
+              </a>
+            </span>
+            <button
+              type="button"
+              className="l-nav-hamburger"
+              aria-label={menuOpen ? "Close menu" : "Open menu"}
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen((o) => !o)}
+            >
+              {menuOpen ? <X size={18} strokeWidth={1.8} /> : <Menu size={18} strokeWidth={1.8} />}
+            </button>
           </div>
         </div>
       </div>
+
+      {menuOpen && (
+        <div className="l-nav-mobile" onClick={() => setMenuOpen(false)}>
+          <a href="/features.html">Features</a>
+          {NAV_LINKS.map((l) => (
+            <a key={l.href} href={l.href}>{l.label}</a>
+          ))}
+          <a href="/get-started.html?mode=signin">Sign in</a>
+          <a className="l-btn l-btn-primary l-nav-mobile-cta" href="/download.html">
+            <Download size={14} strokeWidth={1.7} />
+            Download for macOS
+          </a>
+        </div>
+      )}
     </header>
   );
 }

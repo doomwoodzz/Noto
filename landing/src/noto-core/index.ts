@@ -4,5 +4,6 @@ export * from "./types";
 export * from "./parser";
 export * from "./metadata";
 export * from "./graph";
+export * from "./chunk";
 export * from "./noteActions";
 export { AIRecorder } from "./recorder";

@@ -18,6 +18,11 @@ dist-ssr
 !.env.example
 server/data/
 
+# Smart Search assets vendored by scripts/fetch-embedding-model.mjs
+# (kept out of git; fetched on install/dev/build, cached locally + by the browser)
+public/models/
+public/ort/
+
 # Local Claude Code preview config
 .claude/
 

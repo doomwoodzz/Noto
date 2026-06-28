@@ -78,7 +78,7 @@ export function Bento() {
           </div>
 
           {/* Row 2: Knowledge Web / Vault */}
-          <div className="l-cell l-cell-2 l-cell-tall l-cell-flush" style={{ background: "#FFFFFF" }}>
+          <div className="l-cell l-cell-2 l-cell-tall l-cell-flush l-cell-graph">
             <div style={{ padding: 36, display: "flex", flexDirection: "column", height: "100%" }}>
               <div className="l-cell-head" style={{ position: "relative", zIndex: 2 }}>
                 <div className="l-cell-eyebrow">

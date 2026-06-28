@@ -47,9 +47,11 @@ export function VisGraph() {
           return (
             <g key={n.id}>
               <circle cx={p.x} cy={p.y} r={r}
+                className={n.active ? "lr-graph-node lr-graph-node-active" : "lr-graph-node"}
                 fill={n.active ? "#578FFA" : "#FFFFFF"}
                 stroke={n.active ? "rgba(87,143,250,0.6)" : "rgba(87,143,250,0.55)"} strokeWidth="1.4" />
               <text x={p.x} y={p.y + r + 14} textAnchor="middle"
+                className="lr-graph-label"
                 fill="#0C0D0F" fontFamily="Inter, sans-serif"
                 fontSize="11" fontWeight={n.active ? 600 : 500}>
                 {n.label}
