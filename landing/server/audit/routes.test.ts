@@ -179,6 +179,56 @@ describe("POST /api/activity/:id/revert — create_note", () => {
   });
 });
 
+describe("revert note edits (snapshot restore)", () => {
+  async function setup5(email: string) {
+    const cookie = await signup(srv.baseURL, email);
+    const token = await mintToken(cookie, ["read", "write", "memory"], "Claude Code");
+    return { cookie, pat: makePatClient(srv.baseURL, token) };
+  }
+
+  it("restores the pre-image of an append", async () => {
+    const { cookie, pat } = await setup5("rev-append@example.com");
+    const create = await pat.req("POST", "/api/notes", { path: "Memory/a.md", title: "A", content: "original\n" });
+    const { fileId } = (await create.json()) as { fileId: string };
+    await pat.req("POST", `/api/files/${fileId}/append`, { text: "appended" });
+    const { activity } = (await (await cookie.req("GET", "/api/activity")).json()) as { activity: Array<{ id: string; tool: string }> };
+    const row = activity.find((a) => a.tool === "append_note")!;
+
+    const res = await cookie.req("POST", `/api/activity/${row.id}/revert`, {});
+    expect(res.status).toBe(200);
+    const file = (await (await pat.req("GET", `/api/files/${fileId}`)).json()) as { file: { content: string } };
+    expect(file.file.content).toBe("original\n");
+  });
+
+  it("restores the pre-image of an update_section", async () => {
+    const { cookie, pat } = await setup5("rev-section@example.com");
+    const create = await pat.req("POST", "/api/notes", { path: "Memory/s.md", title: "S", content: "# A\nold body\n" });
+    const { fileId } = (await create.json()) as { fileId: string };
+    await pat.req("PATCH", `/api/files/${fileId}/section`, { heading: "A", content: "# A\nnew body\n" });
+    const { activity } = (await (await cookie.req("GET", "/api/activity")).json()) as { activity: Array<{ id: string; tool: string }> };
+    const row = activity.find((a) => a.tool === "update_section")!;
+
+    await cookie.req("POST", `/api/activity/${row.id}/revert`, {});
+    const file = (await (await pat.req("GET", `/api/files/${fileId}`)).json()) as { file: { content: string } };
+    expect(file.file.content).toBe("# A\nold body\n");
+  });
+
+  it("409 conflict when the note changed since the AI edit; force overwrites", async () => {
+    const { cookie, pat } = await setup5("rev-append-conflict@example.com");
+    const create = await pat.req("POST", "/api/notes", { path: "Memory/ac.md", title: "AC", content: "base\n" });
+    const { fileId } = (await create.json()) as { fileId: string };
+    await pat.req("POST", `/api/files/${fileId}/append`, { text: "ai" });
+    await cookie.req("PATCH", `/api/files/${fileId}`, { content: "human took over" });
+    const { activity } = (await (await cookie.req("GET", "/api/activity")).json()) as { activity: Array<{ id: string; tool: string }> };
+    const row = activity.find((a) => a.tool === "append_note")!;
+
+    expect((await cookie.req("POST", `/api/activity/${row.id}/revert`, {})).status).toBe(409);
+    expect((await cookie.req("POST", `/api/activity/${row.id}/revert`, { force: true })).status).toBe(200);
+    const file = (await (await pat.req("GET", `/api/files/${fileId}`)).json()) as { file: { content: string } };
+    expect(file.file.content).toBe("base\n");
+  });
+});
+
 describe("provenance population", () => {
   async function setup2(email: string, tokenName = "Claude Code") {
     const cookie = await signup(srv.baseURL, email);

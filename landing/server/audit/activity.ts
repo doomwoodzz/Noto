@@ -1,5 +1,5 @@
 import {
-  getOwnedFile, getSnapshot, getOwnedMemory, deleteFile, sha256Hex, writeAudit,
+  getOwnedFile, getSnapshot, getOwnedMemory, updateFile, deleteFile, sha256Hex, writeAudit,
   type AuditRow, type ActivityRaw,
 } from "../db.ts";
 
@@ -65,6 +65,22 @@ export function performRevert(userId: string, audit: AuditRow, force: boolean): 
       }
       deleteFile(file.id);
       writeAudit({ userId, tokenId: null, tool: "revert", target: audit.target, sourceClient: "web" });
+      return { status: "reverted" };
+    }
+    case "append_note":
+    case "update_section": {
+      if (!audit.target) return { status: "not_revertible", reason: "no target" };
+      const file = getOwnedFile(userId, audit.target);
+      if (!file) return { status: "not_revertible", reason: "note already removed" };
+      const before = getSnapshot(audit.id);
+      if (before === null) return { status: "not_revertible", reason: "no snapshot (edit predates SP3)" };
+      // after_hash is null on pre-Task-2 rows; in that case skip the guard rather
+      // than block revert indefinitely (there's no baseline to compare against).
+      if (!force && audit.after_hash && sha256Hex(file.content) !== audit.after_hash) {
+        return { status: "conflict", before, current: file.content };
+      }
+      updateFile(file.id, { content: before });
+      writeAudit({ userId, tokenId: null, tool: "revert", target: audit.target, sourceClient: "web", beforeHash: sha256Hex(file.content) });
       return { status: "reverted" };
     }
     default:
