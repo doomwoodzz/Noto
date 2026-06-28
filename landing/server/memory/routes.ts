@@ -8,7 +8,9 @@ import rateLimit from "express-rate-limit";
 import { z } from "zod";
 import { getCurrentUser } from "../auth/session.ts";
 import { requireScope } from "../auth/pat.ts";
-import { rememberMemory, recallMemories, listMemories, writeAudit } from "../db.ts";
+import { rememberMemory, listMemories, writeAudit } from "../db.ts";
+import { semanticRecall } from "../search/semantic.ts";
+import { embedMemory } from "../search/embedNote.ts";
 
 export const memoryRouter = Router();
 const jsonBody = express.json({ limit: "16kb" });
@@ -34,7 +36,7 @@ const rememberSchema = z.object({
 });
 
 // POST /api/memory — remember (requires 'memory' scope for PATs).
-memoryRouter.post("/", memoryLimiter, jsonBody, (req: Request, res: Response) => {
+memoryRouter.post("/", memoryLimiter, jsonBody, async (req: Request, res: Response) => {
   if (req.apiUser && !requireScope(req, res, "memory")) return;
   const uid = resolveUserId(req, res);
   if (!uid) return;
@@ -59,11 +61,12 @@ memoryRouter.post("/", memoryLimiter, jsonBody, (req: Request, res: Response) =>
       sourceClient,
     });
   }
+  if (!deduped) await embedMemory(memory.id, memory.text);
   res.status(201).json({ memoryId: memory.id, deduped });
 });
 
 // GET /api/memory — recall (requires 'read' scope for PATs).
-memoryRouter.get("/", memoryLimiter, (req: Request, res: Response) => {
+memoryRouter.get("/", memoryLimiter, async (req: Request, res: Response) => {
   if (req.apiUser && !requireScope(req, res, "read")) return;
   const uid = resolveUserId(req, res);
   if (!uid) return;
@@ -76,7 +79,7 @@ memoryRouter.get("/", memoryLimiter, (req: Request, res: Response) => {
   const type = typeRaw;
   const limit = Math.min(20, Math.max(1, Number(req.query.limit) || 6));
   const scopes = scope ? (scope === "global" ? ["global"] : [scope]) : [];
-  res.json({ memories: recallMemories(uid, scopes, q, type, limit) });
+  res.json({ memories: await semanticRecall(uid, scopes, q, type, limit) });
 });
 
 // GET /api/memory/list — recency browse for the Settings UI (cookie session).

@@ -3,8 +3,8 @@ import { Router, type Request, type Response } from "express";
 import rateLimit from "express-rate-limit";
 import { getCurrentUser } from "../auth/session.ts";
 import { requireScope } from "../auth/pat.ts";
-import { searchFiles, listNoteRefs } from "../db.ts";
-import { bestSnippet } from "./snippet.ts";
+import { listNoteRefs } from "../db.ts";
+import { semanticSearchNotes } from "./semantic.ts";
 
 export const searchRouter = Router();
 const limiter = rateLimit({
@@ -20,19 +20,15 @@ function resolveUserId(req: Request, res: Response): string | null {
   return u.id;
 }
 
-// GET /api/search?q=&limit= — FTS5 note search → heading-addressable refs + snippets.
-searchRouter.get("/search", limiter, (req: Request, res: Response) => {
+// GET /api/search?q=&limit= — semantic (embedding) note search with lexical fallback.
+searchRouter.get("/search", limiter, async (req: Request, res: Response) => {
   if (req.apiUser && !requireScope(req, res, "read")) return;
   const uid = resolveUserId(req, res);
   if (!uid) return;
   // SP1: notes are scoped by user_id only; scope/tag query params are reserved for a later phase (not yet filtered).
   const q = typeof req.query.q === "string" ? req.query.q : "";
   const limit = Math.min(20, Math.max(1, Number(req.query.limit) || 5));
-  const results = searchFiles(uid, q, limit).map((h) => {
-    const { headingPath, snippet } = bestSnippet(h.content, q);
-    return { fileId: h.fileId, title: h.title, path: h.path, headingPath, snippet, score: h.score };
-  });
-  res.json({ results });
+  res.json({ results: await semanticSearchNotes(uid, q, limit) });
 });
 
 // GET /api/notes?by=recent&limit= — refs only (no bodies). SP1 supports by=recent.

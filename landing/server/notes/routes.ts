@@ -35,6 +35,7 @@ import {
   sha256Hex,
 } from "../db.ts";
 import { requireScope } from "../auth/pat.ts";
+import { reembedNote } from "../search/embedNote.ts";
 import { getSection, replaceSection, listHeadings, appendUnderHeading } from "./sections.ts";
 import { isMemoryPath } from "./confinement.ts";
 
@@ -151,7 +152,7 @@ notesRouter.post(
   "/vaults/:vaultId/files",
   writeLimiter,
   jsonBody,
-  (req: Request, res: Response) => {
+  async (req: Request, res: Response) => {
     const userId = requireUserId(req, res);
     if (!userId) return;
     const vault = getOwnedVault(userId, req.params.vaultId as string);
@@ -172,13 +173,15 @@ notesRouter.post(
       res.status(409).json({ error: "A note already exists at that path." });
       return;
     }
-    res.status(201).json({ file: createFile(vault.id, parsed.data) });
+    const created = createFile(vault.id, parsed.data);
+    await reembedNote(created.id, parsed.data.content);
+    res.status(201).json({ file: created });
   },
 );
 
 // Create a note in the caller's default vault (PAT write scope or cookie).
 // PAT writes are confined to Memory/.
-notesRouter.post("/notes", writeLimiter, jsonBody, (req: Request, res: Response) => {
+notesRouter.post("/notes", writeLimiter, jsonBody, async (req: Request, res: Response) => {
   if (req.apiUser && !requireScope(req, res, "write")) return;
   const uid = resolveUserId(req, res);
   if (!uid) return;
@@ -206,6 +209,7 @@ notesRouter.post("/notes", writeLimiter, jsonBody, (req: Request, res: Response)
     return;
   }
   const file = createFile(vault.id, parsed.data);
+  await reembedNote(file.id, parsed.data.content);
   writeAudit({
     userId: uid,
     tokenId: req.apiUser?.tokenId ?? null,
@@ -219,7 +223,7 @@ notesRouter.post("/notes", writeLimiter, jsonBody, (req: Request, res: Response)
 });
 
 // Update a note the caller owns.
-notesRouter.patch("/files/:fileId", writeLimiter, jsonBody, (req: Request, res: Response) => {
+notesRouter.patch("/files/:fileId", writeLimiter, jsonBody, async (req: Request, res: Response) => {
   const userId = requireUserId(req, res);
   if (!userId) return;
   const existing = getOwnedFile(userId, req.params.fileId as string);
@@ -238,7 +242,9 @@ notesRouter.patch("/files/:fileId", writeLimiter, jsonBody, (req: Request, res: 
       return;
     }
   }
-  res.json({ file: updateFile(existing.id, parsed.data) });
+  const updated = updateFile(existing.id, parsed.data);
+  if (parsed.data.content !== undefined) await reembedNote(existing.id, parsed.data.content);
+  res.json({ file: updated });
 });
 
 // Fetch a single note by id (PAT read scope or cookie session).
@@ -287,7 +293,7 @@ const sectionPatchSchema = z.object({
   expectUpdatedAt: z.number().int().optional(),
 });
 
-notesRouter.patch("/files/:fileId/section", writeLimiter, jsonBody, (req: Request, res: Response) => {
+notesRouter.patch("/files/:fileId/section", writeLimiter, jsonBody, async (req: Request, res: Response) => {
   if (req.apiUser && !requireScope(req, res, "write")) return;
   const uid = resolveUserId(req, res);
   if (!uid) return;
@@ -330,6 +336,7 @@ notesRouter.patch("/files/:fileId/section", writeLimiter, jsonBody, (req: Reques
   });
   writeSnapshot(auditId, file.content);
   const updated = updateFile(file.id, { content: nextContent });
+  await reembedNote(file.id, nextContent);
   res.json({ fileId: updated.id, updatedAt: updated.updatedAt });
 });
 
@@ -340,7 +347,7 @@ const appendSchema = z.object({
 });
 
 // Append text to a note (optionally under a heading). PAT writes confined to Memory/.
-notesRouter.post("/files/:fileId/append", writeLimiter, jsonBody, (req: Request, res: Response) => {
+notesRouter.post("/files/:fileId/append", writeLimiter, jsonBody, async (req: Request, res: Response) => {
   if (req.apiUser && !requireScope(req, res, "write")) return;
   const uid = resolveUserId(req, res);
   if (!uid) return;
@@ -390,6 +397,7 @@ notesRouter.post("/files/:fileId/append", writeLimiter, jsonBody, (req: Request,
   });
   writeSnapshot(auditId, file.content);
   const updated = updateFile(file.id, { content: nextContent });
+  await reembedNote(file.id, nextContent);
   res.json({ fileId: updated.id, updatedAt: updated.updatedAt });
 });
 
