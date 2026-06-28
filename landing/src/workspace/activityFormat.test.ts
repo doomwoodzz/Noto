@@ -30,4 +30,20 @@ describe("describeActivity", () => {
       target: { kind: "note", id: "f", title: null, path: null, text: null, status: null, exists: false },
     }))).toContain("a deleted note");
   });
+
+  it("describes a supersede without doubling 'a memory'", () => {
+    expect(describeActivity(entry({
+      tool: "supersede", client: "codex",
+      target: { kind: "memory", id: "m", title: null, path: null, text: "we use postgres now", status: "active", exists: true },
+    }))).toBe("codex corrected “we use postgres now”");
+    expect(describeActivity(entry({
+      tool: "supersede", client: "codex",
+      target: { kind: "memory", id: "m", title: null, path: null, text: null, status: "superseded", exists: true },
+    }))).toBe("codex corrected a memory");
+  });
+
+  it("describes update_section and revert on a note", () => {
+    expect(describeActivity(entry({ tool: "update_section" }))).toBe("claude-code edited a section of Memory/decisions.md");
+    expect(describeActivity(entry({ tool: "revert" }))).toBe("claude-code reverted Memory/decisions.md");
+  });
 });

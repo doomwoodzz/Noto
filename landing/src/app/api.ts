@@ -7,7 +7,7 @@
  */
 import type { VaultFile } from "../noto-core";
 import type { CitationMeta } from "../workspace/citationClient";
-import type { ActivityEntry } from "../workspace/activityClient";
+import type { ActivityEntry, RevertOutcome } from "../workspace/activityClient";
 
 export interface PublicUser {
   id: string;
@@ -172,7 +172,7 @@ export const api = {
       request<{ before: string | null; current: string | null }>("GET", `/api/activity/${auditId}/preview`),
     // Revert resolves the 409 "conflict" outcome as data (not an error) so the
     // UI can show the diff + offer force; other non-2xx still throw.
-    revert: async (auditId: string, force = false) => {
+    revert: async (auditId: string, force = false): Promise<RevertOutcome> => {
       const res = await fetch(`/api/activity/${auditId}/revert`, {
         method: "POST",
         credentials: "include",
@@ -183,7 +183,7 @@ export const api = {
       if (!res.ok && res.status !== 409) {
         throw new ApiError(data.error ?? "Revert failed.", res.status);
       }
-      return data as { status: string; before?: string | null; current?: string | null };
+      return data as RevertOutcome;
     },
   },
 

@@ -5,7 +5,7 @@ const VERB: Record<string, string> = {
   append_note: "appended to",
   update_section: "edited a section of",
   remember: "remembered",
-  supersede: "corrected a memory",
+  supersede: "corrected",
   revert: "reverted",
 };
 
