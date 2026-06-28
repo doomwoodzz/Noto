@@ -23,6 +23,7 @@ interface Props {
   onToggleTheme?: () => void;
   onLogout?: () => void;
   onOpenConnect?: () => void;
+  onOpenActivity?: () => void;
 }
 
 function topFolder(path: string): string {
@@ -34,7 +35,7 @@ export function Sidebar(props: Props) {
     vaultName, files, pinned, recent, folderOrder, openFolders,
     currentNoteId, activeKind, filtering,
     onNewNote, onOpenHome, onOpenGraph, onOpenNote, onToggleFolder,
-    account, theme, onToggleTheme, onLogout, onOpenConnect,
+    account, theme, onToggleTheme, onLogout, onOpenConnect, onOpenActivity,
   } = props;
 
   const isActiveNote = (id: string) => activeKind === "note" && currentNoteId === id;
@@ -71,6 +72,9 @@ export function Sidebar(props: Props) {
       <div className="nw-sidebar-scroll">
         <NavButton icon="home" label="Home" active={activeKind === "home"} onClick={onOpenHome} />
         <NavButton icon="graph" label="Knowledge Web" active={activeKind === "graph"} onClick={onOpenGraph} />
+        {onOpenActivity && (
+          <NavButton icon="clock" label="AI Activity" active={false} onClick={onOpenActivity} />
+        )}
 
         {pinned.length > 0 && (
           <Section icon="pin" label="Pinned">

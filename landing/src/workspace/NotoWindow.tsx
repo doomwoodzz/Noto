@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "../styles/workspace.css";
 import { McpSettings } from "./McpSettings";
 import type { McpClient } from "./mcpClient";
+import { ActivityView } from "./ActivityView";
+import type { ActivityClient } from "./activityClient";
 import {
   buildGraph,
   buildMetadataCache,
@@ -38,6 +40,8 @@ interface Props {
   citationClient?: CitationClient;
   /** MCP client for the "Connect AI tools" Settings panel (omit in the demo). */
   mcpClient?: McpClient;
+  /** Provenance/trust surface backend (omit in the demo). */
+  activityClient?: ActivityClient;
 }
 
 export function NotoWindow({
@@ -46,6 +50,7 @@ export function NotoWindow({
   aiClient = mockAIClient,
   citationClient = mockCitationClient,
   mcpClient,
+  activityClient,
 }: Props) {
   const files = controller.files;
 
@@ -56,6 +61,9 @@ export function NotoWindow({
 
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [mcpOpen, setMcpOpen] = useState(false);
+  const [activityOpen, setActivityOpen] = useState(false);
+  const [activityFileId, setActivityFileId] = useState<string | undefined>(undefined);
+  const openActivity = (fileId?: string) => { setActivityFileId(fileId); setActivityOpen(true); };
 
   /* ----------------------------- smart search ---------------------------- */
   const [smartOpen, setSmartOpen] = useState(false);
@@ -296,9 +304,20 @@ export function NotoWindow({
             onToggleTheme={controller.onToggleTheme}
             onLogout={controller.onLogout}
             onOpenConnect={mcpClient ? () => setMcpOpen(true) : undefined}
+            onOpenActivity={activityClient ? () => openActivity() : undefined}
           />
           <WorkspacePanes ws={ws} noteTitle={noteTitle} renderBody={renderBody} />
-          {ws.contextOpen && <ContextPanel meta={currentMeta} onOpenTitle={ws.openTitle} />}
+          {ws.contextOpen && (
+            <ContextPanel
+              meta={currentMeta}
+              onOpenTitle={ws.openTitle}
+              onOpenAiChanges={
+                activityClient && activeKind === "note" && ws.currentNoteId
+                  ? () => openActivity(ws.currentNoteId)
+                  : undefined
+              }
+            />
+          )}
         </div>
       </div>
 
@@ -306,6 +325,14 @@ export function NotoWindow({
       <Toasts toasts={toasts} />
       {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} onCommand={paletteCommand} />}
       {mcpOpen && mcpClient && <McpSettings client={mcpClient} onClose={() => setMcpOpen(false)} />}
+      {activityOpen && activityClient && (
+        <ActivityView
+          client={activityClient}
+          initialFileId={activityFileId}
+          onClose={() => setActivityOpen(false)}
+          onOpenNote={ws.openNote}
+        />
+      )}
       {smartOpen && (
         <SmartSearchPanel
           smart={smart}

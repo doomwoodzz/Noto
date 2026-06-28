@@ -4,6 +4,7 @@ import { AppLoading, AppError } from "./AppStatus";
 import { realAIClient } from "./aiClient";
 import { realCitationClient } from "./citationClient";
 import { realMcpClient } from "./mcpClient";
+import { realActivityClient } from "./activityClient";
 import type { VaultController } from "../workspace/types";
 import type { Theme } from "../landing/useTheme";
 import type { PublicUser } from "./api";
@@ -54,6 +55,7 @@ export function NotoWorkspace({ user, theme, onToggleTheme, onLogout }: Props) {
       aiClient={realAIClient}
       citationClient={realCitationClient}
       mcpClient={realMcpClient}
+      activityClient={realActivityClient}
     />
   );
 }
