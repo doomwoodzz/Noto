@@ -48,12 +48,17 @@ memoryRouter.post("/", memoryLimiter, jsonBody, (req: Request, res: Response) =>
     userId: uid, text: parsed.data.text, type: parsed.data.type,
     scope: parsed.data.scope, sourceClient, supersedesId: parsed.data.supersedes,
   });
-  writeAudit({
-    userId: uid, tokenId: req.apiUser?.tokenId ?? null,
-    tool: parsed.data.supersedes ? "supersede" : "remember",
-    target: memory.id, beforeHash: null,
-    sourceClient,
-  });
+  // A deduped plain `remember` only bumped an existing memory's use_count — nothing
+  // was created, so there is nothing to attribute or revert. (A `supersede` still
+  // audits even when it dedups: it retired the predecessor.)
+  if (!deduped || parsed.data.supersedes) {
+    writeAudit({
+      userId: uid, tokenId: req.apiUser?.tokenId ?? null,
+      tool: parsed.data.supersedes ? "supersede" : "remember",
+      target: memory.id, beforeHash: null,
+      sourceClient,
+    });
+  }
   res.status(201).json({ memoryId: memory.id, deduped });
 });
 

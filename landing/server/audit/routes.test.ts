@@ -339,4 +339,13 @@ describe("revert memory", () => {
     const my = (await (await pat.req("GET", "/api/memory?q=mysql&scope=p")).json()) as { memories: Array<{ text: string }> };
     expect(my.memories.some((m) => m.text === "we use mysql")).toBe(true);
   });
+
+  it("a duplicate remember creates no separate revertible row (dedup bump is not a write)", async () => {
+    const { cookie, pat } = await setup6("dup-remember@example.com");
+    await pat.req("POST", "/api/memory", { text: "we use sqlite", scope: "p" });        // genuine create
+    const dup = await pat.req("POST", "/api/memory", { text: "we use sqlite", scope: "p" }); // dedup bump
+    expect(((await dup.json()) as { deduped: boolean }).deduped).toBe(true);
+    const { activity } = (await (await cookie.req("GET", "/api/activity")).json()) as { activity: Array<{ tool: string }> };
+    expect(activity.filter((a) => a.tool === "remember").length).toBe(1); // only the create, not the bump
+  });
 });

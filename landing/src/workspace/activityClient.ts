@@ -28,6 +28,7 @@ export interface RevertOutcome {
   status: string;
   before?: string | null;
   current?: string | null;
+  reason?: string;
 }
 
 /** Surface-agnostic contract the Activity view needs; real impl wraps `api`. */

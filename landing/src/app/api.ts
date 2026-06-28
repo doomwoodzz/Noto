@@ -179,8 +179,8 @@ export const api = {
         headers: { "Content-Type": "application/json", "X-CSRF-Token": await ensureCsrfToken() },
         body: JSON.stringify({ force }),
       });
-      const data = (await res.json().catch(() => ({}))) as { status?: string; error?: string; before?: string | null; current?: string | null };
-      if (!res.ok && res.status !== 409) {
+      const data = (await res.json().catch(() => ({}))) as { status?: string; error?: string; reason?: string; before?: string | null; current?: string | null };
+      if (!res.ok && res.status !== 409 && res.status !== 422) {
         throw new ApiError(data.error ?? "Revert failed.", res.status);
       }
       return data as RevertOutcome;

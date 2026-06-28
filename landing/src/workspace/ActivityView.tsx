@@ -73,6 +73,7 @@ export function ActivityView({ client, initialFileId, onClose, onOpenNote }: Pro
     try {
       const r = await client.revert(confirm.entry.id, force);
       if (r.status === "conflict") { setConfirm({ ...confirm, before: r.before ?? confirm.before, current: r.current ?? confirm.current, conflict: true }); return; }
+      if (r.status === "not_revertible") { setConfirm(null); setErr(r.reason ?? "This can no longer be reverted."); load(); return; }
       setConfirm(null);
       load();
     } catch (e) { setErr(e instanceof Error ? e.message : "Revert failed."); }
