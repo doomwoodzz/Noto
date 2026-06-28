@@ -7,6 +7,7 @@
  */
 import type { VaultFile } from "../noto-core";
 import type { CitationMeta } from "../workspace/citationClient";
+import type { ActivityEntry } from "../workspace/activityClient";
 
 export interface PublicUser {
   id: string;
@@ -152,6 +153,38 @@ export const api = {
         "GET",
         `/api/memory/list?${new URLSearchParams({ ...(params?.scope ? { scope: params.scope } : {}), limit: String(params?.limit ?? 100) }).toString()}`,
       ),
+  },
+
+  /* AI activity (provenance/trust surface — cookie only) */
+  activity: {
+    list: (params?: { tool?: string; source?: string; fileId?: string; before?: number; limit?: number }) =>
+      request<{ activity: ActivityEntry[] }>(
+        "GET",
+        `/api/activity?${new URLSearchParams({
+          ...(params?.tool ? { tool: params.tool } : {}),
+          ...(params?.source ? { source: params.source } : {}),
+          ...(params?.fileId ? { fileId: params.fileId } : {}),
+          ...(params?.before ? { before: String(params.before) } : {}),
+          limit: String(params?.limit ?? 50),
+        }).toString()}`,
+      ),
+    preview: (auditId: string) =>
+      request<{ before: string | null; current: string | null }>("GET", `/api/activity/${auditId}/preview`),
+    // Revert resolves the 409 "conflict" outcome as data (not an error) so the
+    // UI can show the diff + offer force; other non-2xx still throw.
+    revert: async (auditId: string, force = false) => {
+      const res = await fetch(`/api/activity/${auditId}/revert`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", "X-CSRF-Token": await ensureCsrfToken() },
+        body: JSON.stringify({ force }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { status?: string; error?: string; before?: string | null; current?: string | null };
+      if (!res.ok && res.status !== 409) {
+        throw new ApiError(data.error ?? "Revert failed.", res.status);
+      }
+      return data as { status: string; before?: string | null; current?: string | null };
+    },
   },
 
   /* notes */
