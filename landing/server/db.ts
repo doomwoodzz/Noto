@@ -88,12 +88,19 @@ db.exec(`
     id           TEXT PRIMARY KEY,
     user_id      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     token_id     TEXT,
-    tool         TEXT NOT NULL,          -- update_section | remember | ...
-    target       TEXT,                   -- fileId or memoryId
-    before_hash  TEXT,                   -- sha256 of pre-image (note edits)
+    tool         TEXT NOT NULL,
+    target       TEXT,
+    before_hash  TEXT,
+    after_hash   TEXT,                  -- sha256 of post-write content (note edits)
+    source_client TEXT,                 -- claude-code | cursor | codex | web
     created_at   INTEGER NOT NULL
   );
   CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_log(user_id, created_at);
+
+  CREATE TABLE IF NOT EXISTS audit_snapshots (
+    audit_id TEXT PRIMARY KEY REFERENCES audit_log(id) ON DELETE CASCADE,
+    content  TEXT NOT NULL              -- full pre-edit file content (append/update_section)
+  );
 
   CREATE TABLE IF NOT EXISTS memories (
     id             TEXT PRIMARY KEY,
@@ -145,6 +152,17 @@ db.exec(`
   const cols = db.prepare("PRAGMA table_info(files)").all() as Array<{ name: string }>;
   if (!cols.some((c) => c.name === "pinned")) {
     db.exec("ALTER TABLE files ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0");
+  }
+}
+
+// Additive migration: SP3 provenance. Older databases predate these columns.
+{
+  const cols = db.prepare("PRAGMA table_info(audit_log)").all() as Array<{ name: string }>;
+  if (!cols.some((c) => c.name === "after_hash")) {
+    db.exec("ALTER TABLE audit_log ADD COLUMN after_hash TEXT");
+  }
+  if (!cols.some((c) => c.name === "source_client")) {
+    db.exec("ALTER TABLE audit_log ADD COLUMN source_client TEXT");
   }
 }
 
@@ -581,36 +599,107 @@ export interface AuditRow {
   tool: string;
   target: string | null;
   before_hash: string | null;
+  after_hash: string | null;
+  source_client: string | null;
   created_at: number;
 }
 
 const stmtInsertAudit = db.prepare(
-  "INSERT INTO audit_log (id, user_id, token_id, tool, target, before_hash, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+  "INSERT INTO audit_log (id, user_id, token_id, tool, target, before_hash, after_hash, source_client, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
 );
 const stmtAuditForUser = db.prepare(
   "SELECT * FROM audit_log WHERE user_id = ? ORDER BY created_at DESC LIMIT ?",
 );
 
+/** Append an audit row. Returns the new row id (so callers can attach a snapshot). */
 export function writeAudit(entry: {
   userId: string;
   tokenId?: string | null;
   tool: string;
   target?: string | null;
   beforeHash?: string | null;
-}): void {
+  afterHash?: string | null;
+  sourceClient?: string | null;
+}): string {
+  const id = newId();
   stmtInsertAudit.run(
-    newId(),
+    id,
     entry.userId,
     entry.tokenId ?? null,
     entry.tool,
     entry.target ?? null,
     entry.beforeHash ?? null,
+    entry.afterHash ?? null,
+    entry.sourceClient ?? null,
     now(),
   );
+  return id;
 }
 
 export function listAuditForUser(userId: string, limit = 100): AuditRow[] {
   return stmtAuditForUser.all(userId, limit) as unknown as AuditRow[];
+}
+
+const stmtAuditByIdOwned = db.prepare("SELECT * FROM audit_log WHERE id = ? AND user_id = ?");
+export function getOwnedAuditRow(userId: string, auditId: string): AuditRow | undefined {
+  return stmtAuditByIdOwned.get(auditId, userId) as AuditRow | undefined;
+}
+
+/* ----------------------------- audit snapshots ----------------------------- */
+const stmtInsertSnapshot = db.prepare("INSERT OR REPLACE INTO audit_snapshots (audit_id, content) VALUES (?, ?)");
+const stmtSnapshot = db.prepare("SELECT content FROM audit_snapshots WHERE audit_id = ?");
+export function writeSnapshot(auditId: string, content: string): void {
+  stmtInsertSnapshot.run(auditId, content);
+}
+export function getSnapshot(auditId: string): string | null {
+  const row = stmtSnapshot.get(auditId) as { content: string } | undefined;
+  return row ? row.content : null;
+}
+
+/* ------------------------------- activity feed ----------------------------- */
+export interface ActivityRaw {
+  id: string;
+  tool: string;
+  created_at: number;
+  source_client: string | null;
+  token_id: string | null;
+  target: string | null;
+  after_hash: string | null;
+  device: string | null;
+  file_title: string | null;
+  file_path: string | null;
+  memory_text: string | null;
+  memory_status: string | null;
+  has_snapshot: number;
+}
+
+/** AI-write timeline: PAT writes plus human `revert` rows, enriched + filtered. */
+export function listActivity(
+  userId: string,
+  filters: { tool?: string; source?: string; fileId?: string; before?: number; limit: number },
+): ActivityRaw[] {
+  const clauses = ["a.user_id = ?", "(a.token_id IS NOT NULL OR a.tool = 'revert')"];
+  const args: (string | number)[] = [userId];
+  if (filters.tool) { clauses.push("a.tool = ?"); args.push(filters.tool); }
+  if (filters.source) { clauses.push("a.source_client = ?"); args.push(filters.source); }
+  if (filters.fileId) { clauses.push("a.target = ?"); args.push(filters.fileId); }
+  if (filters.before) { clauses.push("a.created_at < ?"); args.push(filters.before); }
+  args.push(filters.limit);
+  return prepareCached(
+    `SELECT a.id, a.tool, a.created_at, a.source_client, a.token_id, a.target, a.after_hash,
+            p.name AS device,
+            f.title AS file_title, f.path AS file_path,
+            m.text AS memory_text, m.status AS memory_status,
+            (s.audit_id IS NOT NULL) AS has_snapshot
+       FROM audit_log a
+       LEFT JOIN pat_tokens p ON p.id = a.token_id
+       LEFT JOIN files f ON f.id = a.target
+       LEFT JOIN memories m ON m.id = a.target AND m.user_id = a.user_id
+       LEFT JOIN audit_snapshots s ON s.audit_id = a.id
+      WHERE ${clauses.join(" AND ")}
+      ORDER BY a.created_at DESC
+      LIMIT ?`,
+  ).all(...args) as unknown as ActivityRaw[];
 }
 
 export function sha256Hex(s: string): string {

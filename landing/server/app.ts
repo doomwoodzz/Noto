@@ -27,6 +27,7 @@ import { resolveApiToken } from "./auth/pat.ts";
 import { tokensRouter } from "./tokens/routes.ts";
 import { memoryRouter } from "./memory/routes.ts";
 import { searchRouter } from "./search/routes.ts";
+import { activityRouter } from "./audit/routes.ts";
 
 export function createApp(): Express {
   const app = express();
@@ -112,6 +113,7 @@ export function createApp(): Express {
   app.use("/api/tokens", tokensRouter);
   app.use("/api/memory", memoryRouter);
   app.use("/api", searchRouter);
+  app.use("/api/activity", activityRouter);
 
   /* ----------------------------- static frontend ------------------------- */
   // In production, serve the Vite build. In dev, Vite owns the frontend and
