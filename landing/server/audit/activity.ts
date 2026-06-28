@@ -1,4 +1,4 @@
-import type { ActivityRaw } from "../db.ts";
+import { getOwnedFile, getSnapshot, getOwnedMemory, type AuditRow, type ActivityRaw } from "../db.ts";
 
 export interface ActivityTarget {
   kind: "note" | "memory";
@@ -22,6 +22,26 @@ export interface ActivityEntry {
 
 const NOTE_TOOLS = new Set(["create_note", "append_note", "update_section"]);
 const MEMORY_TOOLS = new Set(["remember", "supersede"]);
+
+export function previewRevert(userId: string, audit: AuditRow): { before: string | null; current: string | null } {
+  if (NOTE_TOOLS.has(audit.tool) && audit.target) {
+    const file = getOwnedFile(userId, audit.target);
+    const current = file ? file.content : null;
+    const before = audit.tool === "create_note" ? null : getSnapshot(audit.id);
+    return { before, current };
+  }
+  if (MEMORY_TOOLS.has(audit.tool) && audit.target) {
+    const mem = getOwnedMemory(userId, audit.target);
+    const current = mem ? mem.text : null;
+    let before: string | null = null;
+    if (audit.tool === "supersede" && mem?.supersedes_id) {
+      const old = getOwnedMemory(userId, mem.supersedes_id);
+      before = old ? old.text : null;
+    }
+    return { before, current };
+  }
+  return { before: null, current: null };
+}
 
 export function toActivityEntry(r: ActivityRaw): ActivityEntry {
   const hasSnapshot = r.has_snapshot === 1;

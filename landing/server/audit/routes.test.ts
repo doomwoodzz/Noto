@@ -89,6 +89,37 @@ describe("GET /api/activity (browse)", () => {
   });
 });
 
+describe("GET /api/activity/:id/preview", () => {
+  async function setup3(email: string) {
+    const cookie = await signup(srv.baseURL, email);
+    const token = await mintToken(cookie, ["read", "write", "memory"], "Claude Code");
+    return { cookie, pat: makePatClient(srv.baseURL, token) };
+  }
+
+  it("returns before (snapshot) + current for an append", async () => {
+    const { cookie, pat } = await setup3("prev-append@example.com");
+    const create = await pat.req("POST", "/api/notes", { path: "Memory/p.md", title: "P", content: "start\n" });
+    const { fileId } = (await create.json()) as { fileId: string };
+    await pat.req("POST", `/api/files/${fileId}/append`, { text: "more" });
+    const { activity } = (await (await cookie.req("GET", "/api/activity")).json()) as { activity: Array<{ id: string; tool: string }> };
+    const append_ = activity.find((a) => a.tool === "append_note")!;
+    const res = await cookie.req("GET", `/api/activity/${append_.id}/preview`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { before: string; current: string };
+    expect(body.before).toBe("start\n");
+    expect(body.current).toContain("more");
+  });
+
+  it("404s a foreign audit id", async () => {
+    const a = await setup3("prev-iso-a@example.com");
+    const b = await setup3("prev-iso-b@example.com");
+    await a.pat.req("POST", "/api/notes", { path: "Memory/x.md", title: "X", content: "x" });
+    const { activity } = (await (await a.cookie.req("GET", "/api/activity")).json()) as { activity: Array<{ id: string }> };
+    const res = await b.cookie.req("GET", `/api/activity/${activity[0].id}/preview`);
+    expect(res.status).toBe(404);
+  });
+});
+
 describe("provenance population", () => {
   async function setup2(email: string, tokenName = "Claude Code") {
     const cookie = await signup(srv.baseURL, email);

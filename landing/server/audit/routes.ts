@@ -1,8 +1,8 @@
 import { Router, type Request, type Response } from "express";
 import rateLimit from "express-rate-limit";
 import { getCurrentUser } from "../auth/session.ts";
-import { listActivity } from "../db.ts";
-import { toActivityEntry } from "./activity.ts";
+import { listActivity, getOwnedAuditRow } from "../db.ts";
+import { toActivityEntry, previewRevert } from "./activity.ts";
 
 export const activityRouter = Router();
 
@@ -27,6 +27,17 @@ function requireCookieUser(req: Request, res: Response): string | null {
   }
   return user.id;
 }
+
+activityRouter.get("/:auditId/preview", limiter, (req: Request, res: Response) => {
+  const uid = requireCookieUser(req, res);
+  if (!uid) return;
+  const audit = getOwnedAuditRow(uid, req.params.auditId as string);
+  if (!audit) {
+    res.status(404).json({ error: "Activity not found" });
+    return;
+  }
+  res.json(previewRevert(uid, audit));
+});
 
 activityRouter.get("/", limiter, (req: Request, res: Response) => {
   const uid = requireCookieUser(req, res);

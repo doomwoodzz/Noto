@@ -739,6 +739,10 @@ const stmtInsertMemory = db.prepare(
 );
 const stmtSupersede = db.prepare("UPDATE memories SET status = 'superseded' WHERE id = ? AND user_id = ?");
 const stmtMemoryById = db.prepare("SELECT * FROM memories WHERE id = ?");
+const stmtOwnedMemory = db.prepare("SELECT * FROM memories WHERE id = ? AND user_id = ?");
+export function getOwnedMemory(userId: string, id: string): MemoryRow | undefined {
+  return stmtOwnedMemory.get(id, userId) as MemoryRow | undefined;
+}
 
 export function rememberMemory(input: {
   userId: string; text: string; type?: string; scope?: string;
