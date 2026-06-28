@@ -26,20 +26,31 @@ function load(): Promise<FeatureExtractionPipeline> {
   return extractorP;
 }
 
+async function runInference(texts: string[]): Promise<Float32Array[]> {
+  const extractor = await load();
+  const out = await extractor(texts, { pooling: "mean", normalize: true });
+  const dim = out.dims[out.dims.length - 1];
+  const flat = out.data;
+  if (!(flat instanceof Float32Array)) {
+    throw new Error(`embedder: expected Float32Array output, got ${(flat as { constructor?: { name?: string } })?.constructor?.name ?? typeof flat}`);
+  }
+  const vecs: Float32Array[] = [];
+  for (let i = 0; i < texts.length; i += 1) vecs.push(flat.slice(i * dim, (i + 1) * dim));
+  return vecs;
+}
+
+// Serialize inference: only one extractor() runs at a time. onnxruntime-node's run() is
+// synchronous-blocking today (so Node's single thread already serializes), but this pins the
+// invariant and future-proofs against onnxruntime moving run() onto the libuv threadpool.
+let inferChain: Promise<unknown> = Promise.resolve();
+
 export const realEmbedder: Embedder = {
   ready: () => loaded,
   async embed(texts) {
     if (texts.length === 0) return [];
-    const extractor = await load();
-    const out = await extractor(texts, { pooling: "mean", normalize: true });
-    const dim = out.dims[out.dims.length - 1];
-    const flat = out.data;
-    if (!(flat instanceof Float32Array)) {
-      throw new Error(`embedder: expected Float32Array output, got ${(flat as { constructor?: { name?: string } })?.constructor?.name ?? typeof flat}`);
-    }
-    const vecs: Float32Array[] = [];
-    for (let i = 0; i < texts.length; i += 1) vecs.push(flat.slice(i * dim, (i + 1) * dim));
-    return vecs;
+    const run = inferChain.then(() => runInference(texts), () => runInference(texts));
+    inferChain = run.then(() => {}, () => {}); // keep the chain alive across success/failure
+    return run;
   },
 };
 

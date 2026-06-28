@@ -14,4 +14,16 @@ describe("realEmbedder (vendored MiniLM via onnxruntime-node)", () => {
     expect(dot(a, b)).toBeGreaterThan(dot(a, c)); // paraphrase closer than unrelated
     expect(realEmbedder.ready()).toBe(true);
   }, 60000); // model load (~seconds) on first call
+
+  it("serializes concurrent embed() calls without crashing", async () => {
+    const [r1, r2, r3] = await Promise.all([
+      realEmbedder.embed(["alpha one"]),
+      realEmbedder.embed(["beta two", "gamma three"]),
+      realEmbedder.embed(["delta four"]),
+    ]);
+    expect(r1.length).toBe(1);
+    expect(r2.length).toBe(2);
+    expect(r3.length).toBe(1);
+    expect(r1[0].length).toBe(384);
+  }, 60000);
 });
