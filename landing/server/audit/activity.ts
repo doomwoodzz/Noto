@@ -1,5 +1,6 @@
 import {
   getOwnedFile, getSnapshot, getOwnedMemory, retireMemory, reactivateMemory,
+  getActiveMemoryByNorm,
   updateFile, deleteFile, sha256Hex, writeAudit,
   type AuditRow, type ActivityRaw,
 } from "../db.ts";
@@ -100,9 +101,18 @@ export function performRevert(userId: string, audit: AuditRow, force: boolean): 
       // there is no predecessor to restore, and retiring it would delete a fact the
       // user never intended to remove — so refuse rather than mutate wrongly.
       if (!newer.supersedes_id) return { status: "not_revertible", reason: "deduped correction — no predecessor to restore" };
-      // Retire the newer FIRST, then reactivate the old, so the partial unique index
-      // UNIQUE(user_id, scope, norm_text) WHERE status='active' never sees two active
-      // rows with the same norm_text.
+      const older = getOwnedMemory(userId, newer.supersedes_id);
+      if (!older) return { status: "not_revertible", reason: "predecessor no longer exists" };
+      // Reactivating the predecessor would violate the dedup unique index
+      // (UNIQUE(user_id, scope, norm_text) WHERE status='active') if another active
+      // memory now occupies that slot (e.g. the same fact was re-remembered after the
+      // supersede). Refuse mutation-free rather than half-apply the revert.
+      const occupant = getActiveMemoryByNorm(userId, older.scope, older.norm_text);
+      if (occupant && occupant.id !== older.id) {
+        return { status: "not_revertible", reason: "the predecessor's slot is occupied by a newer memory" };
+      }
+      // Retire the newer FIRST, then reactivate the old, so the unique index never
+      // sees two active rows with the same norm_text.
       retireMemory(userId, newer.id);
       reactivateMemory(userId, newer.supersedes_id);
       writeAudit({ userId, tokenId: null, tool: "revert", target: audit.target, sourceClient: "web" });

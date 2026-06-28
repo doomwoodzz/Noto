@@ -320,4 +320,23 @@ describe("revert memory", () => {
     const recall = (await (await pat.req("GET", "/api/memory?q=postgres&scope=p")).json()) as { memories: Array<{ text: string }> };
     expect(recall.memories.some((m) => m.text === "we use postgres")).toBe(true);
   });
+
+  it("refuses (no 500) when the predecessor's slot was re-occupied after the supersede", async () => {
+    const { cookie, pat } = await setup6("rev-collision@example.com");
+    const first = await pat.req("POST", "/api/memory", { text: "we use mysql", scope: "p" });    // M1 active
+    const { memoryId: m1 } = (await first.json()) as { memoryId: string };
+    await pat.req("POST", "/api/memory", { text: "we use postgres", scope: "p", supersedes: m1 }); // M2 active, M1 superseded
+    await pat.req("POST", "/api/memory", { text: "we use mysql", scope: "p" });                    // M3 active, same norm as M1
+    const { activity } = (await (await cookie.req("GET", "/api/activity")).json()) as { activity: Array<{ id: string; tool: string }> };
+    const row = activity.find((a) => a.tool === "supersede")!;
+
+    const res = await cookie.req("POST", `/api/activity/${row.id}/revert`, {});
+    expect(res.status).toBe(422); // graceful refusal, NOT a 500
+
+    // Nothing was half-applied: the correction ("postgres") and the re-remembered fact ("mysql") both stay active.
+    const pg = (await (await pat.req("GET", "/api/memory?q=postgres&scope=p")).json()) as { memories: Array<{ text: string }> };
+    expect(pg.memories.some((m) => m.text === "we use postgres")).toBe(true);
+    const my = (await (await pat.req("GET", "/api/memory?q=mysql&scope=p")).json()) as { memories: Array<{ text: string }> };
+    expect(my.memories.some((m) => m.text === "we use mysql")).toBe(true);
+  });
 });

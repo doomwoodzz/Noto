@@ -750,6 +750,9 @@ const stmtOwnedMemory = db.prepare("SELECT * FROM memories WHERE id = ? AND user
 export function getOwnedMemory(userId: string, id: string): MemoryRow | undefined {
   return stmtOwnedMemory.get(id, userId) as MemoryRow | undefined;
 }
+export function getActiveMemoryByNorm(userId: string, scope: string, normText: string): MemoryRow | undefined {
+  return stmtActiveByNorm.get(userId, scope, normText) as MemoryRow | undefined;
+}
 
 export function rememberMemory(input: {
   userId: string; text: string; type?: string; scope?: string;
