@@ -262,3 +262,62 @@ describe("provenance population", () => {
     expect(activity[0].client).toBe("cursor");
   });
 });
+
+describe("revert memory", () => {
+  async function setup6(email: string) {
+    const cookie = await signup(srv.baseURL, email);
+    const token = await mintToken(cookie, ["read", "write", "memory"], "Claude Code");
+    return { cookie, pat: makePatClient(srv.baseURL, token) };
+  }
+
+  it("undo of remember retires the memory (gone from recall)", async () => {
+    const { cookie, pat } = await setup6("rev-remember@example.com");
+    await pat.req("POST", "/api/memory", { text: "ephemeral fact", scope: "p" });
+    const { activity } = (await (await cookie.req("GET", "/api/activity")).json()) as { activity: Array<{ id: string; tool: string }> };
+    const row = activity.find((a) => a.tool === "remember")!;
+
+    expect((await cookie.req("POST", `/api/activity/${row.id}/revert`, {})).status).toBe(200);
+    const recall = (await (await pat.req("GET", "/api/memory?q=ephemeral&scope=p")).json()) as { memories: Array<{ text: string }> };
+    expect(recall.memories.length).toBe(0);
+  });
+
+  it("undo of a supersede reactivates the old memory and retires the new", async () => {
+    const { cookie, pat } = await setup6("rev-supersede@example.com");
+    const first = await pat.req("POST", "/api/memory", { text: "we use mysql", scope: "p" });
+    const { memoryId: oldId } = (await first.json()) as { memoryId: string };
+    await pat.req("POST", "/api/memory", { text: "we use postgres now", scope: "p", supersedes: oldId });
+    const { activity } = (await (await cookie.req("GET", "/api/activity")).json()) as { activity: Array<{ id: string; tool: string }> };
+    const row = activity.find((a) => a.tool === "supersede")!;
+
+    expect((await cookie.req("POST", `/api/activity/${row.id}/revert`, {})).status).toBe(200);
+    const recall = (await (await pat.req("GET", "/api/memory?q=mysql&scope=p")).json()) as { memories: Array<{ text: string }> };
+    expect(recall.memories.some((m) => m.text === "we use mysql")).toBe(true);
+    const recall2 = (await (await pat.req("GET", "/api/memory?q=postgres&scope=p")).json()) as { memories: Array<{ text: string }> };
+    expect(recall2.memories.some((m) => m.text === "we use postgres now")).toBe(false);
+  });
+
+  it("422 when the memory write was already undone", async () => {
+    const { cookie, pat } = await setup6("rev-twice@example.com");
+    await pat.req("POST", "/api/memory", { text: "one time", scope: "p" });
+    const { activity } = (await (await cookie.req("GET", "/api/activity")).json()) as { activity: Array<{ id: string; tool: string }> };
+    const row = activity.find((a) => a.tool === "remember")!;
+    await cookie.req("POST", `/api/activity/${row.id}/revert`, {});
+    expect((await cookie.req("POST", `/api/activity/${row.id}/revert`, {})).status).toBe(422);
+  });
+
+  it("refuses to revert a deduped supersede (no predecessor; would delete a pre-existing fact)", async () => {
+    const { cookie, pat } = await setup6("rev-dedup-supersede@example.com");
+    await pat.req("POST", "/api/memory", { text: "we use postgres", scope: "p" });          // Y (active)
+    const first = await pat.req("POST", "/api/memory", { text: "we use mysql", scope: "p" }); // X (active)
+    const { memoryId: xId } = (await first.json()) as { memoryId: string };
+    // Supersede X with text that normalizes to the already-active Y → dedups to Y (supersedes_id null).
+    await pat.req("POST", "/api/memory", { text: "we use postgres", scope: "p", supersedes: xId });
+    const { activity } = (await (await cookie.req("GET", "/api/activity")).json()) as { activity: Array<{ id: string; tool: string }> };
+    const row = activity.find((a) => a.tool === "supersede")!;
+
+    expect((await cookie.req("POST", `/api/activity/${row.id}/revert`, {})).status).toBe(422);
+    // Y must still be recallable — the revert must NOT have retired a pre-existing fact.
+    const recall = (await (await pat.req("GET", "/api/memory?q=postgres&scope=p")).json()) as { memories: Array<{ text: string }> };
+    expect(recall.memories.some((m) => m.text === "we use postgres")).toBe(true);
+  });
+});

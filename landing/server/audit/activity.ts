@@ -1,5 +1,6 @@
 import {
-  getOwnedFile, getSnapshot, getOwnedMemory, updateFile, deleteFile, sha256Hex, writeAudit,
+  getOwnedFile, getSnapshot, getOwnedMemory, retireMemory, reactivateMemory,
+  updateFile, deleteFile, sha256Hex, writeAudit,
   type AuditRow, type ActivityRaw,
 } from "../db.ts";
 
@@ -81,6 +82,30 @@ export function performRevert(userId: string, audit: AuditRow, force: boolean): 
       }
       updateFile(file.id, { content: before });
       writeAudit({ userId, tokenId: null, tool: "revert", target: audit.target, sourceClient: "web", beforeHash: sha256Hex(file.content) });
+      return { status: "reverted" };
+    }
+    case "remember": {
+      if (!audit.target) return { status: "not_revertible", reason: "no target" };
+      const mem = getOwnedMemory(userId, audit.target);
+      if (!mem || mem.status !== "active") return { status: "not_revertible", reason: "memory already inactive" };
+      retireMemory(userId, audit.target);
+      writeAudit({ userId, tokenId: null, tool: "revert", target: audit.target, sourceClient: "web" });
+      return { status: "reverted" };
+    }
+    case "supersede": {
+      if (!audit.target) return { status: "not_revertible", reason: "no target" };
+      const newer = getOwnedMemory(userId, audit.target);
+      if (!newer || newer.status !== "active") return { status: "not_revertible", reason: "correction already undone" };
+      // A deduped supersede points at a PRE-EXISTING memory (supersedes_id null):
+      // there is no predecessor to restore, and retiring it would delete a fact the
+      // user never intended to remove — so refuse rather than mutate wrongly.
+      if (!newer.supersedes_id) return { status: "not_revertible", reason: "deduped correction — no predecessor to restore" };
+      // Retire the newer FIRST, then reactivate the old, so the partial unique index
+      // UNIQUE(user_id, scope, norm_text) WHERE status='active' never sees two active
+      // rows with the same norm_text.
+      retireMemory(userId, newer.id);
+      reactivateMemory(userId, newer.supersedes_id);
+      writeAudit({ userId, tokenId: null, tool: "revert", target: audit.target, sourceClient: "web" });
       return { status: "reverted" };
     }
     default:

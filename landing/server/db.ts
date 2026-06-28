@@ -738,6 +738,13 @@ const stmtInsertMemory = db.prepare(
    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'active', ?)`,
 );
 const stmtSupersede = db.prepare("UPDATE memories SET status = 'superseded' WHERE id = ? AND user_id = ?");
+const stmtReactivate = db.prepare("UPDATE memories SET status = 'active' WHERE id = ? AND user_id = ?");
+export function retireMemory(userId: string, id: string): void {
+  stmtSupersede.run(id, userId); // → status='superseded'
+}
+export function reactivateMemory(userId: string, id: string): void {
+  stmtReactivate.run(id, userId); // → status='active'
+}
 const stmtMemoryById = db.prepare("SELECT * FROM memories WHERE id = ?");
 const stmtOwnedMemory = db.prepare("SELECT * FROM memories WHERE id = ? AND user_id = ?");
 export function getOwnedMemory(userId: string, id: string): MemoryRow | undefined {
