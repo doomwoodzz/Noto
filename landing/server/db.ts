@@ -906,11 +906,18 @@ const stmtInsertPassage = db.prepare(
 );
 export interface PassageInput { id: string; index: number; headingPath: string[]; text: string; charStart: number }
 export function replaceNotePassages(fileId: string, passages: PassageInput[], vectors: (Float32Array | null)[]): void {
-  stmtDeletePassages.run(fileId);
-  passages.forEach((p, i) => {
-    const vec = vectors[i] ?? null;
-    stmtInsertPassage.run(p.id, fileId, p.index, JSON.stringify(p.headingPath), p.text, p.charStart, vec ? floatsToBlob(vec) : null);
-  });
+  db.exec("BEGIN");
+  try {
+    stmtDeletePassages.run(fileId);
+    passages.forEach((p, i) => {
+      const vec = vectors[i] ?? null;
+      stmtInsertPassage.run(p.id, fileId, p.index, JSON.stringify(p.headingPath), p.text, p.charStart, vec ? floatsToBlob(vec) : null);
+    });
+    db.exec("COMMIT");
+  } catch (err) {
+    db.exec("ROLLBACK");
+    throw err;
+  }
 }
 
 const stmtSetMemoryEmbedding = db.prepare("UPDATE memories SET embedding = ? WHERE id = ?");
@@ -946,15 +953,19 @@ export function bumpMemoryUsage(ids: string[]): void {
   prepareCached(`UPDATE memories SET last_used_at = ?, use_count = use_count + 1 WHERE id IN (${ph})`).run(now(), ...ids);
 }
 
-/* backfill loaders */
+// System-wide loaders for the one-shot boot backfill (intentionally NOT user-scoped —
+// the backfill embeds every user's missing content once on startup).
+const stmtMissingMemEmbedding = db.prepare("SELECT id, text FROM memories WHERE embedding IS NULL AND status = 'active' LIMIT ?");
+const stmtFileIdsMissingPassages = db.prepare("SELECT f.id FROM files f WHERE f.id NOT IN (SELECT DISTINCT file_id FROM note_passages) LIMIT ?");
+const stmtFileContent = db.prepare("SELECT id, content FROM files WHERE id = ?");
 export function getMemoriesMissingEmbedding(limit = 1000): { id: string; text: string }[] {
-  return db.prepare("SELECT id, text FROM memories WHERE embedding IS NULL AND status = 'active' LIMIT ?").all(limit) as unknown as { id: string; text: string }[];
+  return stmtMissingMemEmbedding.all(limit) as unknown as { id: string; text: string }[];
 }
 export function getFileIdsMissingPassages(limit = 1000): string[] {
-  return (db.prepare("SELECT f.id FROM files f WHERE f.id NOT IN (SELECT DISTINCT file_id FROM note_passages) LIMIT ?").all(limit) as Array<{ id: string }>).map((r) => r.id);
+  return (stmtFileIdsMissingPassages.all(limit) as Array<{ id: string }>).map((r) => r.id);
 }
 export function getFileContent(fileId: string): { id: string; content: string } | undefined {
-  return db.prepare("SELECT id, content FROM files WHERE id = ?").get(fileId) as { id: string; content: string } | undefined;
+  return stmtFileContent.get(fileId) as { id: string; content: string } | undefined;
 }
 
 export { db };
