@@ -18,6 +18,9 @@ let extractorP: Promise<FeatureExtractionPipeline> | null = null;
 let loaded = false;
 function load(): Promise<FeatureExtractionPipeline> {
   if (!extractorP) {
+    // On load rejection, extractorP stays a rejected promise — every caller re-awaits the
+    // same error until restart. Intentional: a missing/corrupt vendored model is a deployment
+    // fault, not a transient failure, and the system degrades to lexical retrieval (ready() stays false).
     extractorP = pipeline("feature-extraction", MODEL_ID, { dtype: "q8" }).then((e) => { loaded = true; return e; });
   }
   return extractorP;
@@ -30,7 +33,10 @@ export const realEmbedder: Embedder = {
     const extractor = await load();
     const out = await extractor(texts, { pooling: "mean", normalize: true });
     const dim = out.dims[out.dims.length - 1];
-    const flat = out.data as Float32Array;
+    const flat = out.data;
+    if (!(flat instanceof Float32Array)) {
+      throw new Error(`embedder: expected Float32Array output, got ${(flat as { constructor?: { name?: string } })?.constructor?.name ?? typeof flat}`);
+    }
     const vecs: Float32Array[] = [];
     for (let i = 0; i < texts.length; i += 1) vecs.push(flat.slice(i * dim, (i + 1) * dim));
     return vecs;
