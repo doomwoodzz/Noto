@@ -34,3 +34,32 @@ export function buildConfigs({ notoUrl, token }: McpConfigInput) {
     cursorRule: `---\ndescription: When to read/write Noto shared memory via MCP\nalwaysApply: false\n---\n${STEERING_BODY}`,
   };
 }
+
+export interface RemoteConfigInput { notoUrl: string; token: string; scope?: string }
+
+function remoteHeaders(token: string, client: string, scope?: string): Record<string, string> {
+  const h: Record<string, string> = { Authorization: `Bearer ${token}`, "X-Noto-Client": client };
+  if (scope) h["X-Noto-Scope"] = scope;
+  return h;
+}
+function remoteJson(notoUrl: string, token: string, client: string, scope?: string): string {
+  return JSON.stringify({ mcpServers: { noto: { type: "http", url: `${notoUrl}/mcp`, headers: remoteHeaders(token, client, scope) } } }, null, 2);
+}
+
+export function buildRemoteConfigs({ notoUrl, token, scope }: RemoteConfigInput) {
+  const t = token || "noto_pat_…";
+  const codex =
+    `[mcp_servers.noto]\n` +
+    `url = "${notoUrl}/mcp"\n\n` +
+    `[mcp_servers.noto.headers]\n` +
+    `Authorization = "Bearer ${t}"\n` +
+    `X-Noto-Client = "codex"\n` +
+    (scope ? `X-Noto-Scope = "${scope}"\n` : "") +
+    `\n[memories]\n` +
+    `disable_on_external_context = true\n`;
+  return {
+    claudeCode: remoteJson(notoUrl, t, "claude-code", scope),
+    cursor: remoteJson(notoUrl, t, "cursor", scope),
+    codex,
+  };
+}
