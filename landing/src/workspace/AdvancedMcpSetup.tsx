@@ -59,7 +59,7 @@ export function AdvancedMcpSetup(
 
       <section className="nw-mcp-sec">
         <h3>2 · Configure your tool</h3>
-        <div className="nw-mcp-tabs" role="tablist">
+        <div className="nw-mcp-tabs" role="tablist" aria-label="AI client">
           {(Object.keys(CLIENT_LABEL) as ClientKind[]).map((k) => (
             <button key={k} role="tab" aria-selected={kind === k}
               className={kind === k ? "nw-mcp-tab nw-mcp-tab-on" : "nw-mcp-tab"}
