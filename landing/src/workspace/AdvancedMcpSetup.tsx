@@ -14,7 +14,7 @@ export function AdvancedMcpSetup(
   { client, tokens, memories, refresh }:
   { client: McpClient; tokens: PatInfo[]; memories: MemoryInfo[]; refresh: () => void },
 ) {
-  const [name, setName] = useState("Claude Code");
+  const [name, setName] = useState("Manual token");
   const [fresh, setFresh] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
