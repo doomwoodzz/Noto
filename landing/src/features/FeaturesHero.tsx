@@ -1,4 +1,5 @@
 import { ArrowRight, Check, Download } from "lucide-react";
+import { VERSION_LABEL } from "../shared/release";
 
 // Quick-jump chips to the deep-dive anchors further down the page.
 const JUMP = [
@@ -18,7 +19,7 @@ export function FeaturesHero() {
       <div className="l-shell f-hero-inner">
         <div className="f-hero-eyebrow">
           <span className="f-hero-eyebrow-dot" />
-          Every feature · Noto 1.4
+          Every feature · {VERSION_LABEL}
         </div>
         <h1 className="f-hero-title">
           Everything Noto does, in one <em>quiet workspace.</em>

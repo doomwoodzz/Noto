@@ -4,9 +4,13 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "fetch-embedding-model": "node scripts/fetch-embedding-model.mjs",
+    "mint-pat": "tsx scripts/mint-pat.mjs",
+    "predev": "node scripts/fetch-embedding-model.mjs",
     "dev": "concurrently -k -n vite,api -c cyan,magenta \"vite\" \"npm:dev:server\"",
     "dev:client": "vite",
     "dev:server": "cross-env PORT=8787 tsx watch server/index.ts",
+    "prebuild": "node scripts/fetch-embedding-model.mjs",
     "build": "tsc -b && vite build",
     "start": "cross-env NODE_ENV=production tsx server/index.ts",
     "typecheck:server": "tsc -p tsconfig.server.json --noEmit",
@@ -17,6 +21,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@huggingface/transformers": "^3.8.1",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "cookie": "^1.1.1",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
@@ -24,6 +30,7 @@
     "framer-motion": "^12.39.0",
     "helmet": "^8.2.0",
     "lucide-react": "^1.16.0",
+    "openai": "^6.44.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "zod": "^4.4.3"

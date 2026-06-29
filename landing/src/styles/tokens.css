@@ -4,7 +4,7 @@
    Mapped from Sources/Noto/Views/DesignSystem.swift
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400..600&family=JetBrains+Mono:wght@500;600&display=swap');
 
 :root {
   /* -------- COLOR · Surfaces (dark, stacked) -------- */
@@ -24,17 +24,27 @@
   --color-muted:      #8F99AE;
   --color-muted-dim:  #5C6473;
 
-  /* -------- COLOR · Accent -------- */
+  /* -------- COLOR · Accent --------
+     Canonical accent identity. The marketing (--page-*) and app (--nw-*) layers
+     alias these so the brand blue is defined exactly once. accent-ink / -soft
+     are the link-chip text/background; they get light-theme overrides below. */
   --color-accent:        #578FFA;
+  --color-accent-hover:  #3E78E7;
+  --color-accent-ink:    #9DBEFF;
+  --color-accent-ink-2:  #8FB2FF;
   --color-accent-soft:   rgba(87, 143, 250, 0.18);
+  --color-accent-soft-2: rgba(87, 143, 250, 0.13);
   --color-accent-softer: rgba(87, 143, 250, 0.08);
   --color-accent-pill:   rgba(87, 143, 250, 0.16);
+  --color-accent-border: rgba(87, 143, 250, 0.45);
 
   /* -------- COLOR · Status -------- */
   --color-recorder-red: #F54740;
+  --color-success:      #5BC98B;
 
   /* -------- TYPE · Families -------- */
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', system-ui, sans-serif;
+  --font-serif: 'Fraunces', Georgia, 'Times New Roman', serif;
   --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 
   /* -------- TYPE · Sizes -------- */
@@ -105,4 +115,19 @@
   --height-titlebar:      64px;
   --height-tabbar:        52px;
   --pad-titlebar-leading: 84px;
+}
+
+/* -------- Light-theme overrides --------
+   Only the accent link-chip tokens flip by theme: on a light surface the dark
+   chip text (#9DBEFF) is too pale to read, so it deepens to the accent-hover
+   blue. This is the fix for the app's previously-broken light-mode accents
+   (workspace.css's light block never redefined them). The surface/text tokens
+   stay dark-only on purpose — the landing's app-preview cells render them on a
+   fixed dark background. */
+html[data-theme="light"] {
+  --color-accent-ink:    #3E78E7;
+  --color-accent-ink-2:  #3E78E7;
+  --color-accent-soft:   rgba(87, 143, 250, 0.12);
+  --color-accent-soft-2: rgba(87, 143, 250, 0.10);
+  --color-accent-border: rgba(87, 143, 250, 0.35);
 }

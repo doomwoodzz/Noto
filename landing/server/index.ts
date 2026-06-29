@@ -3,6 +3,8 @@
  */
 import { env } from "./env.ts";
 import { createApp } from "./app.ts";
+import { warm } from "./search/embedder.ts";
+import { backfillEmbeddings } from "./search/semantic.ts";
 
 const app = createApp();
 
@@ -11,4 +13,8 @@ app.listen(env.PORT, () => {
   if (!env.googleConfigured) {
     console.log("  Google OAuth: not configured (set GOOGLE_CLIENT_ID/SECRET/REDIRECT_URI to enable).");
   }
+  warm();
+  void (async () => {
+    try { await backfillEmbeddings(); } catch { /* best-effort; never crash boot */ }
+  })();
 });

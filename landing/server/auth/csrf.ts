@@ -54,6 +54,10 @@ function originAllowed(req: Request): boolean {
 }
 
 export function csrfProtection(req: Request, res: Response, next: NextFunction): void {
+  if (req.apiUser) {            // PAT auth: no cookie, no CSRF surface
+    next();
+    return;
+  }
   if (SAFE_METHODS.has(req.method)) {
     next();
     return;

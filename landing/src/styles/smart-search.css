@@ -1,0 +1,196 @@
+/* Smart Search — expands out of the title-bar search box over a dimmed backdrop.
+   Mirrors the command-palette styling and reuses the workspace motion tokens. */
+
+.nw-ss-overlay {
+  /* Expand timing — easeInOutCubic so the morph eases in and out symmetrically. */
+  --ss-dur: 300ms;
+  --ss-ease: cubic-bezier(0.65, 0, 0.35, 1);
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  background: rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  transition: opacity var(--ss-dur) var(--ss-ease);
+}
+
+/* The panel literally grows out of the title-bar search box: its left/top/width/
+   max-height/radius are set inline and animate between the collapsed search-box
+   geometry and the expanded panel. overflow:hidden makes the contents reveal as
+   it grows, so every component expands in together with the box. */
+.nw-ss-panel {
+  position: fixed;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--nw-field);
+  border: 1px solid var(--nw-line-3);
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.5);
+  transform-origin: top center;
+  will-change: left, top, width, max-height;
+  transition:
+    left var(--ss-dur) var(--ss-ease),
+    top var(--ss-dur) var(--ss-ease),
+    width var(--ss-dur) var(--ss-ease),
+    max-height var(--ss-dur) var(--ss-ease),
+    border-radius var(--ss-dur) var(--ss-ease);
+}
+
+/* Inner sections settle in just behind the growing box for a cohesive reveal. */
+.nw-ss-panel > * {
+  opacity: 0;
+  transform: translateY(6px);
+  transition:
+    opacity calc(var(--ss-dur) * 0.7) var(--ss-ease),
+    transform calc(var(--ss-dur) * 0.7) var(--ss-ease);
+}
+.nw-ss-panel.is-open > * {
+  opacity: 1;
+  transform: none;
+}
+
+/* ---- header (the search input, sitting where the box was) ---- */
+.nw-ss-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--nw-line);
+}
+.nw-ss-icn { display: flex; color: var(--nw-dim); }
+.nw-ss-head input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--nw-ink);
+  font-size: 14.5px;
+  font-family: inherit;
+  min-width: 0;
+}
+.nw-ss-head input::placeholder { color: var(--nw-dim); }
+
+.nw-ss-spinner {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  border-radius: 50%;
+  border: 2px solid rgba(87, 143, 250, 0.25);
+  border-top-color: var(--nw-accent);
+  animation: notoSpin 0.8s linear infinite;
+}
+.nw-ss-mode {
+  flex: none;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--nw-dim);
+  border: 1px solid var(--nw-line-3);
+  border-radius: 5px;
+  padding: 2px 6px;
+}
+.nw-ss-mode.is-semantic { color: var(--nw-accent); border-color: var(--nw-accent-border); }
+.nw-ss-kbd {
+  flex: none;
+  font-size: 11px;
+  color: var(--nw-dim);
+  border: 1px solid var(--nw-line-3);
+  border-radius: 5px;
+  padding: 1px 5px;
+}
+
+/* ---- preparing (model warm-up) ---- */
+.nw-ss-prep {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  font-size: 12px;
+  color: var(--nw-muted);
+  border-bottom: 1px solid var(--nw-line);
+}
+.nw-ss-prep-bar {
+  flex: 1;
+  height: 3px;
+  border-radius: 3px;
+  background: var(--nw-line-2);
+  overflow: hidden;
+}
+.nw-ss-prep-bar span {
+  display: block;
+  height: 100%;
+  background: var(--nw-accent);
+  border-radius: 3px;
+  transition: width var(--dur-base) ease;
+}
+
+/* ---- results (scrollable; the panel never grows past max-height) ---- */
+.nw-ss-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 6px;
+}
+.nw-ss-hint {
+  padding: 18px 14px;
+  font-size: 13px;
+  color: var(--nw-dim);
+  line-height: 1.5;
+}
+
+.nw-ss-item {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+}
+.nw-ss-item.is-active { background: var(--nw-accent-soft); }
+.nw-ss-item-head { display: flex; align-items: baseline; gap: 9px; min-width: 0; }
+.nw-ss-item-title { font-size: 13.5px; font-weight: 600; color: var(--nw-ink); flex: none; }
+.nw-ss-item-trail {
+  font-size: 11.5px;
+  color: var(--nw-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.nw-ss-item-preview {
+  font-size: 12.75px;
+  line-height: 1.5;
+  color: var(--nw-soft);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.nw-ss-item-path { font-size: 11px; color: var(--nw-dim); }
+
+.nw-ss-hit {
+  background: var(--nw-accent-soft);
+  color: var(--nw-ink);
+  border-radius: 3px;
+  padding: 0 2px;
+}
+
+.nw-ss-foot {
+  flex: none;
+  padding: 9px 14px;
+  font-size: 11.5px;
+  color: var(--nw-dim);
+  border-top: 1px solid var(--nw-line);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nw-ss-overlay,
+  .nw-ss-panel,
+  .nw-ss-panel > * { transition: none; }
+}

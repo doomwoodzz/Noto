@@ -20,7 +20,15 @@ import { existsSync } from "node:fs";
 import { env } from "./env.ts";
 import { authRouter } from "./auth/routes.ts";
 import { notesRouter } from "./notes/routes.ts";
+import { aiRouter } from "./ai/routes.ts";
+import { linksRouter } from "./links/routes.ts";
 import { ensureCsrfCookie, csrfProtection } from "./auth/csrf.ts";
+import { resolveApiToken } from "./auth/pat.ts";
+import { tokensRouter } from "./tokens/routes.ts";
+import { memoryRouter } from "./memory/routes.ts";
+import { searchRouter } from "./search/routes.ts";
+import { activityRouter } from "./audit/routes.ts";
+import { mountMcp } from "./mcp/routes.ts";
 
 export function createApp(): Express {
   const app = express();
@@ -33,7 +41,9 @@ export function createApp(): Express {
   // Helmet sets a strict baseline: HSTS, X-Content-Type-Options, frameguard
   // (clickjacking), Referrer-Policy, and a Content-Security-Policy. The CSP
   // allows the Google Fonts the design uses and (dev only) Vite's HMR websocket.
-  const scriptSrc = ["'self'"];
+  // 'wasm-unsafe-eval' lets the in-browser embedding model (onnxruntime-web)
+  // compile its WASM. It permits WebAssembly only — not arbitrary eval/new Function.
+  const scriptSrc = ["'self'", "'wasm-unsafe-eval'"];
   const connectSrc = ["'self'", "https://accounts.google.com"];
   if (!env.isProd) {
     connectSrc.push("ws:", "http://localhost:5173");
@@ -82,6 +92,8 @@ export function createApp(): Express {
     next();
   });
 
+  app.use("/api", resolveApiToken); // resolve bearer PAT → req.apiUser (before CSRF)
+
   /* --------------------------------- CSRF -------------------------------- */
   // Issue a CSRF cookie for any browser hitting the API, then enforce the
   // double-submit check on every state-changing API request.
@@ -93,10 +105,20 @@ export function createApp(): Express {
 
   /* --------------------------------- routes ------------------------------ */
   app.get("/api/health", (_req: Request, res: Response) => {
-    res.json({ ok: true, googleConfigured: env.googleConfigured });
+    res.json({ ok: true, googleConfigured: env.googleConfigured, aiConfigured: env.openaiConfigured });
   });
   app.use("/api/auth", authRouter);
   app.use("/api", notesRouter);
+  app.use("/api/ai", aiRouter);
+  app.use("/api/links", linksRouter);
+  app.use("/api/tokens", tokensRouter);
+  app.use("/api/memory", memoryRouter);
+  app.use("/api", searchRouter);
+  app.use("/api/activity", activityRouter);
+
+  // Remote MCP: a stateless Streamable-HTTP shell that replays each tool call
+  // in-process through the /api stack above (bearer PAT, no CSRF/cookies).
+  mountMcp(app);
 
   /* ----------------------------- static frontend ------------------------- */
   // In production, serve the Vite build. In dev, Vite owns the frontend and

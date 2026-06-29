@@ -24,9 +24,12 @@ export interface UseVault {
   selectFile: (id: string) => void;
   updateContent: (fileId: string, content: string, immediate?: boolean) => void;
   createNote: (input?: { folder?: string; title?: string; content?: string }) => Promise<VaultFile | null>;
-  createNoteAtPath: (path: string, title: string, content?: string) => Promise<VaultFile | null>;
+  createNoteAtPath: (path: string, title: string, content?: string, select?: boolean) => Promise<VaultFile | null>;
   renameNote: (fileId: string, newTitle: string) => Promise<void>;
   deleteNote: (fileId: string) => Promise<void>;
+  togglePin: (fileId: string) => Promise<void>;
+  /** Force-write any debounced edits now (e.g. before switching notes). */
+  flush: () => Promise<void>;
 }
 
 export function useVault(): UseVault {
@@ -119,12 +122,12 @@ export function useVault(): UseVault {
   );
 
   const createNoteAtPath = useCallback(
-    async (path: string, title: string, content = `# ${title}\n\n`): Promise<VaultFile | null> => {
+    async (path: string, title: string, content = `# ${title}\n\n`, select = true): Promise<VaultFile | null> => {
       if (!vault) return null;
       try {
         const { file } = await api.createFile(vault.id, { path, title, content });
         setFiles((prev) => [...prev, file]);
-        setActiveFileId(file.id);
+        if (select) setActiveFileId(file.id);
         return file;
       } catch (e) {
         setError(e instanceof ApiError ? e.message : "Could not create the note.");
@@ -182,6 +185,24 @@ export function useVault(): UseVault {
     [],
   );
 
+  const togglePin = useCallback(
+    async (fileId: string): Promise<void> => {
+      const file = files.find((f) => f.id === fileId);
+      if (!file) return;
+      const next = !file.pinned;
+      // Optimistic — pinning is a low-stakes toggle; revert on failure.
+      setFiles((prev) => prev.map((f) => (f.id === fileId ? { ...f, pinned: next } : f)));
+      try {
+        const { file: updated } = await api.updateFile(fileId, { pinned: next });
+        setFiles((prev) => prev.map((f) => (f.id === fileId ? updated : f)));
+      } catch (e) {
+        setFiles((prev) => prev.map((f) => (f.id === fileId ? { ...f, pinned: !next } : f)));
+        setError(e instanceof ApiError ? e.message : "Could not update the note.");
+      }
+    },
+    [files],
+  );
+
   const activeFile = files.find((f) => f.id === activeFileId) ?? null;
 
   return {
@@ -198,5 +219,7 @@ export function useVault(): UseVault {
     createNoteAtPath,
     renameNote,
     deleteNote,
+    togglePin,
+    flush,
   };
 }

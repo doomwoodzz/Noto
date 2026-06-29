@@ -42,6 +42,9 @@ const authLimiter = rateLimit({
   standardHeaders: "draft-7",
   legacyHeaders: false,
   message: { error: "Too many attempts. Please try again later." },
+  // Skip rate limiting in the test environment so integration tests can spin up
+  // more than 10 unique accounts per test run without hitting the 15-min cap.
+  skip: () => process.env.NODE_ENV === "test",
 });
 
 /* -------------------------------- routes ------------------------------- */

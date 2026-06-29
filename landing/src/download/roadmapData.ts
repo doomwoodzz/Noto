@@ -1,6 +1,8 @@
 // Roadmap board data for the download / coming-soon page.
 // Votes and comment counts are intentionally omitted — the board is read-only.
 
+import { RELEASE_LABEL } from "../shared/release";
+
 export type TagKey = "feature" | "improvement" | "fix";
 
 export interface RoadmapTag {
@@ -201,7 +203,7 @@ export const COLUMNS: RoadmapColumn[] = [
         title: "iCloud vault sync (beta)",
         tag: "feature",
         status: "In Progress",
-        target: "Ships June 20",
+        target: `Ships ${RELEASE_LABEL}`,
         author: "Core",
         desc: [
           "Keep one vault in step across every Mac signed into your iCloud account. Sync runs file-by-file over Markdown, so nothing is locked into a proprietary database.",
@@ -220,7 +222,7 @@ export const COLUMNS: RoadmapColumn[] = [
         title: "Lecture AI: 12 new languages",
         tag: "feature",
         status: "In Progress",
-        target: "Ships June 20",
+        target: `Ships ${RELEASE_LABEL}`,
         author: "Lecture AI",
         desc: [
           "On-device transcription and structured note drafting for twelve additional languages, including Japanese, German, and Spanish — all without your audio leaving the Mac.",

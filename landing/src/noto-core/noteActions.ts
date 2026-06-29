@@ -14,6 +14,7 @@ export function createLectureNote(title: string, now: number): VaultFile {
     path: `AI Lecture Notes/${safeTitle}.md`,
     title: safeTitle,
     content: `# ${safeTitle}\n\n## Live notes\nNoto will add structured lecture notes here after you press Record and then Stop.`,
+    pinned: false,
     createdAt: now,
     updatedAt: now,
   };

@@ -10,6 +10,8 @@ export interface VaultFile {
   path: string;
   title: string;
   content: string;
+  /** Whether the note is pinned in the sidebar (persisted server-side). */
+  pinned: boolean;
   createdAt: number;
   updatedAt: number;
 }
@@ -53,7 +55,7 @@ export interface KnowledgeGraph {
   edges: GraphEdge[];
 }
 
-export type GraphFilter = "all" | "local" | "lectureOnly" | "orphans";
+export type GraphFilter = "all" | "local" | "lectureOnly" | "orphans" | "linked";
 
 export interface ChecklistItem {
   id: string;

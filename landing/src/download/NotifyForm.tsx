@@ -29,7 +29,7 @@ export function NotifyForm() {
     return (
       <div className="cs-notify cs-notify-done" role="status">
         <span className="cs-notify-done-icon"><Check size={14} strokeWidth={2.4} /></span>
-        <span>You're on the list — we'll email you on June 20.</span>
+        <span>You're on the list — we'll email you the moment it's ready.</span>
       </div>
     );
   }
