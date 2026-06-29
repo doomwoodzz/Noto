@@ -53,6 +53,7 @@ describe("buildCursorDeepLink", () => {
   it("targets the cursor install scheme with a base64 server config", () => {
     const url = buildCursorDeepLink({ notoUrl: "https://noto.test", token: "noto_pat_abc" });
     expect(url.startsWith("cursor://anysphere.cursor-deeplink/mcp/install?")).toBe(true);
+    expect(new URL(url).searchParams.get("name")).toBe("noto");
     const config = new URL(url).searchParams.get("config")!;
     const obj = JSON.parse(atob(config));
     expect(obj.command).toBe("npx");
@@ -72,5 +73,11 @@ describe("buildClaudeAddCommand", () => {
     const obj = JSON.parse(json);
     expect(obj.env.NOTO_CLIENT).toBe("claude-code");
     expect(obj.env.NOTO_TOKEN).toBe("noto_pat_abc");
+  });
+
+  it("POSIX-escapes a single quote in notoUrl so the shell command stays intact", () => {
+    const cmd = buildClaudeAddCommand({ notoUrl: "https://x.test/a'b", token: "t" });
+    expect(cmd).toContain("'\\''");
+    expect(cmd.endsWith("' --scope user")).toBe(true);
   });
 });

@@ -30,7 +30,10 @@ export function buildCursorDeepLink({ notoUrl, token }: McpConfigInput): string 
 /** Claude Code one-paste CLI install (global scope; the server auto-detects per-project scope at runtime). */
 export function buildClaudeAddCommand({ notoUrl, token }: McpConfigInput): string {
   const cfg = notoServerObject(notoUrl, token || "noto_pat_…", "claude-code");
-  return `claude mcp add-json noto '${JSON.stringify(cfg)}' --scope user`;
+  // Wrap the JSON in single quotes (as Claude Code's docs do) and POSIX-escape any
+  // literal "'" via the close-escape-reopen idiom so the command is shell-safe for any input.
+  const json = JSON.stringify(cfg).replace(/'/g, "'\\''");
+  return `claude mcp add-json noto '${json}' --scope user`;
 }
 
 function jsonConfig(notoUrl: string, token: string, client: string): string {
