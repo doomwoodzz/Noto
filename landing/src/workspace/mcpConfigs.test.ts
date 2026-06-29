@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildConfigs, buildRemoteConfigs, STEERING_BODY } from "./mcpConfigs.ts";
+import { buildConfigs, buildRemoteConfigs, STEERING_BODY, buildCursorDeepLink, buildClaudeAddCommand } from "./mcpConfigs.ts";
 
 describe("buildConfigs", () => {
   const cfg = buildConfigs({ notoUrl: "https://noto.test", token: "noto_pat_abc" });
@@ -46,5 +46,31 @@ describe("buildRemoteConfigs", () => {
     const r = buildRemoteConfigs({ notoUrl: "https://noto.app", token: "noto_pat_abc" });
     expect(JSON.parse(r.claudeCode).mcpServers.noto.headers["X-Noto-Scope"]).toBeUndefined();
     expect(r.codex).not.toContain("X-Noto-Scope");
+  });
+});
+
+describe("buildCursorDeepLink", () => {
+  it("targets the cursor install scheme with a base64 server config", () => {
+    const url = buildCursorDeepLink({ notoUrl: "https://noto.test", token: "noto_pat_abc" });
+    expect(url.startsWith("cursor://anysphere.cursor-deeplink/mcp/install?")).toBe(true);
+    const config = new URL(url).searchParams.get("config")!;
+    const obj = JSON.parse(atob(config));
+    expect(obj.command).toBe("npx");
+    expect(obj.args).toEqual(["-y", "noto-mcp"]);
+    expect(obj.env.NOTO_URL).toBe("https://noto.test");
+    expect(obj.env.NOTO_TOKEN).toBe("noto_pat_abc");
+    expect(obj.env.NOTO_CLIENT).toBe("cursor");
+  });
+});
+
+describe("buildClaudeAddCommand", () => {
+  it("is a claude mcp add-json command at user scope with valid embedded JSON", () => {
+    const cmd = buildClaudeAddCommand({ notoUrl: "https://noto.test", token: "noto_pat_abc" });
+    expect(cmd.startsWith("claude mcp add-json noto '")).toBe(true);
+    expect(cmd.endsWith("' --scope user")).toBe(true);
+    const json = cmd.slice("claude mcp add-json noto '".length, -"' --scope user".length);
+    const obj = JSON.parse(json);
+    expect(obj.env.NOTO_CLIENT).toBe("claude-code");
+    expect(obj.env.NOTO_TOKEN).toBe("noto_pat_abc");
   });
 });
