@@ -58,9 +58,10 @@ export function ToolCard(
 
   const disconnect = async () => {
     if (!linked) return;
-    setErr(null);
+    setBusy(true); setErr(null);
     try { await client.revokeToken(linked.id); setReveal(null); refresh(); }
     catch (e) { setErr(e instanceof Error ? e.message : "Could not disconnect."); }
+    finally { setBusy(false); }
   };
 
   return (
@@ -96,11 +97,15 @@ export function ToolCard(
       {linked && (
         <div className="nw-mcp-tool-foot">
           <button className="nw-mcp-textbtn"
-            onClick={async () => { setShowSteering((s) => !s); await copyText(steering); }}>
+            onClick={async () => {
+              const next = !showSteering;
+              setShowSteering(next);
+              if (next) await copyText(steering);
+            }}>
             Add memory instructions to {tool.steeringTarget}
           </button>
           <button className="nw-mcp-textbtn" onClick={connect} disabled={busy}>Reconnect</button>
-          <button className="nw-mcp-textbtn" onClick={disconnect}>Disconnect</button>
+          <button className="nw-mcp-textbtn" onClick={disconnect} disabled={busy}>Disconnect</button>
         </div>
       )}
       {showSteering && <pre className="nw-mcp-config">{steering}</pre>}
