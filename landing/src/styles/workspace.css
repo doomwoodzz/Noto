@@ -753,6 +753,29 @@ html[data-theme="light"] .nw-ai { box-shadow: 0 30px 60px rgba(15, 22, 35, 0.22)
 .nw-mcp-tab { background: none; border: 1px solid var(--nw-line-3); color: inherit; border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 12px; }
 .nw-mcp-tab-on { background: rgba(127, 140, 170, 0.16); }
 
+.nw-mcp-tools { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+.nw-mcp-tool { border: 1px solid var(--nw-line-3); border-radius: 10px; padding: 11px 12px; }
+.nw-mcp-tool-on { border-color: var(--nw-accent-border); }
+.nw-mcp-tool-head { display: flex; align-items: center; gap: 12px; }
+.nw-mcp-tool-logo { width: 40px; height: 40px; flex: none; display: flex; align-items: center; justify-content: center;
+  background: rgba(127, 127, 127, .12); border-radius: 8px; color: var(--nw-ink); }
+.nw-mcp-tool-meta { flex: 1; min-width: 0; }
+.nw-mcp-tool-name { font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 8px; }
+.nw-mcp-tool-desc { font-size: 12px; color: var(--nw-muted); }
+.nw-mcp-badge { font-size: 11px; background: var(--nw-accent-soft); color: var(--nw-accent-ink); padding: 1px 8px; border-radius: 6px; }
+.nw-mcp-connect { border: 1px solid var(--nw-accent-border); color: var(--nw-accent-ink); background: var(--nw-accent-soft);
+  border-radius: 6px; padding: 6px 16px; font-size: 13px; cursor: pointer; }
+.nw-mcp-connect:disabled { opacity: .6; cursor: default; }
+.nw-mcp-linked { font-size: 12px; background: var(--nw-accent-soft); color: var(--nw-accent-ink); padding: 3px 10px; border-radius: 6px; }
+.nw-mcp-reveal { margin-top: 10px; }
+.nw-mcp-reveal-top { display: flex; justify-content: space-between; font-size: 11px; color: var(--nw-muted); margin-bottom: 6px; }
+.nw-mcp-copied { color: var(--nw-accent-ink); }
+.nw-mcp-tool-foot { display: flex; justify-content: space-between; gap: 8px; margin-top: 9px; }
+.nw-mcp-textbtn { background: none; border: 0; color: var(--nw-accent-ink); font-size: 12px; cursor: pointer; padding: 0; }
+.nw-mcp-adv { margin-top: 18px; border-top: 1px solid var(--nw-line-3); padding-top: 12px; }
+.nw-mcp-adv summary { font-size: 13px; color: var(--nw-muted); cursor: pointer; }
+.nw-mcp-foot { font-size: 12px; color: var(--nw-muted); margin-top: 12px; }
+
 /* ----------------------------- AI Activity ----------------------------- */
 .nw-act-panel {
   position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
