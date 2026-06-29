@@ -19,7 +19,8 @@
     "test:watch": "vitest",
     "test:graph": "node scripts/test-knowledge-graph-physics.mjs",
     "preview": "vite preview",
-    "benchmark:tokens": "tsx scripts/benchmark-token-savings.mts && tsx scripts/render-token-savings.mts"
+    "benchmark:tokens": "tsx scripts/benchmark-token-savings.mts && tsx scripts/render-token-savings.mts",
+    "benchmark:output": "tsx scripts/benchmark-output-tokens.mts"
   },
   "dependencies": {
     "@huggingface/transformers": "^3.8.1",

@@ -14,7 +14,7 @@
 
 **"Token saving"** = the reduction in **input (prompt) tokens** an LLM agent must consume to have the relevant context for a query, when context is assembled by semantic retrieval (top-K) instead of by dumping the whole corpus.
 
-We measure **input tokens only** — that is where retrieval acts. Output tokens are unaffected by retrieval and are out of scope.
+The primary benchmark measures **input tokens** — that is where retrieval acts. A companion script (`benchmark-output-tokens.mts`, `npm run benchmark:output`) measures **output (completion) tokens** to confirm the converse: output is driven by the question, not by context assembly, so retrieval does *not* save output — the MCP path even emits slightly more (the tool calls). It runs real `gpt-4o-mini` generations (temperature 0, capped) reading the API's ground-truth `usage.completion_tokens`, and degrades to a deterministic tool-call-overhead report when no live key is configured. See `docs/benchmarks/token-savings/report-output.md`.
 
 **Baseline (naive, no retrieval):** the agent has no index, so on every turn it pastes the *entire* corpus into the prompt to be safe — all note bodies + the full active-memory store, serialized the way an agent would receive them (JSON, matching the MCP tool-result envelope). This is the honest worst-case for a "no retrieval" integration and the strongest motivation for the layer.
 

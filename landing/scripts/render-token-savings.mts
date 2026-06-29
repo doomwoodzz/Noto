@@ -196,6 +196,9 @@ ${statRows.map(([k, v]) => `<tr><th>${esc(k)}</th><td class="n strong">${esc(v)}
 <table><thead><tr><th>#</th><th>Query</th><th>Scenario</th><th class="n">Baseline</th><th class="n">Optimized</th><th class="n">Saved</th><th class="n">%</th></tr></thead>
 <tbody>${perQueryTableRows}</tbody></table>
 
+<h2>Output tokens?</h2>
+<p>These savings are <strong>input-side</strong>. Output (completion) tokens are driven by the question, not by how context is assembled, so retrieval does not reduce them — the MCP path even emits a little <em>more</em> output (the tool calls). See <a href="report-output.md">report-output.md</a> (regenerate with <code>npm run benchmark:output</code>).</p>
+
 <p class="foot">Corpus: ${esc(results.corpus.notesSource)} + ${esc(results.corpus.memoriesSource)}.
 Regenerate with <code>cd landing && npm run benchmark:tokens</code>.</p>
 </body></html>`;
@@ -242,6 +245,10 @@ ${statRows.map(([k, v]) => `| ${k} | ${v} |`).join("\n")}
 | # | Query | Scenario | Baseline | Optimized | Saved | % |
 |---|---|---|--:|--:|--:|--:|
 ${(results.perQuery as any[]).map((r, i) => `| Q${i + 1} | ${r.query} | ${r.scenario} | ${fmt(r.baseline)} | ${fmt(r.optimized)} | ${fmt(r.saved)} | **${(r.pct * 100).toFixed(0)}%** |`).join("\n")}
+
+## Output tokens?
+
+These savings are **input-side**. Output (completion) tokens are driven by the question, not by how context is assembled, so retrieval does not reduce them — the MCP path even emits slightly *more* output (the tool calls). See [report-output.md](report-output.md) (\`npm run benchmark:output\`).
 
 ## Corpus-scaling detail
 

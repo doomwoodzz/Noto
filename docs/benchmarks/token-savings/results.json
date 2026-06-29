@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-29T14:43:57.790Z",
+  "generatedAt": "2026-06-29T19:09:56.409Z",
   "tokenizer": "gpt-tokenizer o200k_base (GPT-4o encoding; provider-neutral proxy)",
   "embedderReady": true,
   "corpus": {
@@ -20,10 +20,10 @@
       "query": "How do plants convert light into chemical energy?",
       "scenario": "combined",
       "note": "paraphrase of photosynthesis (no keyword overlap)",
-      "baseline": 3108,
+      "baseline": 3105,
       "optimized": 959,
-      "saved": 2149,
-      "pct": 0.6914414414414415,
+      "saved": 2146,
+      "pct": 0.6911433172302738,
       "notesHits": 5,
       "memoryHits": 6
     },
@@ -32,9 +32,9 @@
       "scenario": "notes",
       "note": "direct biology lookup",
       "baseline": 859,
-      "optimized": 412,
-      "saved": 447,
-      "pct": 0.5203725261932479,
+      "optimized": 425,
+      "saved": 434,
+      "pct": 0.5052386495925495,
       "notesHits": 5,
       "memoryHits": 0
     },
@@ -42,10 +42,10 @@
       "query": "Explain how chloroplasts relate to glucose production",
       "scenario": "combined",
       "note": "multi-note biology",
-      "baseline": 3108,
-      "optimized": 980,
-      "saved": 2128,
-      "pct": 0.6846846846846847,
+      "baseline": 3105,
+      "optimized": 985,
+      "saved": 2120,
+      "pct": 0.6827697262479872,
       "notesHits": 5,
       "memoryHits": 6
     },
@@ -54,9 +54,9 @@
       "scenario": "notes",
       "note": "paraphrase of Cold War",
       "baseline": 859,
-      "optimized": 79,
-      "saved": 780,
-      "pct": 0.9080325960419092,
+      "optimized": 76,
+      "saved": 783,
+      "pct": 0.9115250291036089,
       "notesHits": 1,
       "memoryHits": 0
     },
@@ -64,10 +64,10 @@
       "query": "How should I structure my study sessions?",
       "scenario": "memory",
       "note": "study-habit preferences",
-      "baseline": 2249,
-      "optimized": 522,
+      "baseline": 2246,
+      "optimized": 519,
       "saved": 1727,
-      "pct": 0.7678968430413518,
+      "pct": 0.7689225289403384,
       "notesHits": 0,
       "memoryHits": 6
     },
@@ -75,10 +75,10 @@
       "query": "What did I decide about summarizing lectures?",
       "scenario": "memory",
       "note": "decision recall",
-      "baseline": 2249,
-      "optimized": 512,
-      "saved": 1737,
-      "pct": 0.7723432636727434,
+      "baseline": 2246,
+      "optimized": 511,
+      "saved": 1735,
+      "pct": 0.7724844167408726,
       "notesHits": 0,
       "memoryHits": 6
     },
@@ -87,9 +87,9 @@
       "scenario": "notes",
       "note": "Macbeth",
       "baseline": 859,
-      "optimized": 76,
-      "saved": 783,
-      "pct": 0.9115250291036089,
+      "optimized": 72,
+      "saved": 787,
+      "pct": 0.9161816065192084,
       "notesHits": 1,
       "memoryHits": 0
     },
@@ -97,10 +97,10 @@
       "query": "How do enzymes affect chemical reactions in cells?",
       "scenario": "combined",
       "note": "enzymes glossary + note",
-      "baseline": 3108,
-      "optimized": 947,
-      "saved": 2161,
-      "pct": 0.6953024453024453,
+      "baseline": 3105,
+      "optimized": 956,
+      "saved": 2149,
+      "pct": 0.692109500805153,
       "notesHits": 5,
       "memoryHits": 6
     },
@@ -108,10 +108,10 @@
       "query": "What is a logarithm and how does it relate to exponents?",
       "scenario": "combined",
       "note": "math glossary + note",
-      "baseline": 3108,
-      "optimized": 263,
-      "saved": 2845,
-      "pct": 0.9153796653796654,
+      "baseline": 3105,
+      "optimized": 261,
+      "saved": 2844,
+      "pct": 0.9159420289855073,
       "notesHits": 1,
       "memoryHits": 2
     },
@@ -119,51 +119,51 @@
       "query": "Remind me of the office hours and exam details",
       "scenario": "memory",
       "note": "logistics facts",
-      "baseline": 2249,
-      "optimized": 523,
+      "baseline": 2246,
+      "optimized": 520,
       "saved": 1726,
-      "pct": 0.7674522009782125,
+      "pct": 0.7684772929652716,
       "notesHits": 0,
       "memoryHits": 6
     }
   ],
   "summary": {
     "queries": 10,
-    "meanPct": 0.763443069583931,
-    "medianPct": 0.7676745220097821,
-    "minPct": 0.5203725261932479,
-    "maxPct": 0.9153796653796654,
-    "totalBaseline": 21756,
-    "totalOptimized": 5273,
-    "totalSaved": 16483,
-    "sessionPct": 0.7576300790586505,
-    "meanBaseline": 2175.6,
-    "meanOptimized": 527.3
+    "meanPct": 0.762479409713077,
+    "medianPct": 0.768699910952805,
+    "minPct": 0.5052386495925495,
+    "maxPct": 0.9161816065192084,
+    "totalBaseline": 21735,
+    "totalOptimized": 5284,
+    "totalSaved": 16451,
+    "sessionPct": 0.756889809063722,
+    "meanBaseline": 2173.5,
+    "meanOptimized": 528.4
   },
   "scaling": [
     {
       "totalNotes": 11,
-      "meanBaseline": 3115,
-      "meanOptimized": 779,
-      "meanPct": 0.7499197431781701
+      "meanBaseline": 3122,
+      "meanOptimized": 783.5,
+      "meanPct": 0.7490390775144139
     },
     {
       "totalNotes": 31,
-      "meanBaseline": 6977,
-      "meanOptimized": 780,
-      "meanPct": 0.88820409918303
+      "meanBaseline": 7021,
+      "meanOptimized": 780.25,
+      "meanPct": 0.8888691069648198
     },
     {
       "totalNotes": 71,
-      "meanBaseline": 14822,
-      "meanOptimized": 784.75,
-      "meanPct": 0.94705505329915
+      "meanBaseline": 14801,
+      "meanOptimized": 793,
+      "meanPct": 0.946422539017634
     },
     {
       "totalNotes": 151,
-      "meanBaseline": 30443,
-      "meanOptimized": 789.75,
-      "meanPct": 0.9740580757481194
+      "meanBaseline": 30380,
+      "meanOptimized": 779.25,
+      "meanPct": 0.9743499012508229
     }
   ],
   "scalingNote": "Notes beyond the first 11 are synthetic, in the same shape, used only to plot how savings scale with corpus size."
