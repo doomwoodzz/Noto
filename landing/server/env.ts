@@ -10,6 +10,9 @@
 import { config as loadDotenv } from "dotenv";
 import { z } from "zod";
 import crypto from "node:crypto";
+import { DatabaseSync } from "node:sqlite";
+import { mkdirSync } from "node:fs";
+import { dirname } from "node:path";
 
 loadDotenv();
 
@@ -61,18 +64,53 @@ if (!parsed.success) {
 
 const raw = parsed.data;
 
-// In production a real, externally-provided secret is mandatory. In dev we
-// derive an ephemeral one so the app runs out of the box (sessions reset on
-// restart, which is fine locally and never happens in prod).
+/**
+ * Load the session secret from the database, generating & persisting a strong
+ * one on first run. Used as a fallback when SESSION_SECRET is not injected via
+ * env, so the server boots out of the box on any host instead of crashing.
+ *
+ * This opens its OWN short-lived sqlite connection (rather than importing
+ * `db.ts`) to avoid a circular import — `db.ts` imports this module. The
+ * connection is closed before `db.ts` opens its own, so they never overlap.
+ *
+ * The secret only signs the transient (10-minute) OAuth state cookie; real
+ * login sessions are opaque server-side tokens that don't depend on it. It is
+ * stored alongside the data it protects, so if the DB is reset the secret is
+ * reset too — consistent and harmless.
+ */
+function loadOrCreatePersistedSecret(dbPath: string): string {
+  mkdirSync(dirname(dbPath), { recursive: true });
+  const sdb = new DatabaseSync(dbPath);
+  try {
+    sdb.exec("PRAGMA journal_mode = WAL;");
+    sdb.exec(
+      "CREATE TABLE IF NOT EXISTS app_secrets (key TEXT PRIMARY KEY, value TEXT NOT NULL)",
+    );
+    const row = sdb
+      .prepare("SELECT value FROM app_secrets WHERE key = 'session_secret'")
+      .get() as { value: string } | undefined;
+    if (row?.value) return row.value;
+    const generated = crypto.randomBytes(32).toString("hex");
+    sdb
+      .prepare("INSERT INTO app_secrets (key, value) VALUES ('session_secret', ?)")
+      .run(generated);
+    return generated;
+  } finally {
+    sdb.close();
+  }
+}
+
+// Prefer an externally-injected secret (recommended for production, and required
+// when running multiple instances). When absent, fall back to a strong secret
+// persisted in the database so the app boots without manual configuration.
 let sessionSecret = raw.SESSION_SECRET;
 if (!sessionSecret) {
-  if (isProd) {
-    console.error("❌ SESSION_SECRET is required in production. Refusing to start.");
-    process.exit(1);
-  }
-  sessionSecret = crypto.randomBytes(32).toString("hex");
+  sessionSecret = loadOrCreatePersistedSecret(raw.DATABASE_PATH);
   console.warn(
-    "⚠️  SESSION_SECRET not set — using an ephemeral dev secret (sessions reset on restart).",
+    isProd
+      ? "⚠️  SESSION_SECRET not set — using a persisted auto-generated secret from the database. " +
+          "For production set SESSION_SECRET explicitly (required when running multiple instances)."
+      : "⚠️  SESSION_SECRET not set — using a persisted auto-generated secret (dev).",
   );
 }
 
