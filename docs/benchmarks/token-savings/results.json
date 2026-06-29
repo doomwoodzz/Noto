@@ -1,0 +1,170 @@
+{
+  "generatedAt": "2026-06-29T14:43:57.790Z",
+  "tokenizer": "gpt-tokenizer o200k_base (GPT-4o encoding; provider-neutral proxy)",
+  "embedderReady": true,
+  "corpus": {
+    "notes": 11,
+    "memories": 30,
+    "notesSource": "landing/src/noto/mockVault.ts (real fixture)",
+    "memoriesSource": "curated Noto memory fixture (this script)"
+  },
+  "config": {
+    "notesK": 5,
+    "recallK": 6,
+    "recallScopes": [
+      "noto-web"
+    ]
+  },
+  "perQuery": [
+    {
+      "query": "How do plants convert light into chemical energy?",
+      "scenario": "combined",
+      "note": "paraphrase of photosynthesis (no keyword overlap)",
+      "baseline": 3108,
+      "optimized": 959,
+      "saved": 2149,
+      "pct": 0.6914414414414415,
+      "notesHits": 5,
+      "memoryHits": 6
+    },
+    {
+      "query": "What is the role of carbon dioxide in photosynthesis?",
+      "scenario": "notes",
+      "note": "direct biology lookup",
+      "baseline": 859,
+      "optimized": 412,
+      "saved": 447,
+      "pct": 0.5203725261932479,
+      "notesHits": 5,
+      "memoryHits": 0
+    },
+    {
+      "query": "Explain how chloroplasts relate to glucose production",
+      "scenario": "combined",
+      "note": "multi-note biology",
+      "baseline": 3108,
+      "optimized": 980,
+      "saved": 2128,
+      "pct": 0.6846846846846847,
+      "notesHits": 5,
+      "memoryHits": 6
+    },
+    {
+      "query": "What were the main tensions after World War II?",
+      "scenario": "notes",
+      "note": "paraphrase of Cold War",
+      "baseline": 859,
+      "optimized": 79,
+      "saved": 780,
+      "pct": 0.9080325960419092,
+      "notesHits": 1,
+      "memoryHits": 0
+    },
+    {
+      "query": "How should I structure my study sessions?",
+      "scenario": "memory",
+      "note": "study-habit preferences",
+      "baseline": 2249,
+      "optimized": 522,
+      "saved": 1727,
+      "pct": 0.7678968430413518,
+      "notesHits": 0,
+      "memoryHits": 6
+    },
+    {
+      "query": "What did I decide about summarizing lectures?",
+      "scenario": "memory",
+      "note": "decision recall",
+      "baseline": 2249,
+      "optimized": 512,
+      "saved": 1737,
+      "pct": 0.7723432636727434,
+      "notesHits": 0,
+      "memoryHits": 6
+    },
+    {
+      "query": "Themes of ambition and guilt in literature",
+      "scenario": "notes",
+      "note": "Macbeth",
+      "baseline": 859,
+      "optimized": 76,
+      "saved": 783,
+      "pct": 0.9115250291036089,
+      "notesHits": 1,
+      "memoryHits": 0
+    },
+    {
+      "query": "How do enzymes affect chemical reactions in cells?",
+      "scenario": "combined",
+      "note": "enzymes glossary + note",
+      "baseline": 3108,
+      "optimized": 947,
+      "saved": 2161,
+      "pct": 0.6953024453024453,
+      "notesHits": 5,
+      "memoryHits": 6
+    },
+    {
+      "query": "What is a logarithm and how does it relate to exponents?",
+      "scenario": "combined",
+      "note": "math glossary + note",
+      "baseline": 3108,
+      "optimized": 263,
+      "saved": 2845,
+      "pct": 0.9153796653796654,
+      "notesHits": 1,
+      "memoryHits": 2
+    },
+    {
+      "query": "Remind me of the office hours and exam details",
+      "scenario": "memory",
+      "note": "logistics facts",
+      "baseline": 2249,
+      "optimized": 523,
+      "saved": 1726,
+      "pct": 0.7674522009782125,
+      "notesHits": 0,
+      "memoryHits": 6
+    }
+  ],
+  "summary": {
+    "queries": 10,
+    "meanPct": 0.763443069583931,
+    "medianPct": 0.7676745220097821,
+    "minPct": 0.5203725261932479,
+    "maxPct": 0.9153796653796654,
+    "totalBaseline": 21756,
+    "totalOptimized": 5273,
+    "totalSaved": 16483,
+    "sessionPct": 0.7576300790586505,
+    "meanBaseline": 2175.6,
+    "meanOptimized": 527.3
+  },
+  "scaling": [
+    {
+      "totalNotes": 11,
+      "meanBaseline": 3115,
+      "meanOptimized": 779,
+      "meanPct": 0.7499197431781701
+    },
+    {
+      "totalNotes": 31,
+      "meanBaseline": 6977,
+      "meanOptimized": 780,
+      "meanPct": 0.88820409918303
+    },
+    {
+      "totalNotes": 71,
+      "meanBaseline": 14822,
+      "meanOptimized": 784.75,
+      "meanPct": 0.94705505329915
+    },
+    {
+      "totalNotes": 151,
+      "meanBaseline": 30443,
+      "meanOptimized": 789.75,
+      "meanPct": 0.9740580757481194
+    }
+  ],
+  "scalingNote": "Notes beyond the first 11 are synthetic, in the same shape, used only to plot how savings scale with corpus size."
+}

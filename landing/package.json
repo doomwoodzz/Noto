@@ -18,7 +18,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:graph": "node scripts/test-knowledge-graph-physics.mjs",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "benchmark:tokens": "tsx scripts/benchmark-token-savings.mts && tsx scripts/render-token-savings.mts"
   },
   "dependencies": {
     "@huggingface/transformers": "^3.8.1",
@@ -50,6 +51,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.6.0",
+    "gpt-tokenizer": "^3.4.0",
     "postcss": "^8.5.15",
     "tailwindcss": "^4.3.0",
     "tsx": "^4.22.4",
