@@ -11,7 +11,7 @@ export interface ToolDef {
   steeringTarget: string; // where the optional steering goes
 }
 
-export const TOOLS: ToolDef[] = [
+export const TOOLS: readonly ToolDef[] = [
   { id: "claude-code", label: "Claude Code", descriptor: "Terminal coding agent", mechanism: "command",  configTarget: "your terminal",        steeringTarget: "CLAUDE.md" },
   { id: "cursor",      label: "Cursor",      descriptor: "AI code editor",        mechanism: "deeplink", configTarget: ".cursor/mcp.json",     steeringTarget: ".cursor/rules/noto-memory.mdc" },
   { id: "codex",       label: "Codex",       descriptor: "OpenAI CLI",            mechanism: "config",   configTarget: "~/.codex/config.toml", steeringTarget: "AGENTS.md" },
