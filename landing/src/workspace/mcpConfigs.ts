@@ -11,11 +11,33 @@ Noto is your persistent, cross-session memory, shared across your AI tools.
   \`append_note\` / \`update_section\`. Store durable things only; never secrets.
 - NEVER write outside \`Memory/\`. Prefer \`append_note\`/\`update_section\` over rewrites.`;
 
+// The inner MCP server entry shared by every stdio config + builder.
+function notoServerObject(notoUrl: string, token: string, client: string) {
+  return { command: "npx", args: ["-y", "noto-mcp"], env: { NOTO_URL: notoUrl, NOTO_TOKEN: token, NOTO_CLIENT: client } };
+}
+
+// base64 of the JSON, URL-encoded so it is safe inside a query string.
+function encodeConfig(obj: unknown): string {
+  return encodeURIComponent(btoa(JSON.stringify(obj)));
+}
+
+/** Cursor one-click install deep-link. The token is embedded (v1). */
+export function buildCursorDeepLink({ notoUrl, token }: McpConfigInput): string {
+  const cfg = notoServerObject(notoUrl, token || "noto_pat_…", "cursor");
+  return `cursor://anysphere.cursor-deeplink/mcp/install?name=noto&config=${encodeConfig(cfg)}`;
+}
+
+/** Claude Code one-paste CLI install (global scope; the server auto-detects per-project scope at runtime). */
+export function buildClaudeAddCommand({ notoUrl, token }: McpConfigInput): string {
+  const cfg = notoServerObject(notoUrl, token || "noto_pat_…", "claude-code");
+  // Wrap the JSON in single quotes (as Claude Code's docs do) and POSIX-escape any
+  // literal "'" via the close-escape-reopen idiom so the command is shell-safe for any input.
+  const json = JSON.stringify(cfg).replace(/'/g, "'\\''");
+  return `claude mcp add-json noto '${json}' --scope user`;
+}
+
 function jsonConfig(notoUrl: string, token: string, client: string): string {
-  return JSON.stringify(
-    { mcpServers: { noto: { command: "npx", args: ["-y", "noto-mcp"], env: { NOTO_URL: notoUrl, NOTO_TOKEN: token, NOTO_CLIENT: client } } } },
-    null, 2,
-  );
+  return JSON.stringify({ mcpServers: { noto: notoServerObject(notoUrl, token, client) } }, null, 2);
 }
 
 export function buildConfigs({ notoUrl, token }: McpConfigInput) {
