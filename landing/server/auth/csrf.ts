@@ -43,12 +43,32 @@ function timingSafeEqualStr(a: string, b: string): boolean {
   return crypto.timingSafeEqual(ab, bb);
 }
 
+function hostOf(url: string): string | null {
+  try {
+    return new URL(url).host;
+  } catch {
+    return null;
+  }
+}
+
 function originAllowed(req: Request): boolean {
+  // The app serves the frontend and the API from one origin, so a request from
+  // our own page is same-origin: its Origin host matches the Host the browser
+  // used to reach us (trust proxy is on, so Host reflects the real external
+  // domain — works on any host, e.g. Railway, with no APP_ORIGIN config). A
+  // cross-site attacker's Origin is set by the browser to their own domain and
+  // cannot match our Host, so CSRF protection is preserved. The configured
+  // APP_ORIGIN is still accepted (covers the dev Vite proxy / explicit setups).
+  const host = req.get("host");
   const origin = req.get("origin");
-  if (origin) return origin === env.APP_ORIGIN;
-  // Some legitimate clients omit Origin; fall back to Referer prefix check.
+  if (origin) {
+    return origin === env.APP_ORIGIN || (!!host && hostOf(origin) === host);
+  }
+  // Some legitimate clients omit Origin; fall back to Referer.
   const referer = req.get("referer");
-  if (referer) return referer.startsWith(env.APP_ORIGIN);
+  if (referer) {
+    return referer.startsWith(env.APP_ORIGIN) || (!!host && hostOf(referer) === host);
+  }
   // No Origin and no Referer on a state-changing request → reject.
   return false;
 }
