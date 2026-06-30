@@ -92,7 +92,6 @@ export const env = {
     raw.GOOGLE_CLIENT_ID && raw.GOOGLE_CLIENT_SECRET && raw.GOOGLE_REDIRECT_URI,
   ),
   openaiConfigured: Boolean(raw.OPENAI_API_KEY),
-  vaultKeyConfigured: Boolean(raw.VAULT_KEY_SECRET),
 } as const;
 
 export type Env = typeof env;

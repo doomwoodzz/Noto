@@ -17,10 +17,10 @@ it("encrypts then decrypts back to the original plaintext", async () => {
   expect(decryptKey(blob)).toBe("sk-secret-123");
 });
 
-it("rejects a tampered ciphertext (GCM auth tag)", async () => {
+it("rejects a tampered ciphertext", async () => {
   const { encryptKey, decryptKey } = await import("./keyvault.ts");
   const blob = encryptKey("sk-secret-123");
-  blob[blob.length - 1] ^= 0xff; // flip a byte
+  blob[blob.length - 1] ^= 0xff; // corrupt the last ciphertext byte — GCM rejects any modification
   expect(() => decryptKey(blob)).toThrow();
 });
 
