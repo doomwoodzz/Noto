@@ -21,7 +21,8 @@
     "preview": "vite preview",
     "benchmark:tokens": "tsx scripts/benchmark-token-savings.mts && tsx scripts/render-token-savings.mts",
     "benchmark:output": "tsx scripts/benchmark-output-tokens.mts",
-    "benchmark:output-savings": "tsx scripts/benchmark-output-savings.mts"
+    "benchmark:output-savings": "tsx scripts/benchmark-output-savings.mts",
+    "benchmark:categories": "tsx scripts/benchmark-categories.mts"
   },
   "dependencies": {
     "@huggingface/transformers": "^3.8.1",

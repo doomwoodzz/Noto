@@ -1,0 +1,446 @@
+{
+  "catStats": [
+    {
+      "category": "Active Recall",
+      "feature": "chat",
+      "queries": 8,
+      "p1Input": 1084,
+      "p1Output": 440,
+      "p2Input": 0,
+      "p2Output": 0,
+      "savedInput": 1084,
+      "savedOutput": 440,
+      "savedTotal": 1524,
+      "hits": 8,
+      "hitRate": 100
+    },
+    {
+      "category": "Content Writing",
+      "feature": "summarize",
+      "queries": 5,
+      "p1Input": 685,
+      "p1Output": 400,
+      "p2Input": 0,
+      "p2Output": 0,
+      "savedInput": 685,
+      "savedOutput": 400,
+      "savedTotal": 1085,
+      "hits": 5,
+      "hitRate": 100
+    },
+    {
+      "category": "Spaced Repetition",
+      "feature": "flashcards",
+      "queries": 4,
+      "p1Input": 633,
+      "p1Output": 920,
+      "p2Input": 0,
+      "p2Output": 0,
+      "savedInput": 633,
+      "savedOutput": 920,
+      "savedTotal": 1553,
+      "hits": 4,
+      "hitRate": 100
+    },
+    {
+      "category": "Knowledge Mapping",
+      "feature": "find-links",
+      "queries": 3,
+      "p1Input": 732,
+      "p1Output": 75,
+      "p2Input": 0,
+      "p2Output": 0,
+      "savedInput": 732,
+      "savedOutput": 75,
+      "savedTotal": 807,
+      "hits": 3,
+      "hitRate": 100
+    },
+    {
+      "category": "Lecture Capture",
+      "feature": "lecture-notes",
+      "queries": 3,
+      "p1Input": 842,
+      "p1Output": 1140,
+      "p2Input": 0,
+      "p2Output": 0,
+      "savedInput": 842,
+      "savedOutput": 1140,
+      "savedTotal": 1982,
+      "hits": 3,
+      "hitRate": 100
+    }
+  ],
+  "pass1": [
+    {
+      "category": "Active Recall",
+      "label": "recall: what is this note about",
+      "feature": "chat",
+      "inputTokens": 192,
+      "outputTokens": 55,
+      "hit": false
+    },
+    {
+      "category": "Active Recall",
+      "label": "recall: key concepts",
+      "feature": "chat",
+      "inputTokens": 196,
+      "outputTokens": 55,
+      "hit": false
+    },
+    {
+      "category": "Active Recall",
+      "label": "recall: explain in simple terms",
+      "feature": "chat",
+      "inputTokens": 115,
+      "outputTokens": 55,
+      "hit": false
+    },
+    {
+      "category": "Active Recall",
+      "label": "recall: give an example",
+      "feature": "chat",
+      "inputTokens": 118,
+      "outputTokens": 55,
+      "hit": false
+    },
+    {
+      "category": "Active Recall",
+      "label": "recall: study focus",
+      "feature": "chat",
+      "inputTokens": 122,
+      "outputTokens": 55,
+      "hit": false
+    },
+    {
+      "category": "Active Recall",
+      "label": "recall: connections",
+      "feature": "chat",
+      "inputTokens": 121,
+      "outputTokens": 55,
+      "hit": false
+    },
+    {
+      "category": "Active Recall",
+      "label": "recall: two-sentence summary",
+      "feature": "chat",
+      "inputTokens": 110,
+      "outputTokens": 55,
+      "hit": false
+    },
+    {
+      "category": "Active Recall",
+      "label": "recall: common mistakes",
+      "feature": "chat",
+      "inputTokens": 110,
+      "outputTokens": 55,
+      "hit": false
+    },
+    {
+      "category": "Content Writing",
+      "label": "writing: summarize note 1",
+      "feature": "summarize",
+      "inputTokens": 202,
+      "outputTokens": 80,
+      "hit": false
+    },
+    {
+      "category": "Content Writing",
+      "label": "writing: summarize note 2",
+      "feature": "summarize",
+      "inputTokens": 125,
+      "outputTokens": 80,
+      "hit": false
+    },
+    {
+      "category": "Content Writing",
+      "label": "writing: summarize note 3",
+      "feature": "summarize",
+      "inputTokens": 129,
+      "outputTokens": 80,
+      "hit": false
+    },
+    {
+      "category": "Content Writing",
+      "label": "writing: summarize note 4",
+      "feature": "summarize",
+      "inputTokens": 117,
+      "outputTokens": 80,
+      "hit": false
+    },
+    {
+      "category": "Content Writing",
+      "label": "writing: summarize note 5",
+      "feature": "summarize",
+      "inputTokens": 112,
+      "outputTokens": 80,
+      "hit": false
+    },
+    {
+      "category": "Spaced Repetition",
+      "label": "sr: flashcards note 1",
+      "feature": "flashcards",
+      "inputTokens": 217,
+      "outputTokens": 230,
+      "hit": false
+    },
+    {
+      "category": "Spaced Repetition",
+      "label": "sr: flashcards note 2",
+      "feature": "flashcards",
+      "inputTokens": 140,
+      "outputTokens": 230,
+      "hit": false
+    },
+    {
+      "category": "Spaced Repetition",
+      "label": "sr: flashcards note 3",
+      "feature": "flashcards",
+      "inputTokens": 144,
+      "outputTokens": 230,
+      "hit": false
+    },
+    {
+      "category": "Spaced Repetition",
+      "label": "sr: flashcards note 4",
+      "feature": "flashcards",
+      "inputTokens": 132,
+      "outputTokens": 230,
+      "hit": false
+    },
+    {
+      "category": "Knowledge Mapping",
+      "label": "map: find links note 1",
+      "feature": "find-links",
+      "inputTokens": 294,
+      "outputTokens": 25,
+      "hit": false
+    },
+    {
+      "category": "Knowledge Mapping",
+      "label": "map: find links note 2",
+      "feature": "find-links",
+      "inputTokens": 217,
+      "outputTokens": 25,
+      "hit": false
+    },
+    {
+      "category": "Knowledge Mapping",
+      "label": "map: find links note 3",
+      "feature": "find-links",
+      "inputTokens": 221,
+      "outputTokens": 25,
+      "hit": false
+    },
+    {
+      "category": "Lecture Capture",
+      "label": "lecture: session 1",
+      "feature": "lecture-notes",
+      "inputTokens": 331,
+      "outputTokens": 380,
+      "hit": false
+    },
+    {
+      "category": "Lecture Capture",
+      "label": "lecture: session 2",
+      "feature": "lecture-notes",
+      "inputTokens": 254,
+      "outputTokens": 380,
+      "hit": false
+    },
+    {
+      "category": "Lecture Capture",
+      "label": "lecture: session 3",
+      "feature": "lecture-notes",
+      "inputTokens": 257,
+      "outputTokens": 380,
+      "hit": false
+    }
+  ],
+  "pass2": [
+    {
+      "category": "Active Recall",
+      "label": "recall: what is this note about",
+      "feature": "chat",
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "hit": true
+    },
+    {
+      "category": "Active Recall",
+      "label": "recall: key concepts",
+      "feature": "chat",
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "hit": true
+    },
+    {
+      "category": "Active Recall",
+      "label": "recall: explain in simple terms",
+      "feature": "chat",
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "hit": true
+    },
+    {
+      "category": "Active Recall",
+      "label": "recall: give an example",
+      "feature": "chat",
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "hit": true
+    },
+    {
+      "category": "Active Recall",
+      "label": "recall: study focus",
+      "feature": "chat",
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "hit": true
+    },
+    {
+      "category": "Active Recall",
+      "label": "recall: connections",
+      "feature": "chat",
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "hit": true
+    },
+    {
+      "category": "Active Recall",
+      "label": "recall: two-sentence summary",
+      "feature": "chat",
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "hit": true
+    },
+    {
+      "category": "Active Recall",
+      "label": "recall: common mistakes",
+      "feature": "chat",
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "hit": true
+    },
+    {
+      "category": "Content Writing",
+      "label": "writing: summarize note 1",
+      "feature": "summarize",
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "hit": true
+    },
+    {
+      "category": "Content Writing",
+      "label": "writing: summarize note 2",
+      "feature": "summarize",
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "hit": true
+    },
+    {
+      "category": "Content Writing",
+      "label": "writing: summarize note 3",
+      "feature": "summarize",
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "hit": true
+    },
+    {
+      "category": "Content Writing",
+      "label": "writing: summarize note 4",
+      "feature": "summarize",
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "hit": true
+    },
+    {
+      "category": "Content Writing",
+      "label": "writing: summarize note 5",
+      "feature": "summarize",
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "hit": true
+    },
+    {
+      "category": "Spaced Repetition",
+      "label": "sr: flashcards note 1",
+      "feature": "flashcards",
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "hit": true
+    },
+    {
+      "category": "Spaced Repetition",
+      "label": "sr: flashcards note 2",
+      "feature": "flashcards",
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "hit": true
+    },
+    {
+      "category": "Spaced Repetition",
+      "label": "sr: flashcards note 3",
+      "feature": "flashcards",
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "hit": true
+    },
+    {
+      "category": "Spaced Repetition",
+      "label": "sr: flashcards note 4",
+      "feature": "flashcards",
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "hit": true
+    },
+    {
+      "category": "Knowledge Mapping",
+      "label": "map: find links note 1",
+      "feature": "find-links",
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "hit": true
+    },
+    {
+      "category": "Knowledge Mapping",
+      "label": "map: find links note 2",
+      "feature": "find-links",
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "hit": true
+    },
+    {
+      "category": "Knowledge Mapping",
+      "label": "map: find links note 3",
+      "feature": "find-links",
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "hit": true
+    },
+    {
+      "category": "Lecture Capture",
+      "label": "lecture: session 1",
+      "feature": "lecture-notes",
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "hit": true
+    },
+    {
+      "category": "Lecture Capture",
+      "label": "lecture: session 2",
+      "feature": "lecture-notes",
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "hit": true
+    },
+    {
+      "category": "Lecture Capture",
+      "label": "lecture: session 3",
+      "feature": "lecture-notes",
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "hit": true
+    }
+  ]
+}
