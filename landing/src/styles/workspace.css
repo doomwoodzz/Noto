@@ -819,3 +819,13 @@ html[data-theme="light"] .nw-ai { box-shadow: 0 30px 60px rgba(15, 22, 35, 0.22)
 .nw-act-confirm .nw-act-desc { white-space: normal; overflow: visible; text-overflow: clip; }
 .nw-act-confirm-actions { display: flex; justify-content: flex-end; gap: 10px; }
 .nw-act-confirm-actions button { border-radius: 7px; padding: 6px 14px; font-size: .85rem; cursor: pointer; border: 1px solid var(--nw-border, var(--nw-line-3)); background: none; color: var(--nw-text, var(--nw-ink)); }
+
+/* ----------------------------- vault badge ----------------------------- */
+.nw-vbadge {
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 8px; flex: none; line-height: 1;
+}
+.nw-vbadge.is-mono {
+  color: #fff; font-weight: 700;
+  background: linear-gradient(140deg, #578ffa, #3c6fd6) !important;
+}
