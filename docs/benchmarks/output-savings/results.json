@@ -1,0 +1,297 @@
+{
+  "pass1": [
+    {
+      "label": "chat: main theme",
+      "feature": "chat",
+      "inputTokens": 195,
+      "outputTokens": 55,
+      "hit": false,
+      "hitType": "none"
+    },
+    {
+      "label": "chat: key terms",
+      "feature": "chat",
+      "inputTokens": 193,
+      "outputTokens": 55,
+      "hit": false,
+      "hitType": "none"
+    },
+    {
+      "label": "chat: study tip",
+      "feature": "chat",
+      "inputTokens": 118,
+      "outputTokens": 55,
+      "hit": false,
+      "hitType": "none"
+    },
+    {
+      "label": "chat: connections",
+      "feature": "chat",
+      "inputTokens": 117,
+      "outputTokens": 55,
+      "hit": false,
+      "hitType": "none"
+    },
+    {
+      "label": "chat: summary ask",
+      "feature": "chat",
+      "inputTokens": 194,
+      "outputTokens": 55,
+      "hit": false,
+      "hitType": "none"
+    },
+    {
+      "label": "summarize: note 1",
+      "feature": "summarize",
+      "inputTokens": 202,
+      "outputTokens": 80,
+      "hit": false,
+      "hitType": "none"
+    },
+    {
+      "label": "summarize: note 2",
+      "feature": "summarize",
+      "inputTokens": 125,
+      "outputTokens": 80,
+      "hit": false,
+      "hitType": "none"
+    },
+    {
+      "label": "summarize: note 3",
+      "feature": "summarize",
+      "inputTokens": 129,
+      "outputTokens": 80,
+      "hit": false,
+      "hitType": "none"
+    },
+    {
+      "label": "flashcards: note 1",
+      "feature": "flashcards",
+      "inputTokens": 217,
+      "outputTokens": 230,
+      "hit": false,
+      "hitType": "none"
+    },
+    {
+      "label": "flashcards: note 2",
+      "feature": "flashcards",
+      "inputTokens": 140,
+      "outputTokens": 230,
+      "hit": false,
+      "hitType": "none"
+    },
+    {
+      "label": "flashcards: note 3",
+      "feature": "flashcards",
+      "inputTokens": 144,
+      "outputTokens": 230,
+      "hit": false,
+      "hitType": "none"
+    },
+    {
+      "label": "find-links: note 1",
+      "feature": "find-links",
+      "inputTokens": 294,
+      "outputTokens": 25,
+      "hit": false,
+      "hitType": "none"
+    },
+    {
+      "label": "find-links: note 2",
+      "feature": "find-links",
+      "inputTokens": 217,
+      "outputTokens": 25,
+      "hit": false,
+      "hitType": "none"
+    },
+    {
+      "label": "lecture-notes: transcript 1",
+      "feature": "lecture-notes",
+      "inputTokens": 331,
+      "outputTokens": 380,
+      "hit": false,
+      "hitType": "none"
+    },
+    {
+      "label": "lecture-notes: transcript 2",
+      "feature": "lecture-notes",
+      "inputTokens": 254,
+      "outputTokens": 380,
+      "hit": false,
+      "hitType": "none"
+    }
+  ],
+  "pass2": [
+    {
+      "label": "chat: main theme",
+      "feature": "chat",
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "hit": true,
+      "hitType": "exact"
+    },
+    {
+      "label": "chat: key terms",
+      "feature": "chat",
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "hit": true,
+      "hitType": "exact"
+    },
+    {
+      "label": "chat: study tip",
+      "feature": "chat",
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "hit": true,
+      "hitType": "exact"
+    },
+    {
+      "label": "chat: connections",
+      "feature": "chat",
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "hit": true,
+      "hitType": "exact"
+    },
+    {
+      "label": "chat: summary ask",
+      "feature": "chat",
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "hit": true,
+      "hitType": "exact"
+    },
+    {
+      "label": "summarize: note 1",
+      "feature": "summarize",
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "hit": true,
+      "hitType": "exact"
+    },
+    {
+      "label": "summarize: note 2",
+      "feature": "summarize",
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "hit": true,
+      "hitType": "exact"
+    },
+    {
+      "label": "summarize: note 3",
+      "feature": "summarize",
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "hit": true,
+      "hitType": "exact"
+    },
+    {
+      "label": "flashcards: note 1",
+      "feature": "flashcards",
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "hit": true,
+      "hitType": "exact"
+    },
+    {
+      "label": "flashcards: note 2",
+      "feature": "flashcards",
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "hit": true,
+      "hitType": "exact"
+    },
+    {
+      "label": "flashcards: note 3",
+      "feature": "flashcards",
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "hit": true,
+      "hitType": "exact"
+    },
+    {
+      "label": "find-links: note 1",
+      "feature": "find-links",
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "hit": true,
+      "hitType": "exact"
+    },
+    {
+      "label": "find-links: note 2",
+      "feature": "find-links",
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "hit": true,
+      "hitType": "exact"
+    },
+    {
+      "label": "lecture-notes: transcript 1",
+      "feature": "lecture-notes",
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "hit": true,
+      "hitType": "exact"
+    },
+    {
+      "label": "lecture-notes: transcript 2",
+      "feature": "lecture-notes",
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "hit": true,
+      "hitType": "exact"
+    },
+    {
+      "label": "chat (para): what is the main point",
+      "feature": "chat",
+      "inputTokens": 195,
+      "outputTokens": 55,
+      "hit": false,
+      "hitType": "none"
+    },
+    {
+      "label": "chat (para): key vocabulary",
+      "feature": "chat",
+      "inputTokens": 194,
+      "outputTokens": 55,
+      "hit": false,
+      "hitType": "none"
+    },
+    {
+      "label": "chat (para): what to study",
+      "feature": "chat",
+      "inputTokens": 118,
+      "outputTokens": 55,
+      "hit": false,
+      "hitType": "none"
+    },
+    {
+      "label": "chat (para): links to other",
+      "feature": "chat",
+      "inputTokens": 117,
+      "outputTokens": 55,
+      "hit": false,
+      "hitType": "none"
+    },
+    {
+      "label": "chat (para): short summary",
+      "feature": "chat",
+      "inputTokens": 193,
+      "outputTokens": 55,
+      "hit": false,
+      "hitType": "none"
+    }
+  ],
+  "stats": {
+    "p1InputTotal": 2870,
+    "p1OutputTotal": 2015,
+    "p2InputTotal": 817,
+    "p2OutputTotal": 275,
+    "p2Hits": 15,
+    "hitRate": 75,
+    "savedInput": 2870,
+    "savedOutput": 2015,
+    "savedTotal": 4885
+  }
+}
