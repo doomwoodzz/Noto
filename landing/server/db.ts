@@ -53,6 +53,8 @@ db.exec(`
     id          TEXT PRIMARY KEY,
     user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     name        TEXT NOT NULL,
+    icon        TEXT,
+    color       TEXT,
     created_at  INTEGER NOT NULL,
     updated_at  INTEGER NOT NULL
   );
@@ -81,8 +83,8 @@ db.exec(`
     last_used_at  INTEGER,
     revoked_at    INTEGER
   );
-  CREATE INDEX IF NOT EXISTS idx_pat_user ON pat_tokens(user_id);
-  CREATE INDEX IF NOT EXISTS idx_pat_hash ON pat_tokens(token_hash);
+  -- pat_tokens indexes are created after the token_hash migration below, so an
+  -- older DB whose pat_tokens predates that column can be rebuilt first.
 
   CREATE TABLE IF NOT EXISTS audit_log (
     id           TEXT PRIMARY KEY,
@@ -167,6 +169,18 @@ db.exec(`
   }
 }
 
+// Additive migration: vault icon/color (multi-vault switcher). Older DBs predate
+// these columns; CREATE TABLE IF NOT EXISTS never alters an existing table.
+{
+  const cols = db.prepare("PRAGMA table_info(vaults)").all() as Array<{ name: string }>;
+  if (!cols.some((c) => c.name === "icon")) {
+    db.exec("ALTER TABLE vaults ADD COLUMN icon TEXT");
+  }
+  if (!cols.some((c) => c.name === "color")) {
+    db.exec("ALTER TABLE vaults ADD COLUMN color TEXT");
+  }
+}
+
 // Additive migration: SP3 provenance. Older databases predate these columns.
 {
   const cols = db.prepare("PRAGMA table_info(audit_log)").all() as Array<{ name: string }>;
@@ -185,6 +199,63 @@ db.exec(`
     db.exec("ALTER TABLE memories ADD COLUMN embedding BLOB");
   }
 }
+
+// Additive migration: PAT token_hash. The pre-redesign dev schema stored
+// sha256(token) directly in `id` and had no `token_hash` column; SQLite can't
+// add a NOT NULL UNIQUE column to an existing table, so rebuild. The old `id`
+// (the verifier) is carried over as `token_hash` under a fresh uuid handle so
+// any already-minted tokens keep working. Runs before the indexes below.
+{
+  const cols = db.prepare("PRAGMA table_info(pat_tokens)").all() as Array<{ name: string }>;
+  if (cols.length > 0 && !cols.some((c) => c.name === "token_hash")) {
+    db.exec("BEGIN");
+    try {
+      const old = db
+        .prepare(
+          "SELECT id, user_id, name, scopes, created_at, last_used_at, revoked_at FROM pat_tokens",
+        )
+        .all() as Array<{
+        id: string;
+        user_id: string;
+        name: string;
+        scopes: string;
+        created_at: number;
+        last_used_at: number | null;
+        revoked_at: number | null;
+      }>;
+      db.exec("DROP TABLE pat_tokens");
+      db.exec(`
+        CREATE TABLE pat_tokens (
+          id            TEXT PRIMARY KEY,
+          token_hash    TEXT NOT NULL UNIQUE,
+          user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          name          TEXT NOT NULL,
+          scopes        TEXT NOT NULL,
+          created_at    INTEGER NOT NULL,
+          last_used_at  INTEGER,
+          revoked_at    INTEGER
+        )
+      `);
+      const ins = db.prepare(
+        "INSERT INTO pat_tokens (id, token_hash, user_id, name, scopes, created_at, last_used_at, revoked_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      );
+      for (const r of old) {
+        ins.run(crypto.randomUUID(), r.id, r.user_id, r.name, r.scopes, r.created_at, r.last_used_at, r.revoked_at);
+      }
+      db.exec("COMMIT");
+    } catch (err) {
+      db.exec("ROLLBACK");
+      throw err;
+    }
+  }
+}
+
+// pat_tokens indexes (created here so the migration above can rebuild the table
+// first on older DBs). Idempotent for fresh DBs.
+db.exec(`
+  CREATE INDEX IF NOT EXISTS idx_pat_user ON pat_tokens(user_id);
+  CREATE INDEX IF NOT EXISTS idx_pat_hash ON pat_tokens(token_hash);
+`);
 
 // O(n) scan on boot; fine for the MAX_FILES_PER_VAULT * MAX_VAULTS_PER_USER ceiling.
 // Backfill files_fts for any notes created before the FTS table existed.
@@ -382,6 +453,8 @@ export interface PublicFile {
 export interface PublicVault {
   id: string;
   name: string;
+  icon: string | null;
+  color: string | null;
 }
 
 export function toPublicFile(f: FileRow): PublicFile {
@@ -401,12 +474,12 @@ export const MAX_VAULTS_PER_USER = 20;
 export const MAX_FILES_PER_VAULT = 2000;
 
 const stmtVaultsForUser = db.prepare(
-  "SELECT id, name FROM vaults WHERE user_id = ? ORDER BY created_at ASC",
+  "SELECT id, name, icon, color FROM vaults WHERE user_id = ? ORDER BY created_at ASC",
 );
 const stmtVaultOwned = db.prepare("SELECT * FROM vaults WHERE id = ? AND user_id = ?");
 const stmtCountVaults = db.prepare("SELECT COUNT(*) AS n FROM vaults WHERE user_id = ?");
 const stmtInsertVault = db.prepare(
-  "INSERT INTO vaults (id, user_id, name, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+  "INSERT INTO vaults (id, user_id, name, icon, color, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
 );
 
 export function getVaultsForUser(userId: string): PublicVault[] {
@@ -422,16 +495,22 @@ export function countVaultsForUser(userId: string): number {
   return (stmtCountVaults.get(userId) as { n: number }).n;
 }
 
-export function createVault(userId: string, name: string): VaultRow {
+export function createVault(
+  userId: string,
+  input: { name: string; icon?: string | null; color?: string | null },
+): PublicVault {
   const id = newId();
   const ts = now();
-  stmtInsertVault.run(id, userId, name, ts, ts);
-  return stmtUserVaultById(id)!;
-}
-
-const stmtVaultById = db.prepare("SELECT * FROM vaults WHERE id = ?");
-function stmtUserVaultById(id: string): VaultRow | undefined {
-  return stmtVaultById.get(id) as VaultRow | undefined;
+  db.exec("BEGIN");
+  try {
+    stmtInsertVault.run(id, userId, input.name, input.icon ?? null, input.color ?? null, ts, ts);
+    stmtInsertFile.run(newId(), id, "Getting Started/Welcome.md", "Welcome", WELCOME_NOTE, ts, ts);
+    db.exec("COMMIT");
+  } catch (err) {
+    db.exec("ROLLBACK");
+    throw err;
+  }
+  return { id, name: input.name, icon: input.icon ?? null, color: input.color ?? null };
 }
 
 const stmtFilesForVault = db.prepare(
@@ -516,7 +595,7 @@ export function ensureDefaultVault(userId: string): void {
   db.exec("BEGIN");
   try {
     const vaultId = newId();
-    stmtInsertVault.run(vaultId, userId, "My Vault", ts, ts);
+    stmtInsertVault.run(vaultId, userId, "My Vault", null, null, ts, ts);
     stmtInsertFile.run(
       newId(),
       vaultId,
