@@ -557,13 +557,11 @@ export function getVaultAIRow(vaultId: string): VaultAIRow | undefined {
   // Normalize BLOB to Uint8Array regardless of what node:sqlite returns at runtime.
   let cipher: Uint8Array | null = null;
   if (raw.api_key_cipher != null) {
-    if (raw.api_key_cipher instanceof Uint8Array) {
-      cipher = raw.api_key_cipher;
-    } else if (raw.api_key_cipher instanceof ArrayBuffer) {
+    if (raw.api_key_cipher instanceof ArrayBuffer) {
       cipher = new Uint8Array(raw.api_key_cipher);
     } else {
-      // Buffer (Node.js) is a subclass of Uint8Array, so this copies cleanly.
-      cipher = new Uint8Array(raw.api_key_cipher as unknown as ArrayBufferLike);
+      // Uint8Array or Buffer (Buffer is a Uint8Array subclass); both safe to use directly.
+      cipher = raw.api_key_cipher;
     }
   }
   return { ...raw, api_key_cipher: cipher };

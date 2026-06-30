@@ -65,8 +65,9 @@ it("stores and reads back per-vault AI config (cipher round-trips by handle)", a
 
   // Upsert: omitting apiKeyCipher leaves the stored key untouched.
   mod.setVaultAI("v1", { provider: "openai", model: "gpt-4o" });
-  expect(Array.from(mod.getVaultAIRow("v1")!.api_key_cipher!)).toEqual([1, 2, 3]);
-  expect(mod.getVaultAIRow("v1")!.model).toBe("gpt-4o");
+  const updated = mod.getVaultAIRow("v1")!;
+  expect(Array.from(updated.api_key_cipher!)).toEqual([1, 2, 3]);
+  expect(updated.model).toBe("gpt-4o");
 
   // Clearing the key explicitly.
   mod.setVaultAI("v1", { provider: "openai", model: "gpt-4o", apiKeyCipher: null });
