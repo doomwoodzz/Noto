@@ -51,6 +51,9 @@ const schema = z.object({
    */
   OPENAI_API_KEY: z.string().optional(),
 
+  /** Cache lifetime for AI responses. Entries expire after this many days. */
+  AI_CACHE_TTL_DAYS: z.coerce.number().int().positive().default(7),
+
   /**
    * 32-byte base64 master key used to encrypt per-vault AI API keys at rest
    * (AES-256-GCM). Optional: when unset, per-vault BYO keys are disabled and
@@ -92,6 +95,7 @@ export const env = {
     raw.GOOGLE_CLIENT_ID && raw.GOOGLE_CLIENT_SECRET && raw.GOOGLE_REDIRECT_URI,
   ),
   openaiConfigured: Boolean(raw.OPENAI_API_KEY),
+  aiCacheTtlSeconds: raw.AI_CACHE_TTL_DAYS * 24 * 60 * 60,
 } as const;
 
 export type Env = typeof env;
