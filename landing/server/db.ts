@@ -167,6 +167,24 @@ db.exec(`
     DELETE FROM files_fts WHERE file_id = old.id;
     INSERT INTO files_fts(file_id, vault_id, title, content) VALUES (new.id, new.vault_id, new.title, new.content);
   END;
+
+  CREATE TABLE IF NOT EXISTS ai_response_cache (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    content_hash   TEXT    NOT NULL UNIQUE,
+    note_hash      TEXT,
+    question_embed BLOB,
+    feature        TEXT    NOT NULL,
+    response       TEXT    NOT NULL,
+    input_tokens   INTEGER NOT NULL,
+    output_tokens  INTEGER NOT NULL,
+    hit_count      INTEGER NOT NULL DEFAULT 0,
+    created_at     INTEGER NOT NULL,
+    expires_at     INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS ai_response_cache_note
+    ON ai_response_cache(note_hash);
+  CREATE INDEX IF NOT EXISTS ai_response_cache_feature
+    ON ai_response_cache(feature);
 `);
 
 // Additive migration: older databases predate the `pinned` column. Add it once
@@ -728,6 +746,20 @@ export interface PatRow {
   revoked_at: number | null;
 }
 
+export interface AiCacheRow {
+  id: number;
+  content_hash: string;
+  note_hash: string | null;
+  question_embed: Uint8Array | null;
+  feature: string;
+  response: string;
+  input_tokens: number;
+  output_tokens: number;
+  hit_count: number;
+  created_at: number;
+  expires_at: number;
+}
+
 const stmtInsertPat = db.prepare(
   "INSERT INTO pat_tokens (id, token_hash, user_id, name, scopes, created_at) VALUES (?, ?, ?, ?, ?, ?)",
 );
@@ -1128,6 +1160,57 @@ export function getFileIdsMissingPassages(limit = 1000): string[] {
 }
 export function getFileContent(fileId: string): { id: string; content: string } | undefined {
   return stmtFileContent.get(fileId) as { id: string; content: string } | undefined;
+}
+
+/* ----------------------------- AI response cache ----------------------------- */
+
+const stmtAiCacheByHash = db.prepare(
+  "SELECT * FROM ai_response_cache WHERE content_hash = ?",
+);
+const stmtAiCacheChatBucket = db.prepare(
+  "SELECT * FROM ai_response_cache WHERE feature = 'chat' AND note_hash = ? AND expires_at > ?",
+);
+const stmtAiCacheInsert = db.prepare(
+  `INSERT OR REPLACE INTO ai_response_cache
+     (content_hash, note_hash, question_embed, feature, response,
+      input_tokens, output_tokens, created_at, expires_at)
+   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+);
+const stmtAiCacheIncrHit = db.prepare(
+  "UPDATE ai_response_cache SET hit_count = hit_count + 1 WHERE id = ?",
+);
+const stmtAiCacheDeleteById = db.prepare(
+  "DELETE FROM ai_response_cache WHERE id = ?",
+);
+
+export function getAiCacheByHash(contentHash: string): AiCacheRow | undefined {
+  return stmtAiCacheByHash.get(contentHash) as AiCacheRow | undefined;
+}
+
+export function getAiCacheChatBucket(noteHash: string, nowSec: number): AiCacheRow[] {
+  return stmtAiCacheChatBucket.all(noteHash, nowSec) as unknown as AiCacheRow[];
+}
+
+export function insertAiCache(row: Omit<AiCacheRow, "id" | "hit_count">): void {
+  stmtAiCacheInsert.run(
+    row.content_hash,
+    row.note_hash,
+    row.question_embed,
+    row.feature,
+    row.response,
+    row.input_tokens,
+    row.output_tokens,
+    row.created_at,
+    row.expires_at,
+  );
+}
+
+export function incrementAiCacheHit(id: number): void {
+  stmtAiCacheIncrHit.run(id);
+}
+
+export function deleteAiCacheRow(id: number): void {
+  stmtAiCacheDeleteById.run(id);
 }
 
 export { db };
