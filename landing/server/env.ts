@@ -50,6 +50,14 @@ const schema = z.object({
    * this is set. Never sent to the browser; all AI calls are server-side.
    */
   OPENAI_API_KEY: z.string().optional(),
+
+  /**
+   * 32-byte base64 master key used to encrypt per-vault AI API keys at rest
+   * (AES-256-GCM). Optional: when unset, per-vault BYO keys are disabled and
+   * the AI falls back to OPENAI_API_KEY. Generate with:
+   *   node -e "console.log(crypto.randomBytes(32).toString('base64'))"
+   */
+  VAULT_KEY_SECRET: z.string().optional(),
 });
 
 const parsed = schema.safeParse(process.env);
@@ -84,6 +92,7 @@ export const env = {
     raw.GOOGLE_CLIENT_ID && raw.GOOGLE_CLIENT_SECRET && raw.GOOGLE_REDIRECT_URI,
   ),
   openaiConfigured: Boolean(raw.OPENAI_API_KEY),
+  vaultKeyConfigured: Boolean(raw.VAULT_KEY_SECRET),
 } as const;
 
 export type Env = typeof env;
