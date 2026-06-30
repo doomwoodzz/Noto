@@ -12,6 +12,7 @@ vi.mock("./openai.ts", () => ({
   MAX_TOKENS: { chat: 1, summarize: 1, flashcards: 1, findLinks: 1, lecture: 1 },
   complete: vi.fn(async () => "MOCK_REPLY"),
   transcribe: vi.fn(async () => "mock transcript text"),
+  clientFor: vi.fn(() => ({})),
   AINotConfiguredError: class extends Error {},
 }));
 

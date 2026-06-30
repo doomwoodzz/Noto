@@ -6,6 +6,7 @@ declare global {
     interface Request {
       cookies: Record<string, string>;
       apiUser?: { userId: string; scopes: string[]; tokenId: string };
+      vaultAI?: { apiKey?: string; model?: string };
     }
   }
 }
