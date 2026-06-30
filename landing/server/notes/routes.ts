@@ -20,6 +20,8 @@ import { getCurrentUser } from "../auth/session.ts";
 import {
   countFilesForVault,
   createFile,
+  createVault,
+  countVaultsForUser,
   deleteFile,
   ensureDefaultVault,
   getFilesForVault,
@@ -27,6 +29,7 @@ import {
   getOwnedVault,
   getVaultsForUser,
   MAX_FILES_PER_VAULT,
+  MAX_VAULTS_PER_USER,
   pathTaken,
   toPublicFile,
   updateFile,
@@ -87,6 +90,15 @@ const patchSchema = z
     { message: "Nothing to update" },
   );
 
+const vaultNameSchema = z.string().trim().min(1).max(60);
+const vaultIconSchema = z.string().trim().max(8).optional();   // a single emoji (multi-codepoint)
+const vaultColorSchema = z.string().trim().max(24).optional(); // a color token, validated client-side
+const createVaultSchema = z.object({
+  name: vaultNameSchema,
+  icon: vaultIconSchema,
+  color: vaultColorSchema,
+});
+
 // Note writes can be larger than auth payloads; cap deliberately above the
 // content limit so oversized bodies are rejected by validation, not the parser.
 const jsonBody = express.json({ limit: "512kb" });
@@ -133,6 +145,27 @@ notesRouter.get("/vaults", (req: Request, res: Response) => {
   if (!userId) return;
   ensureDefaultVault(userId);
   res.json({ vaults: getVaultsForUser(userId) });
+});
+
+// Create a new vault for the caller (name + optional emoji icon + color token).
+notesRouter.post("/vaults", writeLimiter, jsonBody, (req: Request, res: Response) => {
+  const userId = requireUserId(req, res);
+  if (!userId) return;
+  const parsed = createVaultSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid vault" });
+    return;
+  }
+  if (countVaultsForUser(userId) >= MAX_VAULTS_PER_USER) {
+    res.status(409).json({ error: "You've reached the maximum number of vaults." });
+    return;
+  }
+  const vault = createVault(userId, {
+    name: parsed.data.name,
+    icon: parsed.data.icon ?? null,
+    color: parsed.data.color ?? null,
+  });
+  res.status(201).json({ vault });
 });
 
 // List files in a vault the caller owns.

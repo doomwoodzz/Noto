@@ -148,4 +148,33 @@ describe("notes API", () => {
     });
     expect(bad.status).toBe(400);
   });
+
+  it("creates a vault with icon/color and seeds a Welcome note", async () => {
+    const a = await signup("mv-create@example.com");
+    const res = await a.req("POST", "/api/vaults", { name: "Thesis", icon: "🎓", color: "blue" });
+    expect(res.status).toBe(201);
+    const { vault } = (await res.json()) as { vault: { id: string; name: string; icon: string; color: string } };
+    expect(vault).toMatchObject({ name: "Thesis", icon: "🎓", color: "blue" });
+
+    // It shows up in the list (alongside the bootstrapped default).
+    const list = (await (await a.req("GET", "/api/vaults")).json()) as { vaults: { id: string }[] };
+    expect(list.vaults.some((v) => v.id === vault.id)).toBe(true);
+
+    // It has a Welcome note.
+    const files = (await (await a.req("GET", `/api/vaults/${vault.id}/files`)).json()) as { files: { path: string }[] };
+    expect(files.files.some((f) => f.path === "Getting Started/Welcome.md")).toBe(true);
+  });
+
+  it("rejects an empty vault name", async () => {
+    const a = await signup("mv-empty@example.com");
+    const res = await a.req("POST", "/api/vaults", { name: "   " });
+    expect(res.status).toBe(400);
+  });
+
+  it("requires authentication", async () => {
+    const anon = makeClient();
+    await anon.req("GET", "/api/health");
+    const res = await anon.req("POST", "/api/vaults", { name: "Nope" });
+    expect(res.status).toBe(401);
+  });
 });
