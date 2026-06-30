@@ -33,7 +33,6 @@ export async function completeWithCache(opts: {
     opts.question !== undefined;
 
   // 1. Content-hash check — fastest path
-  let evictedExpired = false;
   try {
     const cached = getAiCacheByHash(contentHash);
     if (cached) {
@@ -42,7 +41,6 @@ export async function completeWithCache(opts: {
         return cached.response;
       }
       deleteAiCacheRow(cached.id); // lazy eviction of expired row
-      evictedExpired = true;
     }
   } catch (err) {
     console.error("[ai-cache] read error:", err);
@@ -91,10 +89,6 @@ export async function completeWithCache(opts: {
   });
 
   // 4. Store result (best-effort; write failures never surface to the caller).
-  //    Skip the write when we just evicted an expired row for this exact hash —
-  //    the stale TTL suggests we shouldn't eagerly re-cache.
-  if (evictedExpired) return text;
-
   const storeAt = Math.floor(Date.now() / 1000);
   try {
     // Compute chat embedding for storage if not already done during lookup

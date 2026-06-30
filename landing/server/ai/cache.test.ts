@@ -70,8 +70,10 @@ describe("completeWithCache — expired entry", () => {
 
     expect(result).toBe("LIVE_REPLY");
     expect(complete).toHaveBeenCalledOnce();
-    // Expired row must be gone
-    expect(getAiCacheByHash(hash)).toBeUndefined();
+    // Fresh response must be stored under the same hash
+    const freshRow = getAiCacheByHash(hash);
+    expect(freshRow).toBeDefined();
+    expect(freshRow!.response).toBe("LIVE_REPLY");
   });
 });
 
