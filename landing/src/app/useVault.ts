@@ -240,13 +240,14 @@ export function useVault(userId: string): UseVault {
     async (input: { name: string; icon?: string | null; color?: string | null }): Promise<Vault | null> => {
       try {
         const { vault: created } = await api.createVault(input);
-        setVaults((prev) => [...prev, created]);
         await flush();
         const { files: loaded } = await api.listFiles(created.id);
+        setVaults((prev) => [...prev, created]);
         setVault(created);
         setActiveVault(created.id);
         setFiles(loaded);
         setActiveFileId(loaded[0]?.id ?? "");
+        setSaveStatus("idle");
         try { localStorage.setItem(ACTIVE_VAULT_KEY(userId), created.id); } catch { /* ignore */ }
         return created;
       } catch (e) {
