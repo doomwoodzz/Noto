@@ -28,6 +28,8 @@ This design adds a complementary system that actually reduces output tokens thro
 - Manual cache invalidation API — TTL covers the use case; no flush endpoint in v1.
 - Per-user cache isolation — in v1, the cache is vault-global (same note content → same response for any user). Per-user scoping is deferred.
 
+**v2 stub — `GET /api/ai/cache/stats`:** the schema captures everything needed for an admin stats endpoint (`hit_count`, `input_tokens`, `output_tokens`, `feature`, `created_at`). A future v2 can add this auth-gated route returning aggregate hit rate, tokens saved, and per-feature breakdown without any schema changes. No implementation in v1.
+
 ## 2. Database schema
 
 One new table, added as a migration in `server/db.ts`:
@@ -55,6 +57,8 @@ CREATE INDEX IF NOT EXISTS ai_response_cache_feature
 ```
 
 TTL defaults to 7 days (`7 * 24 * 60 * 60` seconds). Overridable via `AI_CACHE_TTL_DAYS` in `.env`. Expired rows are evicted lazily on read — when a content-hash lookup finds an expired row, it is deleted before the call falls through to OpenAI. No background sweeper.
+
+**Note content changes:** both the content-hash key and the semantic bucket key (`note_hash`) embed the full note content. Any change to note content produces different keys — old cache entries are never matched, so stale answers are never returned. The old entries become orphaned and are cleaned up naturally when their TTL expires (within 7 days). No explicit invalidation hook into the note write path is needed.
 
 ## 3. `openai.ts` changes
 
