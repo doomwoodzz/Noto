@@ -21,6 +21,20 @@ export interface PublicUser {
 export interface Vault {
   id: string;
   name: string;
+  icon: string | null;
+  color: string | null;
+}
+
+export interface VaultAIConfig {
+  provider: string;
+  model: string | null;
+  configured: boolean;
+}
+
+let activeVaultId: string | null = null;
+/** Set the vault whose context (per-vault AI key/model) AI requests should use. */
+export function setActiveVault(id: string | null): void {
+  activeVaultId = id;
 }
 
 const CSRF_COOKIE = "noto_csrf";
@@ -53,6 +67,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   if (method !== "GET" && method !== "HEAD") {
     headers["X-CSRF-Token"] = await ensureCsrfToken();
   }
+  if (activeVaultId) headers["x-noto-vault"] = activeVaultId;
   const res = await fetch(path, {
     method,
     credentials: "include",
@@ -189,6 +204,13 @@ export const api = {
 
   /* notes */
   listVaults: () => request<{ vaults: Vault[] }>("GET", "/api/vaults"),
+  createVault: (input: { name: string; icon?: string | null; color?: string | null }) =>
+    request<{ vault: Vault }>("POST", "/api/vaults", input),
+  vaultAI: {
+    get: (vaultId: string) => request<VaultAIConfig>("GET", `/api/vaults/${vaultId}/ai`),
+    set: (vaultId: string, input: { provider: string; model?: string | null; apiKey?: string }) =>
+      request<VaultAIConfig>("PUT", `/api/vaults/${vaultId}/ai`, input),
+  },
   listFiles: (vaultId: string) =>
     request<{ files: VaultFile[] }>("GET", `/api/vaults/${vaultId}/files`),
   createFile: (vaultId: string, input: { path: string; title: string; content: string }) =>
