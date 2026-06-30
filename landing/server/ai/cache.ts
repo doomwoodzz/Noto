@@ -21,6 +21,8 @@ export async function completeWithCache(opts: {
   noteTitle?: string;
   noteContent?: string;
   question?: string;
+  apiKey?: string;
+  model?: string;
 }): Promise<string> {
   const contentHash = sha256Hex(opts.feature + opts.system + opts.user);
   const nowSec = Math.floor(Date.now() / 1000);
@@ -84,6 +86,8 @@ export async function completeWithCache(opts: {
     system: opts.system,
     user: opts.user,
     maxTokens: opts.maxTokens,
+    apiKey: opts.apiKey,
+    model: opts.model,
   });
 
   // 4. Store result (best-effort; write failures never surface to the caller).

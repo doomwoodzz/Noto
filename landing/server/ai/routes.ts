@@ -20,11 +20,11 @@ import { z } from "zod";
 import { getCurrentUser } from "../auth/session.ts";
 import { env } from "../env.ts";
 import {
-  complete,
   transcribe,
   MAX_TOKENS,
   AINotConfiguredError,
 } from "./openai.ts";
+import { completeWithCache } from "./cache.ts";
 import { resolveVaultAI } from "./vaultAI.ts";
 import {
   SYSTEM,
@@ -147,10 +147,14 @@ aiRouter.post(
       res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid request" });
       return;
     }
-    const reply = await complete({
+    const reply = await completeWithCache({
+      feature: "chat",
       system: SYSTEM.chat,
       user: buildChatPrompt(parsed.data),
       maxTokens: MAX_TOKENS.chat,
+      noteTitle: parsed.data.noteTitle,
+      noteContent: parsed.data.noteContent,
+      question: parsed.data.question,
       apiKey: req.vaultAI?.apiKey,
       model: req.vaultAI?.model,
     });
@@ -170,7 +174,8 @@ aiRouter.post(
       res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid request" });
       return;
     }
-    const reply = await complete({
+    const reply = await completeWithCache({
+      feature: "summarize",
       system: SYSTEM.summarize,
       user: buildSummarizePrompt(parsed.data.noteTitle, parsed.data.noteContent),
       maxTokens: MAX_TOKENS.summarize,
@@ -193,7 +198,8 @@ aiRouter.post(
       res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid request" });
       return;
     }
-    const raw = await complete({
+    const raw = await completeWithCache({
+      feature: "flashcards",
       system: SYSTEM.flashcards,
       user: buildFlashcardsPrompt(parsed.data.noteTitle, parsed.data.noteContent),
       maxTokens: MAX_TOKENS.flashcards,
@@ -228,7 +234,8 @@ aiRouter.post(
       res.json({ related: [] });
       return;
     }
-    const raw = await complete({
+    const raw = await completeWithCache({
+      feature: "find-links",
       system: SYSTEM.findLinks,
       user: buildFindLinksPrompt({ noteTitle: t, noteContent: c, titles }),
       maxTokens: MAX_TOKENS.findLinks,
@@ -273,7 +280,8 @@ aiRouter.post(
       res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid request" });
       return;
     }
-    const markdown = await complete({
+    const markdown = await completeWithCache({
+      feature: "lecture-notes",
       system: SYSTEM.lecture,
       user: buildLecturePrompt(parsed.data.transcript, parsed.data.titles),
       maxTokens: MAX_TOKENS.lecture,
