@@ -60,6 +60,15 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_vaults_user ON vaults(user_id);
 
+  CREATE TABLE IF NOT EXISTS vault_ai (
+    vault_id       TEXT PRIMARY KEY REFERENCES vaults(id) ON DELETE CASCADE,
+    provider       TEXT NOT NULL DEFAULT 'openai',
+    model          TEXT,
+    api_key_cipher BLOB,
+    created_at     INTEGER NOT NULL,
+    updated_at     INTEGER NOT NULL
+  );
+
   CREATE TABLE IF NOT EXISTS files (
     id          TEXT PRIMARY KEY,
     vault_id    TEXT NOT NULL REFERENCES vaults(id) ON DELETE CASCADE,
@@ -513,6 +522,80 @@ export function createVault(
     throw err;
   }
   return { id, name: input.name, icon: input.icon ?? null, color: input.color ?? null };
+}
+
+/* ------------------------------ Vault AI config ----------------------------- */
+
+export interface VaultAIRow {
+  vault_id: string;
+  provider: string;
+  model: string | null;
+  api_key_cipher: Uint8Array | null;
+  created_at: number;
+  updated_at: number;
+}
+export interface VaultAIPublic {
+  provider: string;
+  model: string | null;
+  configured: boolean; // true when an encrypted key is stored
+}
+
+const stmtVaultAIById = db.prepare("SELECT * FROM vault_ai WHERE vault_id = ?");
+const stmtInsertVaultAI = db.prepare(
+  "INSERT INTO vault_ai (vault_id, provider, model, api_key_cipher, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+);
+const stmtUpdateVaultAIWithKey = db.prepare(
+  "UPDATE vault_ai SET provider = ?, model = ?, api_key_cipher = ?, updated_at = ? WHERE vault_id = ?",
+);
+const stmtUpdateVaultAINoKey = db.prepare(
+  "UPDATE vault_ai SET provider = ?, model = ?, updated_at = ? WHERE vault_id = ?",
+);
+
+export function getVaultAIRow(vaultId: string): VaultAIRow | undefined {
+  const raw = stmtVaultAIById.get(vaultId) as (Omit<VaultAIRow, "api_key_cipher"> & { api_key_cipher: Uint8Array | Buffer | ArrayBuffer | null }) | undefined;
+  if (!raw) return undefined;
+  // Normalize BLOB to Uint8Array regardless of what node:sqlite returns at runtime.
+  let cipher: Uint8Array | null = null;
+  if (raw.api_key_cipher != null) {
+    if (raw.api_key_cipher instanceof Uint8Array) {
+      cipher = raw.api_key_cipher;
+    } else if (raw.api_key_cipher instanceof ArrayBuffer) {
+      cipher = new Uint8Array(raw.api_key_cipher);
+    } else {
+      // Buffer (Node.js) is a subclass of Uint8Array, so this copies cleanly.
+      cipher = new Uint8Array(raw.api_key_cipher as unknown as ArrayBufferLike);
+    }
+  }
+  return { ...raw, api_key_cipher: cipher };
+}
+
+export function getVaultAIPublic(vaultId: string): VaultAIPublic | null {
+  const row = getVaultAIRow(vaultId);
+  if (!row) return null;
+  return { provider: row.provider, model: row.model, configured: row.api_key_cipher != null };
+}
+
+/**
+ * Upsert a vault's AI config. `apiKeyCipher` semantics:
+ *   - undefined → leave the stored key untouched (provider/model still update)
+ *   - null      → clear the stored key
+ *   - Uint8Array→ replace the stored key
+ */
+export function setVaultAI(
+  vaultId: string,
+  input: { provider: string; model?: string | null; apiKeyCipher?: Uint8Array | null },
+): void {
+  const ts = now();
+  const existing = getVaultAIRow(vaultId);
+  if (!existing) {
+    stmtInsertVaultAI.run(vaultId, input.provider, input.model ?? null, input.apiKeyCipher ?? null, ts, ts);
+    return;
+  }
+  if (input.apiKeyCipher === undefined) {
+    stmtUpdateVaultAINoKey.run(input.provider, input.model ?? null, ts, vaultId);
+  } else {
+    stmtUpdateVaultAIWithKey.run(input.provider, input.model ?? null, input.apiKeyCipher, ts, vaultId);
+  }
 }
 
 const stmtFilesForVault = db.prepare(

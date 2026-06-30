@@ -48,3 +48,28 @@ it("adds icon/color to a legacy vaults table and lists them as null", async () =
   const vaults = mod.getVaultsForUser("u1");
   expect(vaults).toEqual([{ id: "v1", name: "Legacy Vault", icon: null, color: null }]);
 });
+
+it("stores and reads back per-vault AI config (cipher round-trips by handle)", async () => {
+  const mod = await import("./db.ts");
+  // Reuse the seeded legacy vault v1 / user u1 from beforeEach.
+  mod.setVaultAI("v1", { provider: "openai", model: "gpt-4o-mini", apiKeyCipher: new Uint8Array([1, 2, 3]) });
+
+  const row = mod.getVaultAIRow("v1");
+  expect(row?.provider).toBe("openai");
+  expect(row?.model).toBe("gpt-4o-mini");
+  expect(Array.from(row!.api_key_cipher!)).toEqual([1, 2, 3]);
+
+  const pub = mod.getVaultAIPublic("v1");
+  expect(pub).toEqual({ provider: "openai", model: "gpt-4o-mini", configured: true });
+  expect((pub as Record<string, unknown>).apiKey).toBeUndefined();
+
+  // Upsert: omitting apiKeyCipher leaves the stored key untouched.
+  mod.setVaultAI("v1", { provider: "openai", model: "gpt-4o" });
+  expect(Array.from(mod.getVaultAIRow("v1")!.api_key_cipher!)).toEqual([1, 2, 3]);
+  expect(mod.getVaultAIRow("v1")!.model).toBe("gpt-4o");
+
+  // Clearing the key explicitly.
+  mod.setVaultAI("v1", { provider: "openai", model: "gpt-4o", apiKeyCipher: null });
+  expect(mod.getVaultAIRow("v1")!.api_key_cipher).toBeNull();
+  expect(mod.getVaultAIPublic("v1")).toEqual({ provider: "openai", model: "gpt-4o", configured: false });
+});
