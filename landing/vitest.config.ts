@@ -12,6 +12,7 @@ export default defineConfig({
       DATABASE_PATH: ":memory:",
       SESSION_SECRET: "test-session-secret-at-least-32-chars-long",
       APP_ORIGIN: "http://localhost:5173",
+      VAULT_KEY_SECRET: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
     },
   },
 });

@@ -188,4 +188,35 @@ describe("notes API", () => {
     const over = await a.req("POST", "/api/vaults", { name: "One too many" });
     expect(over.status).toBe(409);
   });
+
+  it("sets and reads per-vault AI config without echoing the key", async () => {
+    const a = await signup("mv-ai@example.com");
+    const { vault } = (await (await a.req("POST", "/api/vaults", { name: "AI Vault" })).json()) as { vault: { id: string } };
+
+    // Before config: 200 with a default-ish payload.
+    const before = (await (await a.req("GET", `/api/vaults/${vault.id}/ai`)).json()) as { configured: boolean };
+    expect(before.configured).toBe(false);
+
+    // Set provider/model/key.
+    const put = await a.req("PUT", `/api/vaults/${vault.id}/ai`, {
+      provider: "openai",
+      model: "gpt-4o-mini",
+      apiKey: "sk-test-key-abc",
+    });
+    expect(put.status).toBe(200);
+    const putBody = (await put.json()) as Record<string, unknown>;
+    expect(putBody).toMatchObject({ provider: "openai", model: "gpt-4o-mini", configured: true });
+    expect(JSON.stringify(putBody)).not.toContain("sk-test-key-abc"); // never echoed
+
+    const after = (await (await a.req("GET", `/api/vaults/${vault.id}/ai`)).json()) as { configured: boolean };
+    expect(after.configured).toBe(true);
+  });
+
+  it("404s AI config for a vault the caller does not own", async () => {
+    const a = await signup("mv-own-a@example.com");
+    const b = await signup("mv-own-b@example.com");
+    const { vault } = (await (await a.req("POST", "/api/vaults", { name: "Private" })).json()) as { vault: { id: string } };
+    const res = await b.req("GET", `/api/vaults/${vault.id}/ai`);
+    expect(res.status).toBe(404);
+  });
 });

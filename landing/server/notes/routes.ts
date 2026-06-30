@@ -36,7 +36,10 @@ import {
   writeAudit,
   writeSnapshot,
   sha256Hex,
+  setVaultAI,
+  getVaultAIPublic,
 } from "../db.ts";
+import { encryptKey, keyvaultConfigured } from "../ai/keyvault.ts";
 import { requireScope } from "../auth/pat.ts";
 import { reembedNote } from "../search/embedNote.ts";
 import { getSection, replaceSection, listHeadings, appendUnderHeading } from "./sections.ts";
@@ -166,6 +169,58 @@ notesRouter.post("/vaults", writeLimiter, jsonBody, (req: Request, res: Response
     color: parsed.data.color ?? null,
   });
   res.status(201).json({ vault });
+});
+
+const vaultAISchema = z.object({
+  provider: z.enum(["openai"]).default("openai"),
+  model: z.string().trim().max(60).nullable().optional(),
+  // undefined → leave key; "" → clear key; non-empty → set key
+  apiKey: z.string().max(400).optional(),
+});
+
+notesRouter.get("/vaults/:vaultId/ai", (req: Request, res: Response) => {
+  const userId = requireUserId(req, res);
+  if (!userId) return;
+  const vault = getOwnedVault(userId, req.params.vaultId as string);
+  if (!vault) {
+    res.status(404).json({ error: "Vault not found" });
+    return;
+  }
+  const cfg = getVaultAIPublic(vault.id) ?? { provider: "openai", model: null, configured: false };
+  res.json(cfg);
+});
+
+notesRouter.put("/vaults/:vaultId/ai", writeLimiter, jsonBody, (req: Request, res: Response) => {
+  const userId = requireUserId(req, res);
+  if (!userId) return;
+  const vault = getOwnedVault(userId, req.params.vaultId as string);
+  if (!vault) {
+    res.status(404).json({ error: "Vault not found" });
+    return;
+  }
+  const parsed = vaultAISchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid AI config" });
+    return;
+  }
+  const { provider, model, apiKey } = parsed.data;
+
+  let apiKeyCipher: Uint8Array | null | undefined;
+  if (apiKey === undefined) {
+    apiKeyCipher = undefined; // leave as-is
+  } else if (apiKey.trim() === "") {
+    apiKeyCipher = null; // clear
+  } else {
+    if (!keyvaultConfigured()) {
+      res.status(400).json({ error: "Per-vault keys aren't available on this server." });
+      return;
+    }
+    apiKeyCipher = encryptKey(apiKey.trim());
+  }
+
+  setVaultAI(vault.id, { provider, model: model ?? null, apiKeyCipher });
+  const cfg = getVaultAIPublic(vault.id) ?? { provider, model: model ?? null, configured: false };
+  res.json(cfg); // never includes the key
 });
 
 // List files in a vault the caller owns.
