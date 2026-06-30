@@ -91,7 +91,7 @@ const patchSchema = z
   );
 
 const vaultNameSchema = z.string().trim().min(1).max(60);
-const vaultIconSchema = z.string().trim().max(8).optional();   // a single emoji (multi-codepoint)
+const vaultIconSchema = z.string().trim().max(16).optional(); // one emoji; 16 UTF-16 units covers ZWJ sequences
 const vaultColorSchema = z.string().trim().max(24).optional(); // a color token, validated client-side
 const createVaultSchema = z.object({
   name: vaultNameSchema,

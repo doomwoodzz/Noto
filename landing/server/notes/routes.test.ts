@@ -2,6 +2,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Server } from "node:http";
 import { createApp } from "../app.ts";
+import { MAX_VAULTS_PER_USER } from "../db.ts";
 
 const ORIGIN = "http://localhost:5173";
 
@@ -176,5 +177,15 @@ describe("notes API", () => {
     await anon.req("GET", "/api/health");
     const res = await anon.req("POST", "/api/vaults", { name: "Nope" });
     expect(res.status).toBe(401);
+  });
+
+  it("rejects creating beyond the per-user vault cap", async () => {
+    const a = await signup("mv-cap@example.com");
+    for (let i = 0; i < MAX_VAULTS_PER_USER; i++) {
+      const res = await a.req("POST", "/api/vaults", { name: `Vault ${i}` });
+      expect(res.status).toBe(201);
+    }
+    const over = await a.req("POST", "/api/vaults", { name: "One too many" });
+    expect(over.status).toBe(409);
   });
 });
