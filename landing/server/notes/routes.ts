@@ -175,7 +175,7 @@ const vaultAISchema = z.object({
   provider: z.enum(["openai"]).default("openai"),
   model: z.string().trim().max(60).nullable().optional(),
   // undefined → leave key; "" → clear key; non-empty → set key
-  apiKey: z.string().max(400).optional(),
+  apiKey: z.string().trim().max(400).optional(),
 });
 
 notesRouter.get("/vaults/:vaultId/ai", (req: Request, res: Response) => {
@@ -208,14 +208,14 @@ notesRouter.put("/vaults/:vaultId/ai", writeLimiter, jsonBody, (req: Request, re
   let apiKeyCipher: Uint8Array | null | undefined;
   if (apiKey === undefined) {
     apiKeyCipher = undefined; // leave as-is
-  } else if (apiKey.trim() === "") {
+  } else if (apiKey === "") {
     apiKeyCipher = null; // clear
   } else {
     if (!keyvaultConfigured()) {
       res.status(400).json({ error: "Per-vault keys aren't available on this server." });
       return;
     }
-    apiKeyCipher = encryptKey(apiKey.trim());
+    apiKeyCipher = encryptKey(apiKey);
   }
 
   setVaultAI(vault.id, { provider, model: model ?? null, apiKeyCipher });
