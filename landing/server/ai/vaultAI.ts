@@ -17,12 +17,13 @@ export function resolveVaultAI(userId: string | null, vaultId: string | null | u
   const row = getVaultAIRow(vaultId);
   if (!row) return {};
   const out: ResolvedVaultAI = {};
-  if (row.model) out.model = row.model;
   if (row.api_key_cipher) {
     try {
       out.apiKey = decryptKey(row.api_key_cipher);
-    } catch {
-      /* corrupt/old cipher → fall back to global */
+      if (row.model) out.model = row.model; // model applies only with a working vault key
+    } catch (e) {
+      // Corrupt/rotated cipher → fall back fully to the global key + default model.
+      console.warn("vaultAI: failed to decrypt key for vault %s — using global fallback", vaultId, e);
     }
   }
   return out;
