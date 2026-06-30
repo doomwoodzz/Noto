@@ -49,7 +49,7 @@ if (!openai) { console.error("OPENAI_API_KEY not configured — cannot run the o
 
 // ───────────────────────────────────────────────────────────── seed
 const user = db.createUser({ email: `out-bench-${randomUUID()}@example.com` });
-const vault = db.createVault(user.id, "School Vault");
+const vault = db.createVault(user.id, { name: "School Vault" });
 for (const f of NotoData.files as { path: string; title: string; content: string }[]) {
   const file = db.createFile(vault.id, { path: f.path, title: f.title, content: f.content });
   await reembedNote(file.id, f.content);

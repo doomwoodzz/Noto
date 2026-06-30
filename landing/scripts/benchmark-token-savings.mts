@@ -52,7 +52,7 @@ interface Seeded { userId: string; vaultId: string }
 async function seedUser(extraNotes: { path: string; title: string; content: string }[], extraMems: { text: string; type: string }[]): Promise<Seeded> {
   const email = `bench-${randomUUID()}@example.com`;
   const user = db.createUser({ email });
-  const vault = db.createVault(user.id, "School Vault");
+  const vault = db.createVault(user.id, { name: "School Vault" });
 
   const notes = [
     ...NotoData.files.map((f: { path: string; title: string; content: string }) => ({ path: f.path, title: f.title, content: f.content })),
