@@ -46,6 +46,10 @@ export function NotoWorkspace({ user, theme, onToggleTheme, onLogout }: Props) {
     flush: v.flush,
     onToggleTheme,
     onLogout,
+    vaults: v.vaults,
+    activeVaultId: v.activeVaultId,
+    selectVault: v.selectVault,
+    createVault: v.createVault,
   };
 
   return (

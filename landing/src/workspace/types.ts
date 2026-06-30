@@ -6,6 +6,7 @@
 // canonical `VaultFile` shape from noto-core.
 
 import type { VaultFile } from "../noto-core";
+import type { VaultSummary } from "./vaultIcons";
 
 export type SaveStatus = "idle" | "saving" | "saved" | "error";
 
@@ -37,6 +38,12 @@ export interface VaultController {
   /** Account actions (real app only). */
   onToggleTheme?(): void;
   onLogout?(): void;
+
+  /** Multi-vault surface (real app only; demo omits it → single static badge). */
+  vaults?: VaultSummary[];
+  activeVaultId?: string;
+  selectVault?: (id: string) => void | Promise<void>;
+  createVault?: (input: { name: string; icon?: string | null; color?: string | null }) => Promise<VaultSummary | null>;
 }
 
 export type TabKind = "note" | "home" | "graph";

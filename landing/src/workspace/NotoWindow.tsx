@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "../styles/workspace.css";
 import { McpSettings } from "./McpSettings";
+import { CreateVaultModal } from "./CreateVaultModal";
 import type { McpClient } from "./mcpClient";
 import { ActivityView } from "./ActivityView";
 import type { ActivityClient } from "./activityClient";
@@ -61,6 +62,7 @@ export function NotoWindow({
 
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [mcpOpen, setMcpOpen] = useState(false);
+  const [createVaultOpen, setCreateVaultOpen] = useState(false);
   const [activityOpen, setActivityOpen] = useState(false);
   const [activityFileId, setActivityFileId] = useState<string | undefined>(undefined);
   const openActivity = (fileId?: string) => { setActivityFileId(fileId); setActivityOpen(true); };
@@ -305,6 +307,10 @@ export function NotoWindow({
             onLogout={controller.onLogout}
             onOpenConnect={mcpClient ? () => setMcpOpen(true) : undefined}
             onOpenActivity={activityClient ? () => openActivity() : undefined}
+            vaults={controller.vaults}
+            activeVaultId={controller.activeVaultId}
+            onSelectVault={controller.selectVault ? (id) => void controller.selectVault!(id) : undefined}
+            onCreateVault={controller.createVault ? () => setCreateVaultOpen(true) : undefined}
           />
           <WorkspacePanes ws={ws} noteTitle={noteTitle} renderBody={renderBody} />
           {ws.contextOpen && (
@@ -331,6 +337,12 @@ export function NotoWindow({
           initialFileId={activityFileId}
           onClose={() => setActivityOpen(false)}
           onOpenNote={ws.openNote}
+        />
+      )}
+      {createVaultOpen && controller.createVault && (
+        <CreateVaultModal
+          onClose={() => setCreateVaultOpen(false)}
+          onCreate={(input) => controller.createVault!(input)}
         />
       )}
       {smartOpen && (
