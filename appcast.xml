@@ -1,0 +1,8 @@
+<?xml version="1.0" standalone="yes"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+  <channel>
+    <title>Noto Updates</title>
+    <link>https://github.com/doomwoodzz/Noto/releases</link>
+    <description>Appcast for Noto macOS releases.</description>
+  </channel>
+</rss>

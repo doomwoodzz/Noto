@@ -18,8 +18,12 @@ NODE_ENV=production SESSION_SECRET=$(node -e "console.log(require('crypto').rand
 ```
 
 Copy `.env.example` → `.env` for local config. In production, inject the env
-vars through your host. `SESSION_SECRET` is **required** in production — the
-server refuses to start without it.
+vars through your host. `SESSION_SECRET` is **recommended** in production: when
+unset, the server auto-generates a strong secret and persists it in the database
+on first boot, so it always starts. Set it explicitly for full control, and
+**required** when running more than one instance (each instance would otherwise
+mint its own secret). The secret only signs the transient OAuth state cookie;
+real login sessions are opaque server-side tokens that don't depend on it.
 
 ## Architecture
 
@@ -73,8 +77,10 @@ handles this automatically).
   bounded (anti-DoS on the KDF). JSON body capped at 16 kB.
 - **SQL injection**: structurally impossible — every query is a prepared,
   parameterised statement.
-- **Secrets**: never in code; `.env` is git-ignored; production boot fails
-  without a strong `SESSION_SECRET`. Errors never leak stack traces to clients.
+- **Secrets**: never in code; `.env` is git-ignored. A strong `SESSION_SECRET`
+  is used when injected, otherwise one is generated and persisted in the database
+  on first boot (env-provided value always takes precedence). Errors never leak
+  stack traces to clients.
 
 ## Swapping SQLite → Postgres
 
