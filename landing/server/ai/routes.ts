@@ -20,11 +20,12 @@ import { z } from "zod";
 import { getCurrentUser } from "../auth/session.ts";
 import { env } from "../env.ts";
 import {
-  complete,
   transcribe,
   MAX_TOKENS,
   AINotConfiguredError,
 } from "./openai.ts";
+import { completeWithCache } from "./cache.ts";
+import { resolveVaultAI } from "./vaultAI.ts";
 import {
   SYSTEM,
   buildChatPrompt,
@@ -89,9 +90,13 @@ function requireUserId(req: Request, res: Response): string | null {
   return user.id;
 }
 
-// 503 when AI is unconfigured — checked before doing any work.
-function requireAI(_req: Request, res: Response, next: NextFunction): void {
-  if (!env.openaiConfigured) {
+// Resolve any per-vault key/model, then gate: available if the vault has a key
+// OR the global key is configured. Stashes the resolution for handlers to use.
+function requireAI(req: Request, res: Response, next: NextFunction): void {
+  const userId = getCurrentUser(req)?.id ?? null;
+  const resolved = resolveVaultAI(userId, req.get("x-noto-vault"));
+  req.vaultAI = resolved;
+  if (!env.openaiConfigured && !resolved.apiKey) {
     res.status(503).json({ error: "AI is not configured on this server." });
     return;
   }
@@ -142,10 +147,16 @@ aiRouter.post(
       res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid request" });
       return;
     }
-    const reply = await complete({
+    const reply = await completeWithCache({
+      feature: "chat",
       system: SYSTEM.chat,
       user: buildChatPrompt(parsed.data),
       maxTokens: MAX_TOKENS.chat,
+      noteTitle: parsed.data.noteTitle,
+      noteContent: parsed.data.noteContent,
+      question: parsed.data.question,
+      apiKey: req.vaultAI?.apiKey,
+      model: req.vaultAI?.model,
     });
     res.json({ reply });
   }),
@@ -163,10 +174,13 @@ aiRouter.post(
       res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid request" });
       return;
     }
-    const reply = await complete({
+    const reply = await completeWithCache({
+      feature: "summarize",
       system: SYSTEM.summarize,
       user: buildSummarizePrompt(parsed.data.noteTitle, parsed.data.noteContent),
       maxTokens: MAX_TOKENS.summarize,
+      apiKey: req.vaultAI?.apiKey,
+      model: req.vaultAI?.model,
     });
     res.json({ reply });
   }),
@@ -184,10 +198,13 @@ aiRouter.post(
       res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid request" });
       return;
     }
-    const raw = await complete({
+    const raw = await completeWithCache({
+      feature: "flashcards",
       system: SYSTEM.flashcards,
       user: buildFlashcardsPrompt(parsed.data.noteTitle, parsed.data.noteContent),
       maxTokens: MAX_TOKENS.flashcards,
+      apiKey: req.vaultAI?.apiKey,
+      model: req.vaultAI?.model,
     });
     const arr = parseJsonArray(raw) ?? [];
     const cards = arr
@@ -217,10 +234,13 @@ aiRouter.post(
       res.json({ related: [] });
       return;
     }
-    const raw = await complete({
+    const raw = await completeWithCache({
+      feature: "find-links",
       system: SYSTEM.findLinks,
       user: buildFindLinksPrompt({ noteTitle: t, noteContent: c, titles }),
       maxTokens: MAX_TOKENS.findLinks,
+      apiKey: req.vaultAI?.apiKey,
+      model: req.vaultAI?.model,
     });
     const allowed = new Set(titles);
     const related = (parseJsonArray(raw) ?? [])
@@ -243,7 +263,7 @@ aiRouter.post(
       return;
     }
     const mime = req.headers["content-type"] ?? "audio/webm";
-    const transcript = await transcribe(audio, mime);
+    const transcript = await transcribe(audio, mime, { apiKey: req.vaultAI?.apiKey });
     res.json({ transcript });
   }),
 );
@@ -260,10 +280,13 @@ aiRouter.post(
       res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid request" });
       return;
     }
-    const markdown = await complete({
+    const markdown = await completeWithCache({
+      feature: "lecture-notes",
       system: SYSTEM.lecture,
       user: buildLecturePrompt(parsed.data.transcript, parsed.data.titles),
       maxTokens: MAX_TOKENS.lecture,
+      apiKey: req.vaultAI?.apiKey,
+      model: req.vaultAI?.model,
     });
     res.json({ markdown });
   }),

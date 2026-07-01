@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, ApiError, type Vault } from "./api";
+import { api, ApiError, setActiveVault, type Vault } from "./api";
 import type { VaultFile } from "../noto-core";
+import { pickInitialVault } from "../workspace/vaultIcons";
+
+const ACTIVE_VAULT_KEY = (userId: string) => `noto:active-vault:${userId}`;
 
 export type SaveStatus = "idle" | "saving" | "saved" | "error";
 
@@ -16,6 +19,8 @@ function repath(path: string, newTitle: string): string {
 export interface UseVault {
   loading: boolean;
   error: string | null;
+  vaults: Vault[];
+  activeVaultId: string;
   vault: Vault | null;
   files: VaultFile[];
   activeFileId: string;
@@ -30,11 +35,14 @@ export interface UseVault {
   togglePin: (fileId: string) => Promise<void>;
   /** Force-write any debounced edits now (e.g. before switching notes). */
   flush: () => Promise<void>;
+  selectVault: (id: string) => Promise<void>;
+  createVault: (input: { name: string; icon?: string | null; color?: string | null }) => Promise<Vault | null>;
 }
 
-export function useVault(): UseVault {
+export function useVault(userId: string): UseVault {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [vaults, setVaults] = useState<Vault[]>([]);
   const [vault, setVault] = useState<Vault | null>(null);
   const [files, setFiles] = useState<VaultFile[]>([]);
   const [activeFileId, setActiveFileId] = useState("");
@@ -63,17 +71,21 @@ export function useVault(): UseVault {
     }
   }, []);
 
-  // Initial load: vaults → first vault → its files.
+  // Initial load: vaults → persisted or first vault → its files.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const { vaults } = await api.listVaults();
-        const v = vaults[0];
-        if (!v) throw new Error("No vault");
-        const { files: loaded } = await api.listFiles(v.id);
+        const { vaults: list } = await api.listVaults();
+        let persisted: string | null = null;
+        try { persisted = localStorage.getItem(ACTIVE_VAULT_KEY(userId)); } catch { /* ignore */ }
+        const initial = pickInitialVault(list, persisted);
+        if (!initial) throw new Error("No vault");
+        const { files: loaded } = await api.listFiles(initial.id);
         if (cancelled) return;
-        setVault(v);
+        setVaults(list);
+        setVault(initial);
+        setActiveVault(initial.id);
         setFiles(loaded);
         setActiveFileId(loaded[0]?.id ?? "");
       } catch (e) {
@@ -85,7 +97,7 @@ export function useVault(): UseVault {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [userId]);
 
   // Save on tab close / hide (best-effort).
   useEffect(() => {
@@ -203,11 +215,56 @@ export function useVault(): UseVault {
     [files],
   );
 
+  const selectVault = useCallback(
+    async (id: string): Promise<void> => {
+      if (id === vault?.id) return;
+      await flush();
+      try {
+        const target = vaults.find((v) => v.id === id);
+        if (!target) return;
+        const { files: loaded } = await api.listFiles(id);
+        setVault(target);
+        setActiveVault(id);
+        setFiles(loaded);
+        setActiveFileId(loaded[0]?.id ?? "");
+        setSaveStatus("idle");
+        try { localStorage.setItem(ACTIVE_VAULT_KEY(userId), id); } catch { /* ignore */ }
+      } catch (e) {
+        setError(e instanceof ApiError ? e.message : "Could not open that vault.");
+      }
+    },
+    [vault, vaults, flush, userId],
+  );
+
+  const createVault = useCallback(
+    async (input: { name: string; icon?: string | null; color?: string | null }): Promise<Vault | null> => {
+      try {
+        const { vault: created } = await api.createVault(input);
+        await flush();
+        const { files: loaded } = await api.listFiles(created.id);
+        setVaults((prev) => [...prev, created]);
+        setVault(created);
+        setActiveVault(created.id);
+        setFiles(loaded);
+        setActiveFileId(loaded[0]?.id ?? "");
+        setSaveStatus("idle");
+        try { localStorage.setItem(ACTIVE_VAULT_KEY(userId), created.id); } catch { /* ignore */ }
+        return created;
+      } catch (e) {
+        setError(e instanceof ApiError ? e.message : "Could not create the vault.");
+        return null;
+      }
+    },
+    [flush, userId],
+  );
+
   const activeFile = files.find((f) => f.id === activeFileId) ?? null;
 
   return {
     loading,
     error,
+    vaults,
+    activeVaultId: vault?.id ?? "",
     vault,
     files,
     activeFileId,
@@ -221,5 +278,7 @@ export function useVault(): UseVault {
     deleteNote,
     togglePin,
     flush,
+    selectVault,
+    createVault,
   };
 }

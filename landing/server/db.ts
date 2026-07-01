@@ -53,10 +53,21 @@ db.exec(`
     id          TEXT PRIMARY KEY,
     user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     name        TEXT NOT NULL,
+    icon        TEXT,
+    color       TEXT,
     created_at  INTEGER NOT NULL,
     updated_at  INTEGER NOT NULL
   );
   CREATE INDEX IF NOT EXISTS idx_vaults_user ON vaults(user_id);
+
+  CREATE TABLE IF NOT EXISTS vault_ai (
+    vault_id       TEXT PRIMARY KEY REFERENCES vaults(id) ON DELETE CASCADE,
+    provider       TEXT NOT NULL DEFAULT 'openai',
+    model          TEXT,
+    api_key_cipher BLOB,
+    created_at     INTEGER NOT NULL,
+    updated_at     INTEGER NOT NULL
+  );
 
   CREATE TABLE IF NOT EXISTS files (
     id          TEXT PRIMARY KEY,
@@ -81,8 +92,8 @@ db.exec(`
     last_used_at  INTEGER,
     revoked_at    INTEGER
   );
-  CREATE INDEX IF NOT EXISTS idx_pat_user ON pat_tokens(user_id);
-  CREATE INDEX IF NOT EXISTS idx_pat_hash ON pat_tokens(token_hash);
+  -- pat_tokens indexes are created after the token_hash migration below, so an
+  -- older DB whose pat_tokens predates that column can be rebuilt first.
 
   CREATE TABLE IF NOT EXISTS audit_log (
     id           TEXT PRIMARY KEY,
@@ -156,6 +167,24 @@ db.exec(`
     DELETE FROM files_fts WHERE file_id = old.id;
     INSERT INTO files_fts(file_id, vault_id, title, content) VALUES (new.id, new.vault_id, new.title, new.content);
   END;
+
+  CREATE TABLE IF NOT EXISTS ai_response_cache (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    content_hash   TEXT    NOT NULL UNIQUE,
+    note_hash      TEXT,
+    question_embed BLOB,
+    feature        TEXT    NOT NULL,
+    response       TEXT    NOT NULL,
+    input_tokens   INTEGER NOT NULL,
+    output_tokens  INTEGER NOT NULL,
+    hit_count      INTEGER NOT NULL DEFAULT 0,
+    created_at     INTEGER NOT NULL,
+    expires_at     INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS ai_response_cache_note
+    ON ai_response_cache(note_hash);
+  CREATE INDEX IF NOT EXISTS ai_response_cache_feature
+    ON ai_response_cache(feature);
 `);
 
 // Additive migration: older databases predate the `pinned` column. Add it once
@@ -164,6 +193,18 @@ db.exec(`
   const cols = db.prepare("PRAGMA table_info(files)").all() as Array<{ name: string }>;
   if (!cols.some((c) => c.name === "pinned")) {
     db.exec("ALTER TABLE files ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0");
+  }
+}
+
+// Additive migration: vault icon/color (multi-vault switcher). Older DBs predate
+// these columns; CREATE TABLE IF NOT EXISTS never alters an existing table.
+{
+  const cols = db.prepare("PRAGMA table_info(vaults)").all() as Array<{ name: string }>;
+  if (!cols.some((c) => c.name === "icon")) {
+    db.exec("ALTER TABLE vaults ADD COLUMN icon TEXT");
+  }
+  if (!cols.some((c) => c.name === "color")) {
+    db.exec("ALTER TABLE vaults ADD COLUMN color TEXT");
   }
 }
 
@@ -185,6 +226,63 @@ db.exec(`
     db.exec("ALTER TABLE memories ADD COLUMN embedding BLOB");
   }
 }
+
+// Additive migration: PAT token_hash. The pre-redesign dev schema stored
+// sha256(token) directly in `id` and had no `token_hash` column; SQLite can't
+// add a NOT NULL UNIQUE column to an existing table, so rebuild. The old `id`
+// (the verifier) is carried over as `token_hash` under a fresh uuid handle so
+// any already-minted tokens keep working. Runs before the indexes below.
+{
+  const cols = db.prepare("PRAGMA table_info(pat_tokens)").all() as Array<{ name: string }>;
+  if (cols.length > 0 && !cols.some((c) => c.name === "token_hash")) {
+    db.exec("BEGIN");
+    try {
+      const old = db
+        .prepare(
+          "SELECT id, user_id, name, scopes, created_at, last_used_at, revoked_at FROM pat_tokens",
+        )
+        .all() as Array<{
+        id: string;
+        user_id: string;
+        name: string;
+        scopes: string;
+        created_at: number;
+        last_used_at: number | null;
+        revoked_at: number | null;
+      }>;
+      db.exec("DROP TABLE pat_tokens");
+      db.exec(`
+        CREATE TABLE pat_tokens (
+          id            TEXT PRIMARY KEY,
+          token_hash    TEXT NOT NULL UNIQUE,
+          user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          name          TEXT NOT NULL,
+          scopes        TEXT NOT NULL,
+          created_at    INTEGER NOT NULL,
+          last_used_at  INTEGER,
+          revoked_at    INTEGER
+        )
+      `);
+      const ins = db.prepare(
+        "INSERT INTO pat_tokens (id, token_hash, user_id, name, scopes, created_at, last_used_at, revoked_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      );
+      for (const r of old) {
+        ins.run(crypto.randomUUID(), r.id, r.user_id, r.name, r.scopes, r.created_at, r.last_used_at, r.revoked_at);
+      }
+      db.exec("COMMIT");
+    } catch (err) {
+      db.exec("ROLLBACK");
+      throw err;
+    }
+  }
+}
+
+// pat_tokens indexes (created here so the migration above can rebuild the table
+// first on older DBs). Idempotent for fresh DBs.
+db.exec(`
+  CREATE INDEX IF NOT EXISTS idx_pat_user ON pat_tokens(user_id);
+  CREATE INDEX IF NOT EXISTS idx_pat_hash ON pat_tokens(token_hash);
+`);
 
 // O(n) scan on boot; fine for the MAX_FILES_PER_VAULT * MAX_VAULTS_PER_USER ceiling.
 // Backfill files_fts for any notes created before the FTS table existed.
@@ -353,6 +451,8 @@ export interface VaultRow {
   id: string;
   user_id: string;
   name: string;
+  icon: string | null;
+  color: string | null;
   created_at: number;
   updated_at: number;
 }
@@ -382,6 +482,8 @@ export interface PublicFile {
 export interface PublicVault {
   id: string;
   name: string;
+  icon: string | null;
+  color: string | null;
 }
 
 export function toPublicFile(f: FileRow): PublicFile {
@@ -401,12 +503,12 @@ export const MAX_VAULTS_PER_USER = 20;
 export const MAX_FILES_PER_VAULT = 2000;
 
 const stmtVaultsForUser = db.prepare(
-  "SELECT id, name FROM vaults WHERE user_id = ? ORDER BY created_at ASC",
+  "SELECT id, name, icon, color FROM vaults WHERE user_id = ? ORDER BY created_at ASC",
 );
 const stmtVaultOwned = db.prepare("SELECT * FROM vaults WHERE id = ? AND user_id = ?");
 const stmtCountVaults = db.prepare("SELECT COUNT(*) AS n FROM vaults WHERE user_id = ?");
 const stmtInsertVault = db.prepare(
-  "INSERT INTO vaults (id, user_id, name, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+  "INSERT INTO vaults (id, user_id, name, icon, color, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
 );
 
 export function getVaultsForUser(userId: string): PublicVault[] {
@@ -422,16 +524,94 @@ export function countVaultsForUser(userId: string): number {
   return (stmtCountVaults.get(userId) as { n: number }).n;
 }
 
-export function createVault(userId: string, name: string): VaultRow {
+export function createVault(
+  userId: string,
+  input: { name: string; icon?: string | null; color?: string | null },
+): PublicVault {
   const id = newId();
   const ts = now();
-  stmtInsertVault.run(id, userId, name, ts, ts);
-  return stmtUserVaultById(id)!;
+  db.exec("BEGIN");
+  try {
+    stmtInsertVault.run(id, userId, input.name, input.icon ?? null, input.color ?? null, ts, ts);
+    stmtInsertFile.run(newId(), id, "Getting Started/Welcome.md", "Welcome", WELCOME_NOTE, ts, ts);
+    db.exec("COMMIT");
+  } catch (err) {
+    db.exec("ROLLBACK");
+    throw err;
+  }
+  return { id, name: input.name, icon: input.icon ?? null, color: input.color ?? null };
 }
 
-const stmtVaultById = db.prepare("SELECT * FROM vaults WHERE id = ?");
-function stmtUserVaultById(id: string): VaultRow | undefined {
-  return stmtVaultById.get(id) as VaultRow | undefined;
+/* ------------------------------ Vault AI config ----------------------------- */
+
+export interface VaultAIRow {
+  vault_id: string;
+  provider: string;
+  model: string | null;
+  api_key_cipher: Uint8Array | null;
+  created_at: number;
+  updated_at: number;
+}
+export interface VaultAIPublic {
+  provider: string;
+  model: string | null;
+  configured: boolean; // true when an encrypted key is stored
+}
+
+const stmtVaultAIById = db.prepare("SELECT * FROM vault_ai WHERE vault_id = ?");
+const stmtInsertVaultAI = db.prepare(
+  "INSERT INTO vault_ai (vault_id, provider, model, api_key_cipher, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+);
+const stmtUpdateVaultAIWithKey = db.prepare(
+  "UPDATE vault_ai SET provider = ?, model = ?, api_key_cipher = ?, updated_at = ? WHERE vault_id = ?",
+);
+const stmtUpdateVaultAINoKey = db.prepare(
+  "UPDATE vault_ai SET provider = ?, model = ?, updated_at = ? WHERE vault_id = ?",
+);
+
+export function getVaultAIRow(vaultId: string): VaultAIRow | undefined {
+  const raw = stmtVaultAIById.get(vaultId) as (Omit<VaultAIRow, "api_key_cipher"> & { api_key_cipher: Uint8Array | Buffer | ArrayBuffer | null }) | undefined;
+  if (!raw) return undefined;
+  // Normalize BLOB to Uint8Array regardless of what node:sqlite returns at runtime.
+  let cipher: Uint8Array | null = null;
+  if (raw.api_key_cipher != null) {
+    if (raw.api_key_cipher instanceof ArrayBuffer) {
+      cipher = new Uint8Array(raw.api_key_cipher);
+    } else {
+      // Uint8Array or Buffer (Buffer is a Uint8Array subclass); both safe to use directly.
+      cipher = raw.api_key_cipher;
+    }
+  }
+  return { ...raw, api_key_cipher: cipher };
+}
+
+export function getVaultAIPublic(vaultId: string): VaultAIPublic | null {
+  const row = getVaultAIRow(vaultId);
+  if (!row) return null;
+  return { provider: row.provider, model: row.model, configured: row.api_key_cipher != null };
+}
+
+/**
+ * Upsert a vault's AI config. `apiKeyCipher` semantics:
+ *   - undefined → leave the stored key untouched (provider/model still update)
+ *   - null      → clear the stored key
+ *   - Uint8Array→ replace the stored key
+ */
+export function setVaultAI(
+  vaultId: string,
+  input: { provider: string; model?: string | null; apiKeyCipher?: Uint8Array | null },
+): void {
+  const ts = now();
+  const existing = getVaultAIRow(vaultId);
+  if (!existing) {
+    stmtInsertVaultAI.run(vaultId, input.provider, input.model ?? null, input.apiKeyCipher ?? null, ts, ts);
+    return;
+  }
+  if (input.apiKeyCipher === undefined) {
+    stmtUpdateVaultAINoKey.run(input.provider, input.model ?? null, ts, vaultId);
+  } else {
+    stmtUpdateVaultAIWithKey.run(input.provider, input.model ?? null, input.apiKeyCipher, ts, vaultId);
+  }
 }
 
 const stmtFilesForVault = db.prepare(
@@ -516,7 +696,7 @@ export function ensureDefaultVault(userId: string): void {
   db.exec("BEGIN");
   try {
     const vaultId = newId();
-    stmtInsertVault.run(vaultId, userId, "My Vault", ts, ts);
+    stmtInsertVault.run(vaultId, userId, "My Vault", null, null, ts, ts);
     stmtInsertFile.run(
       newId(),
       vaultId,
@@ -564,6 +744,20 @@ export interface PatRow {
   created_at: number;
   last_used_at: number | null;
   revoked_at: number | null;
+}
+
+export interface AiCacheRow {
+  id: number;
+  content_hash: string;
+  note_hash: string | null;
+  question_embed: Uint8Array | null;
+  feature: string;
+  response: string;
+  input_tokens: number;
+  output_tokens: number;
+  hit_count: number;
+  created_at: number;
+  expires_at: number;
 }
 
 const stmtInsertPat = db.prepare(
@@ -966,6 +1160,57 @@ export function getFileIdsMissingPassages(limit = 1000): string[] {
 }
 export function getFileContent(fileId: string): { id: string; content: string } | undefined {
   return stmtFileContent.get(fileId) as { id: string; content: string } | undefined;
+}
+
+/* ----------------------------- AI response cache ----------------------------- */
+
+const stmtAiCacheByHash = db.prepare(
+  "SELECT * FROM ai_response_cache WHERE content_hash = ?",
+);
+const stmtAiCacheChatBucket = db.prepare(
+  "SELECT * FROM ai_response_cache WHERE feature = 'chat' AND note_hash = ? AND expires_at > ?",
+);
+const stmtAiCacheInsert = db.prepare(
+  `INSERT OR REPLACE INTO ai_response_cache
+     (content_hash, note_hash, question_embed, feature, response,
+      input_tokens, output_tokens, created_at, expires_at)
+   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+);
+const stmtAiCacheIncrHit = db.prepare(
+  "UPDATE ai_response_cache SET hit_count = hit_count + 1 WHERE id = ?",
+);
+const stmtAiCacheDeleteById = db.prepare(
+  "DELETE FROM ai_response_cache WHERE id = ?",
+);
+
+export function getAiCacheByHash(contentHash: string): AiCacheRow | undefined {
+  return stmtAiCacheByHash.get(contentHash) as AiCacheRow | undefined;
+}
+
+export function getAiCacheChatBucket(noteHash: string, nowSec: number): AiCacheRow[] {
+  return stmtAiCacheChatBucket.all(noteHash, nowSec) as unknown as AiCacheRow[];
+}
+
+export function insertAiCache(row: Omit<AiCacheRow, "id" | "hit_count">): void {
+  stmtAiCacheInsert.run(
+    row.content_hash,
+    row.note_hash,
+    row.question_embed,
+    row.feature,
+    row.response,
+    row.input_tokens,
+    row.output_tokens,
+    row.created_at,
+    row.expires_at,
+  );
+}
+
+export function incrementAiCacheHit(id: number): void {
+  stmtAiCacheIncrHit.run(id);
+}
+
+export function deleteAiCacheRow(id: number): void {
+  stmtAiCacheDeleteById.run(id);
 }
 
 export { db };

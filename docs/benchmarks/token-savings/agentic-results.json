@@ -1,0 +1,215 @@
+{
+  "generatedAt": "2026-06-30T14:28:59.907Z",
+  "tokenizer": "gpt-tokenizer o200k_base (GPT-4o encoding; provider-neutral proxy)",
+  "embedderReady": true,
+  "model": {
+    "description": "Multi-turn agent editing a Noto vault. INPUT = context re-fed per turn (baseline: whole vault + full memory; optimized: real semantic top-K). OUTPUT = tokens emitted to land each change (baseline: whole-file rewrite + inline restated decisions; optimized: append_note/update_section deltas + structured remember()).",
+    "obsidianAssumption": "Obsidian out of the box has no agent semantic-retrieval and no MCP write-back/patch layer, so an agent driving it uses full-context reads and whole-file writes — identical to the naive baseline. A raw/no-tool agent is equal or worse, so Obsidian is the conservative baseline.",
+    "inputCaveat": "Input optimized = real semanticSearchNotes + semanticRecall top-K, same as benchmark-token-savings.mts.",
+    "outputCaveat": "Output savings are vs a whole-file-rewrite baseline. An agent harness with its own native diff/patch tool already captures part of this; Noto's contribution is providing append/section-patch primitives over a remote notes store where the alternative is a full-body write. create_note (new files) emits full content in BOTH paths — no output saving there, and the session contains none.",
+    "config": {
+      "notesK": 5,
+      "recallK": 6
+    }
+  },
+  "perTurn": [
+    {
+      "turn": 1,
+      "query": "How do plants convert light energy into stored chemical energy?",
+      "editTitle": "Photosynthesis",
+      "editKind": "append",
+      "hasMemory": true,
+      "inBaseline": 3100,
+      "inOptimized": 952,
+      "outBaseline": 232,
+      "outOptimized": 108
+    },
+    {
+      "turn": 2,
+      "query": "What is the role of carbon dioxide in the Calvin cycle?",
+      "editTitle": "Carbon Dioxide",
+      "editKind": "append",
+      "hasMemory": false,
+      "inBaseline": 3223,
+      "inOptimized": 986,
+      "outBaseline": 81,
+      "outOptimized": 71
+    },
+    {
+      "turn": 3,
+      "query": "How is chloroplast structure related to glucose production?",
+      "editTitle": "Chloroplast",
+      "editKind": "section",
+      "hasMemory": true,
+      "inBaseline": 3263,
+      "inOptimized": 985,
+      "outBaseline": 126,
+      "outOptimized": 97
+    },
+    {
+      "turn": 4,
+      "query": "What does an enzyme do to the activation energy of a reaction?",
+      "editTitle": "Enzymes",
+      "editKind": "append",
+      "hasMemory": true,
+      "inBaseline": 3380,
+      "inOptimized": 897,
+      "outBaseline": 127,
+      "outOptimized": 80
+    },
+    {
+      "turn": 5,
+      "query": "Summarise the internal organisation of a typical cell.",
+      "editTitle": "Cell Structure",
+      "editKind": "append",
+      "hasMemory": false,
+      "inBaseline": 3486,
+      "inOptimized": 960,
+      "outBaseline": 93,
+      "outOptimized": 76
+    },
+    {
+      "turn": 6,
+      "query": "What is glucose and how does it store energy?",
+      "editTitle": "Glucose",
+      "editKind": "append",
+      "hasMemory": true,
+      "inBaseline": 3528,
+      "inOptimized": 874,
+      "outBaseline": 131,
+      "outOptimized": 103
+    },
+    {
+      "turn": 7,
+      "query": "What were the main tensions between the US and USSR after WWII?",
+      "editTitle": "Cold War",
+      "editKind": "section",
+      "hasMemory": true,
+      "inBaseline": 3658,
+      "inOptimized": 251,
+      "outBaseline": 121,
+      "outOptimized": 95
+    },
+    {
+      "turn": 8,
+      "query": "When and why did the Industrial Revolution begin?",
+      "editTitle": "Industrial Revolution",
+      "editKind": "append",
+      "hasMemory": false,
+      "inBaseline": 3777,
+      "inOptimized": 305,
+      "outBaseline": 67,
+      "outOptimized": 61
+    },
+    {
+      "turn": 9,
+      "query": "How does a logarithm relate to exponentiation?",
+      "editTitle": "Logarithms",
+      "editKind": "append",
+      "hasMemory": true,
+      "inBaseline": 3812,
+      "inOptimized": 268,
+      "outBaseline": 125,
+      "outOptimized": 106
+    },
+    {
+      "turn": 10,
+      "query": "What are the central themes of Macbeth?",
+      "editTitle": "Macbeth",
+      "editKind": "section",
+      "hasMemory": false,
+      "inBaseline": 3936,
+      "inOptimized": 244,
+      "outBaseline": 71,
+      "outOptimized": 70
+    },
+    {
+      "turn": 11,
+      "query": "Pull the key points from the May 13 biology lecture.",
+      "editTitle": "Biology Lecture - May 13",
+      "editKind": "append",
+      "hasMemory": true,
+      "inBaseline": 3975,
+      "inOptimized": 965,
+      "outBaseline": 165,
+      "outOptimized": 93
+    },
+    {
+      "turn": 12,
+      "query": "Refine the photosynthesis overview now that related notes are linked.",
+      "editTitle": "Photosynthesis",
+      "editKind": "section",
+      "hasMemory": false,
+      "inBaseline": 4084,
+      "inOptimized": 927,
+      "outBaseline": 255,
+      "outOptimized": 97
+    }
+  ],
+  "summary": {
+    "turns": 12,
+    "input": {
+      "baseline": 43222,
+      "optimized": 8614,
+      "saved": 34608,
+      "pct": 0.800703345518486
+    },
+    "output": {
+      "baseline": 1594,
+      "optimized": 1057,
+      "saved": 537,
+      "pct": 0.3368883312421581
+    },
+    "combined": {
+      "baseline": 44816,
+      "optimized": 9671,
+      "saved": 35145,
+      "pct": 0.7842065333809354
+    }
+  },
+  "platforms": {
+    "noto": {
+      "input": 8614,
+      "output": 1057,
+      "total": 9671
+    },
+    "obsidian": {
+      "input": 43222,
+      "output": 1594,
+      "total": 44816
+    }
+  },
+  "outputScaling": [
+    {
+      "noteTokens": 211,
+      "rewriteOut": 253,
+      "deltaOut": 57,
+      "pct": 0.7747035573122529
+    },
+    {
+      "noteTokens": 500,
+      "rewriteOut": 542,
+      "deltaOut": 60,
+      "pct": 0.8892988929889298
+    },
+    {
+      "noteTokens": 1010,
+      "rewriteOut": 1052,
+      "deltaOut": 60,
+      "pct": 0.9429657794676806
+    },
+    {
+      "noteTokens": 2013,
+      "rewriteOut": 2055,
+      "deltaOut": 56,
+      "pct": 0.972749391727494
+    },
+    {
+      "noteTokens": 4002,
+      "rewriteOut": 4044,
+      "deltaOut": 61,
+      "pct": 0.984915924826904
+    }
+  ],
+  "outputScalingNote": "A fixed-size edit emitted as a whole-file rewrite vs an update_section delta, over synthetic note bodies of increasing size. The delta stays flat; the rewrite scales with the note, so output savings climb toward 100% on large notes/files (the deep-agentic-coding regime). Bodies are synthetic, labeled here."
+}

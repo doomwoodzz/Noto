@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { VaultFile } from "../noto-core";
 import { Icon, type IconName } from "./icons";
 import type { TabKind } from "./types";
+import { VaultSwitcher } from "./VaultSwitcher";
 
 interface Props {
   vaultName: string;
@@ -24,6 +25,10 @@ interface Props {
   onLogout?: () => void;
   onOpenConnect?: () => void;
   onOpenActivity?: () => void;
+  vaults?: import("./vaultIcons").VaultSummary[];
+  activeVaultId?: string;
+  onSelectVault?: (id: string) => void;
+  onCreateVault?: () => void;
 }
 
 function topFolder(path: string): string {
@@ -36,6 +41,7 @@ export function Sidebar(props: Props) {
     currentNoteId, activeKind, filtering,
     onNewNote, onOpenHome, onOpenGraph, onOpenNote, onToggleFolder,
     account, theme, onToggleTheme, onLogout, onOpenConnect, onOpenActivity,
+    vaults, activeVaultId, onSelectVault, onCreateVault,
   } = props;
 
   const isActiveNote = (id: string) => activeKind === "note" && currentNoteId === id;
@@ -56,13 +62,22 @@ export function Sidebar(props: Props) {
   return (
     <aside className="nw-sidebar">
       <div className="nw-sidebar-top">
-        <div className="nw-vault">
-          <div className="nw-vault-badge">{(vaultName[0] || "N").toUpperCase()}</div>
-          <div className="nw-vault-text">
-            <div className="nw-vault-name">{vaultName}</div>
-            <div className="nw-vault-sub">Local Markdown Vault</div>
+        {vaults && vaults.length > 0 && activeVaultId !== undefined && onSelectVault && onCreateVault ? (
+          <VaultSwitcher
+            vaults={vaults}
+            activeVaultId={activeVaultId}
+            onSelect={onSelectVault}
+            onCreate={onCreateVault}
+          />
+        ) : (
+          <div className="nw-vault">
+            <div className="nw-vault-badge">{(vaultName[0] || "N").toUpperCase()}</div>
+            <div className="nw-vault-text">
+              <div className="nw-vault-name">{vaultName}</div>
+              <div className="nw-vault-sub">Local Markdown Vault</div>
+            </div>
           </div>
-        </div>
+        )}
         <button className="nw-newnote" onClick={onNewNote}>
           <Icon name="pen" size={14} stroke={1.8} />
           <span>New note</span>

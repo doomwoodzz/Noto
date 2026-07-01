@@ -10,8 +10,9 @@ vi.mock("./openai.ts", () => ({
   TEXT_MODEL: "mock-text",
   TRANSCRIBE_MODEL: "mock-transcribe",
   MAX_TOKENS: { chat: 1, summarize: 1, flashcards: 1, findLinks: 1, lecture: 1 },
-  complete: vi.fn(async () => "MOCK_REPLY"),
+  complete: vi.fn(async () => ({ text: "MOCK_REPLY", inputTokens: 10, outputTokens: 5 })),
   transcribe: vi.fn(async () => "mock transcript text"),
+  clientFor: vi.fn(() => ({})),
   AINotConfiguredError: class extends Error {},
 }));
 
@@ -99,7 +100,7 @@ describe("ai API", () => {
 
   it("parses flashcards out of the model JSON reply", async () => {
     vi.mocked(complete).mockResolvedValueOnce(
-      '```json\n[{"q":"Q1","a":"A1"},{"q":"Q2","a":"A2"}]\n```',
+      { text: '```json\n[{"q":"Q1","a":"A1"},{"q":"Q2","a":"A2"}]\n```', inputTokens: 20, outputTokens: 30 },
     );
     const a = await signup("ai-cards@example.com");
     const res = await a.req("POST", "/api/ai/flashcards", {
@@ -115,7 +116,9 @@ describe("ai API", () => {
   });
 
   it("only returns find-links titles that were offered", async () => {
-    vi.mocked(complete).mockResolvedValueOnce('["Chloroplast","Not In List"]');
+    vi.mocked(complete).mockResolvedValueOnce(
+      { text: '["Chloroplast","Not In List"]', inputTokens: 15, outputTokens: 8 },
+    );
     const a = await signup("ai-links@example.com");
     const res = await a.req("POST", "/api/ai/find-links", {
       noteTitle: "Photosynthesis",
@@ -128,7 +131,9 @@ describe("ai API", () => {
   });
 
   it("structures a transcript into lecture-notes markdown", async () => {
-    vi.mocked(complete).mockResolvedValueOnce("## AI Lecture Notes\n### Main explanation\nHi.");
+    vi.mocked(complete).mockResolvedValueOnce(
+      { text: "## AI Lecture Notes\n### Main explanation\nHi.", inputTokens: 50, outputTokens: 20 },
+    );
     const a = await signup("ai-lecture@example.com");
     const res = await a.req("POST", "/api/ai/lecture-notes", {
       transcript: "Today we cover cells.",

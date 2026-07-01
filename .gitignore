@@ -1,5 +1,7 @@
 .superpowers/
 .worktrees/
+node_modules/
+/server/
 .build/
 .swiftpm/
 DerivedData/

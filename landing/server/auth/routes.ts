@@ -95,6 +95,18 @@ authRouter.post("/login", authLimiter, async (req: Request, res: Response) => {
   res.json({ user: toPublicUser(user) });
 });
 
+// Skip sign-in: mint a throwaway guest account. It is a real user row (so the
+// session cookie, notes API, and /me all work unchanged) with a random,
+// non-routable email and no password — there's nothing to log back into. Rate
+// limited alongside the other auth endpoints to bound account creation abuse.
+authRouter.post("/guest", authLimiter, (req: Request, res: Response) => {
+  const email = `guest-${crypto.randomUUID()}@guest.noto.local`;
+  const user = createUser({ email, displayName: "Guest" });
+  createSession(req, res, user.id);
+  ensureCsrfCookie(req, res);
+  res.status(201).json({ user: toPublicUser(user) });
+});
+
 authRouter.post("/logout", (req: Request, res: Response) => {
   destroySession(req, res);
   res.status(204).end();

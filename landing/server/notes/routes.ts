@@ -20,6 +20,8 @@ import { getCurrentUser } from "../auth/session.ts";
 import {
   countFilesForVault,
   createFile,
+  createVault,
+  countVaultsForUser,
   deleteFile,
   ensureDefaultVault,
   getFilesForVault,
@@ -27,13 +29,17 @@ import {
   getOwnedVault,
   getVaultsForUser,
   MAX_FILES_PER_VAULT,
+  MAX_VAULTS_PER_USER,
   pathTaken,
   toPublicFile,
   updateFile,
   writeAudit,
   writeSnapshot,
   sha256Hex,
+  setVaultAI,
+  getVaultAIPublic,
 } from "../db.ts";
+import { encryptKey, keyvaultConfigured } from "../ai/keyvault.ts";
 import { requireScope } from "../auth/pat.ts";
 import { reembedNote } from "../search/embedNote.ts";
 import { getSection, replaceSection, listHeadings, appendUnderHeading } from "./sections.ts";
@@ -87,6 +93,15 @@ const patchSchema = z
     { message: "Nothing to update" },
   );
 
+const vaultNameSchema = z.string().trim().min(1).max(60);
+const vaultIconSchema = z.string().trim().max(16).optional(); // one emoji; 16 UTF-16 units covers ZWJ sequences
+const vaultColorSchema = z.string().trim().max(24).optional(); // a color token, validated client-side
+const createVaultSchema = z.object({
+  name: vaultNameSchema,
+  icon: vaultIconSchema,
+  color: vaultColorSchema,
+});
+
 // Note writes can be larger than auth payloads; cap deliberately above the
 // content limit so oversized bodies are rejected by validation, not the parser.
 const jsonBody = express.json({ limit: "512kb" });
@@ -133,6 +148,79 @@ notesRouter.get("/vaults", (req: Request, res: Response) => {
   if (!userId) return;
   ensureDefaultVault(userId);
   res.json({ vaults: getVaultsForUser(userId) });
+});
+
+// Create a new vault for the caller (name + optional emoji icon + color token).
+notesRouter.post("/vaults", writeLimiter, jsonBody, (req: Request, res: Response) => {
+  const userId = requireUserId(req, res);
+  if (!userId) return;
+  const parsed = createVaultSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid vault" });
+    return;
+  }
+  if (countVaultsForUser(userId) >= MAX_VAULTS_PER_USER) {
+    res.status(409).json({ error: "You've reached the maximum number of vaults." });
+    return;
+  }
+  const vault = createVault(userId, {
+    name: parsed.data.name,
+    icon: parsed.data.icon ?? null,
+    color: parsed.data.color ?? null,
+  });
+  res.status(201).json({ vault });
+});
+
+const vaultAISchema = z.object({
+  provider: z.enum(["openai"]).default("openai"),
+  model: z.string().trim().max(60).nullable().optional(),
+  // undefined → leave key; "" → clear key; non-empty → set key
+  apiKey: z.string().trim().max(400).optional(),
+});
+
+notesRouter.get("/vaults/:vaultId/ai", (req: Request, res: Response) => {
+  const userId = requireUserId(req, res);
+  if (!userId) return;
+  const vault = getOwnedVault(userId, req.params.vaultId as string);
+  if (!vault) {
+    res.status(404).json({ error: "Vault not found" });
+    return;
+  }
+  const cfg = getVaultAIPublic(vault.id) ?? { provider: "openai", model: null, configured: false };
+  res.json(cfg);
+});
+
+notesRouter.put("/vaults/:vaultId/ai", writeLimiter, jsonBody, (req: Request, res: Response) => {
+  const userId = requireUserId(req, res);
+  if (!userId) return;
+  const vault = getOwnedVault(userId, req.params.vaultId as string);
+  if (!vault) {
+    res.status(404).json({ error: "Vault not found" });
+    return;
+  }
+  const parsed = vaultAISchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid AI config" });
+    return;
+  }
+  const { provider, model, apiKey } = parsed.data;
+
+  let apiKeyCipher: Uint8Array | null | undefined;
+  if (apiKey === undefined) {
+    apiKeyCipher = undefined; // leave as-is
+  } else if (apiKey === "") {
+    apiKeyCipher = null; // clear
+  } else {
+    if (!keyvaultConfigured()) {
+      res.status(400).json({ error: "Per-vault keys aren't available on this server." });
+      return;
+    }
+    apiKeyCipher = encryptKey(apiKey);
+  }
+
+  setVaultAI(vault.id, { provider, model: model ?? null, apiKeyCipher });
+  const cfg = getVaultAIPublic(vault.id) ?? { provider, model: model ?? null, configured: false };
+  res.json(cfg); // never includes the key
 });
 
 // List files in a vault the caller owns.

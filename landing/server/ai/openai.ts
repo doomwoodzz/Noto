@@ -35,19 +35,27 @@ export function getOpenAI(): OpenAI | null {
   return client;
 }
 
+/** Build an SDK client for a specific key, or the global one (null if neither). */
+export function clientFor(apiKey?: string): OpenAI | null {
+  if (apiKey) return new OpenAI({ apiKey });
+  return getOpenAI();
+}
+
 /**
- * One-shot chat completion returning the assistant's text. `system` frames the
- * task; `user` carries the (already-assembled) prompt with note context.
+ * One-shot chat completion returning the assistant's text and token counts.
+ * `system` frames the task; `user` carries the (already-assembled) prompt with note context.
  */
 export async function complete(opts: {
   system: string;
   user: string;
   maxTokens: number;
-}): Promise<string> {
-  const openai = getOpenAI();
+  apiKey?: string;
+  model?: string;
+}): Promise<{ text: string; inputTokens: number; outputTokens: number }> {
+  const openai = clientFor(opts.apiKey);
   if (!openai) throw new AINotConfiguredError();
   const res = await openai.chat.completions.create({
-    model: TEXT_MODEL,
+    model: opts.model || TEXT_MODEL,
     max_tokens: opts.maxTokens,
     temperature: 0.4,
     messages: [
@@ -55,12 +63,16 @@ export async function complete(opts: {
       { role: "user", content: opts.user },
     ],
   });
-  return res.choices[0]?.message?.content?.trim() ?? "";
+  return {
+    text: res.choices[0]?.message?.content?.trim() ?? "",
+    inputTokens: res.usage?.prompt_tokens ?? 0,
+    outputTokens: res.usage?.completion_tokens ?? 0,
+  };
 }
 
 /** Transcribe a recorded audio buffer to plain text. */
-export async function transcribe(audio: Buffer, mime: string): Promise<string> {
-  const openai = getOpenAI();
+export async function transcribe(audio: Buffer, mime: string, opts?: { apiKey?: string }): Promise<string> {
+  const openai = clientFor(opts?.apiKey);
   if (!openai) throw new AINotConfiguredError();
   const ext = mime.includes("mp4") || mime.includes("mpeg") ? "mp4" : "webm";
   const file = await toFile(audio, `lecture.${ext}`, { type: mime });

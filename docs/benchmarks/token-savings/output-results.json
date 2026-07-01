@@ -1,0 +1,133 @@
+{
+  "generatedAt": "2026-06-29T19:59:48.994Z",
+  "what": "Output-token comparison: whole-corpus dump vs top-K retrieval, same question, same model.",
+  "summary": {
+    "mode": "live",
+    "model": "gpt-4o-mini",
+    "temperature": 0,
+    "maxTokens": 400,
+    "queries": 10,
+    "inputCounting": "real API prompt_tokens",
+    "meanOutputBaseline": 37.4,
+    "meanOutputOptimized": 44.3,
+    "meanAnswerOutputDelta": -6.899999999999999,
+    "meanAnswerOutputPct": -0.18449197860962563,
+    "meanToolCallOverhead": 45.1,
+    "meanNetOutputDelta": -52,
+    "meanInputBaseline": 1166.6,
+    "meanInputOptimized": 193.5,
+    "meanInputPct": 0.8341333790502314
+  },
+  "perQuery": [
+    {
+      "query": "How do plants convert light into chemical energy?",
+      "scenario": "combined",
+      "baseInput": 1166,
+      "optInput": 334,
+      "baseOutput": 53,
+      "optOutput": 54,
+      "toolCallOverhead": 62,
+      "outputSaved": -1,
+      "outputPct": -0.018867924528301886
+    },
+    {
+      "query": "What is the role of carbon dioxide in photosynthesis?",
+      "scenario": "notes",
+      "baseInput": 1168,
+      "optInput": 175,
+      "baseOutput": 14,
+      "optOutput": 29,
+      "toolCallOverhead": 34,
+      "outputSaved": -15,
+      "outputPct": -1.0714285714285714
+    },
+    {
+      "query": "Explain how chloroplasts relate to glucose production",
+      "scenario": "combined",
+      "baseInput": 1166,
+      "optInput": 341,
+      "baseOutput": 56,
+      "optOutput": 55,
+      "toolCallOverhead": 62,
+      "outputSaved": 1,
+      "outputPct": 0.017857142857142856
+    },
+    {
+      "query": "What were the main tensions after World War II?",
+      "scenario": "notes",
+      "baseInput": 1167,
+      "optInput": 63,
+      "baseOutput": 29,
+      "optOutput": 27,
+      "toolCallOverhead": 33,
+      "outputSaved": 2,
+      "outputPct": 0.06896551724137931
+    },
+    {
+      "query": "How should I structure my study sessions?",
+      "scenario": "memory",
+      "baseInput": 1165,
+      "optInput": 175,
+      "baseOutput": 45,
+      "optOutput": 97,
+      "toolCallOverhead": 31,
+      "outputSaved": -52,
+      "outputPct": -1.1555555555555554
+    },
+    {
+      "query": "What did I decide about summarizing lectures?",
+      "scenario": "memory",
+      "baseInput": 1166,
+      "optInput": 173,
+      "baseOutput": 18,
+      "optOutput": 18,
+      "toolCallOverhead": 32,
+      "outputSaved": 0,
+      "outputPct": 0
+    },
+    {
+      "query": "Themes of ambition and guilt in literature",
+      "scenario": "notes",
+      "baseInput": 1164,
+      "optInput": 56,
+      "baseOutput": 30,
+      "optOutput": 59,
+      "toolCallOverhead": 30,
+      "outputSaved": -29,
+      "outputPct": -0.9666666666666667
+    },
+    {
+      "query": "How do enzymes affect chemical reactions in cells?",
+      "scenario": "combined",
+      "baseInput": 1166,
+      "optInput": 316,
+      "baseOutput": 24,
+      "optOutput": 22,
+      "toolCallOverhead": 62,
+      "outputSaved": 2,
+      "outputPct": 0.08333333333333333
+    },
+    {
+      "query": "What is a logarithm and how does it relate to exponents?",
+      "scenario": "combined",
+      "baseInput": 1171,
+      "optInput": 123,
+      "baseOutput": 68,
+      "optOutput": 45,
+      "toolCallOverhead": 72,
+      "outputSaved": 23,
+      "outputPct": 0.3382352941176471
+    },
+    {
+      "query": "Remind me of the office hours and exam details",
+      "scenario": "memory",
+      "baseInput": 1167,
+      "optInput": 179,
+      "baseOutput": 37,
+      "optOutput": 37,
+      "toolCallOverhead": 33,
+      "outputSaved": 0,
+      "outputPct": 0
+    }
+  ]
+}

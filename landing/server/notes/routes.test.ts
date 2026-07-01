@@ -2,6 +2,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Server } from "node:http";
 import { createApp } from "../app.ts";
+import { MAX_VAULTS_PER_USER } from "../db.ts";
 
 const ORIGIN = "http://localhost:5173";
 
@@ -147,5 +148,75 @@ describe("notes API", () => {
       content: "",
     });
     expect(bad.status).toBe(400);
+  });
+
+  it("creates a vault with icon/color and seeds a Welcome note", async () => {
+    const a = await signup("mv-create@example.com");
+    const res = await a.req("POST", "/api/vaults", { name: "Thesis", icon: "🎓", color: "blue" });
+    expect(res.status).toBe(201);
+    const { vault } = (await res.json()) as { vault: { id: string; name: string; icon: string; color: string } };
+    expect(vault).toMatchObject({ name: "Thesis", icon: "🎓", color: "blue" });
+
+    // It shows up in the list (alongside the bootstrapped default).
+    const list = (await (await a.req("GET", "/api/vaults")).json()) as { vaults: { id: string }[] };
+    expect(list.vaults.some((v) => v.id === vault.id)).toBe(true);
+
+    // It has a Welcome note.
+    const files = (await (await a.req("GET", `/api/vaults/${vault.id}/files`)).json()) as { files: { path: string }[] };
+    expect(files.files.some((f) => f.path === "Getting Started/Welcome.md")).toBe(true);
+  });
+
+  it("rejects an empty vault name", async () => {
+    const a = await signup("mv-empty@example.com");
+    const res = await a.req("POST", "/api/vaults", { name: "   " });
+    expect(res.status).toBe(400);
+  });
+
+  it("requires authentication", async () => {
+    const anon = makeClient();
+    await anon.req("GET", "/api/health");
+    const res = await anon.req("POST", "/api/vaults", { name: "Nope" });
+    expect(res.status).toBe(401);
+  });
+
+  it("rejects creating beyond the per-user vault cap", async () => {
+    const a = await signup("mv-cap@example.com");
+    for (let i = 0; i < MAX_VAULTS_PER_USER; i++) {
+      const res = await a.req("POST", "/api/vaults", { name: `Vault ${i}` });
+      expect(res.status).toBe(201);
+    }
+    const over = await a.req("POST", "/api/vaults", { name: "One too many" });
+    expect(over.status).toBe(409);
+  });
+
+  it("sets and reads per-vault AI config without echoing the key", async () => {
+    const a = await signup("mv-ai@example.com");
+    const { vault } = (await (await a.req("POST", "/api/vaults", { name: "AI Vault" })).json()) as { vault: { id: string } };
+
+    // Before config: 200 with a default-ish payload.
+    const before = (await (await a.req("GET", `/api/vaults/${vault.id}/ai`)).json()) as { configured: boolean };
+    expect(before.configured).toBe(false);
+
+    // Set provider/model/key.
+    const put = await a.req("PUT", `/api/vaults/${vault.id}/ai`, {
+      provider: "openai",
+      model: "gpt-4o-mini",
+      apiKey: "sk-test-key-abc",
+    });
+    expect(put.status).toBe(200);
+    const putBody = (await put.json()) as Record<string, unknown>;
+    expect(putBody).toMatchObject({ provider: "openai", model: "gpt-4o-mini", configured: true });
+    expect(JSON.stringify(putBody)).not.toContain("sk-test-key-abc"); // never echoed
+
+    const after = (await (await a.req("GET", `/api/vaults/${vault.id}/ai`)).json()) as { configured: boolean };
+    expect(after.configured).toBe(true);
+  });
+
+  it("404s AI config for a vault the caller does not own", async () => {
+    const a = await signup("mv-own-a@example.com");
+    const b = await signup("mv-own-b@example.com");
+    const { vault } = (await (await a.req("POST", "/api/vaults", { name: "Private" })).json()) as { vault: { id: string } };
+    const res = await b.req("GET", `/api/vaults/${vault.id}/ai`);
+    expect(res.status).toBe(404);
   });
 });

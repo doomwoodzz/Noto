@@ -22,7 +22,7 @@ interface Props {
  * and persists the tab session per vault.
  */
 export function NotoWorkspace({ user, theme, onToggleTheme, onLogout }: Props) {
-  const v = useVault();
+  const v = useVault(user.id);
 
   if (v.loading) {
     return <AppLoading message="Loading your vault…" />;
@@ -46,6 +46,10 @@ export function NotoWorkspace({ user, theme, onToggleTheme, onLogout }: Props) {
     flush: v.flush,
     onToggleTheme,
     onLogout,
+    vaults: v.vaults,
+    activeVaultId: v.activeVaultId,
+    selectVault: v.selectVault,
+    createVault: v.createVault,
   };
 
   return (

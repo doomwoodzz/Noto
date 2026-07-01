@@ -100,6 +100,19 @@ export function Onboarding() {
     }
   }
 
+  // Skip sign-in entirely: spin up a guest session, then drop straight into the
+  // workspace. Returns an error string for the screen to surface on failure.
+  async function handleGuest(): Promise<string | null> {
+    try {
+      await authApi.guest();
+      redirectToApp();
+      return null;
+    } catch (err) {
+      if (err instanceof ApiError) return err.message;
+      return "Network error. Please check your connection and try again.";
+    }
+  }
+
   async function handleThemeContinue() {
     // Persist the choice server-side (best-effort — the local theme already applied).
     authApi.savePreferences(theme).catch(() => {});
@@ -133,6 +146,7 @@ export function Onboarding() {
             onContinue={handleEmailContinue}
             oauthError={oauthError}
             googleEnabled={googleEnabled}
+            onSkip={handleGuest}
           />
         )}
         {step === "password" && (

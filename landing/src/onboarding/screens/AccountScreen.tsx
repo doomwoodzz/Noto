@@ -53,6 +53,7 @@ export function AccountScreen({
   onContinue,
   oauthError,
   googleEnabled,
+  onSkip,
 }: {
   mode: Mode;
   setMode: (m: Mode) => void;
@@ -61,11 +62,25 @@ export function AccountScreen({
   onContinue: () => void;
   oauthError: string | null;
   googleEnabled: boolean;
+  onSkip: () => Promise<string | null>;
 }) {
   const reveal = useReveal();
   const [emailOpen, setEmailOpen] = useState(false);
+  const [skipping, setSkipping] = useState(false);
+  const [skipError, setSkipError] = useState<string | null>(null);
   const valid = EMAIL_RE.test(email.trim());
   const signUp = mode === "signup";
+
+  async function handleSkip() {
+    setSkipping(true);
+    setSkipError(null);
+    const err = await onSkip();
+    // On success the page navigates away; only a failure returns here.
+    if (err) {
+      setSkipError(err);
+      setSkipping(false);
+    }
+  }
 
   function submitEmail(e: React.FormEvent) {
     e.preventDefault();
@@ -133,6 +148,20 @@ export function AccountScreen({
           </button>
         </p>
       </div>
+
+      {skipError && (
+        <div className="ob-error" role="alert" style={{ marginTop: 16 }}>
+          {skipError}
+        </div>
+      )}
+      <button
+        type="button"
+        className="ob-skip ob-skip-guest"
+        onClick={handleSkip}
+        disabled={skipping}
+      >
+        {skipping ? "Setting things up…" : "Skip for now — continue as guest"}
+      </button>
     </div>
   );
 }
