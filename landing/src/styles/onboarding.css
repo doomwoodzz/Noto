@@ -127,6 +127,8 @@ html[data-theme="dark"] .ob-root::before {
   transition: color 140ms var(--ob-ease);
 }
 .ob-skip:hover { color: var(--page-ink); }
+.ob-skip-guest { margin-top: 18px; }
+.ob-skip-guest:disabled { opacity: 0.55; cursor: default; }
 
 .ob-stage {
   position: relative;

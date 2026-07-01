@@ -74,6 +74,8 @@ export const authApi = {
     request<{ user: PublicUser }>("POST", "/api/auth/signup", { email, password }),
   login: (email: string, password: string) =>
     request<{ user: PublicUser }>("POST", "/api/auth/login", { email, password }),
+  /** Skip sign-in: create a throwaway guest account + session. */
+  guest: () => request<{ user: PublicUser }>("POST", "/api/auth/guest"),
   logout: () => request<void>("POST", "/api/auth/logout"),
   savePreferences: (theme: "light" | "dark") =>
     request<{ ok: true }>("PATCH", "/api/auth/preferences", { theme }),
