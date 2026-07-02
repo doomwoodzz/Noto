@@ -61,5 +61,7 @@ describe("redactSecrets", () => {
     const { body, count } = redactSecrets(evil);
     expect(count).toBe(0);        // no complete key block → nothing redacted
     expect(body).toBe(evil);      // body unchanged
-  }, 3000); // 3s timeout: fails hard if the regex is still super-linear
+  }, 8000); // Bounded pattern runs ~1.3s in isolation (~2-3s under full-suite CPU
+  // contention); a real super-linear regression on this 1.4MB input is ~28s+, so an
+  // 8s ceiling catches any >3x blowup while absorbing parallel-run scheduler jitter.
 });
