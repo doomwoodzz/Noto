@@ -284,6 +284,64 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_pat_hash ON pat_tokens(token_hash);
 `);
 
+// Dump feature tables (jobs/items/sources + connector OAuth tokens).
+db.exec(`
+  CREATE TABLE IF NOT EXISTS dump_jobs (
+    id          TEXT PRIMARY KEY,
+    user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    vault_id    TEXT NOT NULL REFERENCES vaults(id) ON DELETE CASCADE,
+    source_type TEXT NOT NULL,
+    source_ref  TEXT NOT NULL,
+    source_slug TEXT NOT NULL,
+    status      TEXT NOT NULL,
+    counts      TEXT NOT NULL DEFAULT '{}',
+    error       TEXT,
+    created_at  INTEGER NOT NULL,
+    updated_at  INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_dump_jobs_user ON dump_jobs(user_id, created_at);
+
+  CREATE TABLE IF NOT EXISTS dump_items (
+    id              TEXT PRIMARY KEY,
+    job_id          TEXT NOT NULL REFERENCES dump_jobs(id) ON DELETE CASCADE,
+    source_key      TEXT NOT NULL,
+    status          TEXT NOT NULL,
+    redaction_count INTEGER NOT NULL DEFAULT 0,
+    shaped          TEXT,
+    file_id         TEXT,
+    dedup_of        TEXT,
+    error           TEXT
+  );
+  CREATE INDEX IF NOT EXISTS idx_dump_items_job ON dump_items(job_id);
+
+  CREATE TABLE IF NOT EXISTS dump_sources (
+    user_id      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    source_key   TEXT NOT NULL,
+    file_id      TEXT NOT NULL REFERENCES files(id) ON DELETE CASCADE,
+    content_hash TEXT NOT NULL,
+    job_id       TEXT,
+    created_at   INTEGER NOT NULL,
+    PRIMARY KEY (user_id, source_key)
+  );
+  CREATE INDEX IF NOT EXISTS idx_dump_sources_file ON dump_sources(file_id);
+
+  CREATE TABLE IF NOT EXISTS connector_tokens (
+    id                   TEXT PRIMARY KEY,
+    user_id              TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    provider             TEXT NOT NULL,
+    external_account     TEXT,
+    installation_id      TEXT,
+    access_token_cipher  BLOB,
+    refresh_token_cipher BLOB,
+    expires_at           INTEGER,
+    scopes               TEXT,
+    created_at           INTEGER NOT NULL,
+    updated_at           INTEGER NOT NULL,
+    UNIQUE (user_id, provider)
+  );
+  CREATE INDEX IF NOT EXISTS idx_connector_tokens_user ON connector_tokens(user_id);
+`);
+
 // O(n) scan on boot; fine for the MAX_FILES_PER_VAULT * MAX_VAULTS_PER_USER ceiling.
 // Backfill files_fts for any notes created before the FTS table existed.
 {
