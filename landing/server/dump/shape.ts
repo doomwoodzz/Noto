@@ -34,8 +34,9 @@ export async function shapeJob(job: DumpJobRow): Promise<void> {
   const counts: DumpCounts = {
     fetched: 0, shaped: 0, redacted: 0, duplicates: 0, updates: 0, overCap: 0, totalAvailable: 0,
   };
-  // overCap/totalAvailable are populated by the connector providers (GitHub/Notion) in
-  // P4/P5; the raw provider caps at enumeration and does not report over-cap counts.
+  // `overCap` is reserved for future over-cap reporting in the manifest; providers
+  // currently enforce the cap at enumeration and do not yet report an over-cap count.
+  // (`totalAvailable` is set below to the fetched item count.)
 
   // 1) Fetch RawItems from the provider, capped.
   const cap = computeCap(job.vault_id);

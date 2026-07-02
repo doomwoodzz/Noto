@@ -135,8 +135,7 @@ export function makeNotionProvider(deps: NotionProviderDeps): SourceProvider {
             // The child's own first heading wins; the parent-declared child_page
             // title is passed as a fallback so the mirrored path is named.
             const childTitle = plainTitle(block);
-            await processPage(block.id, [...pathSegments, title], depth + 1, childTitle)
-              .catch(() => {}); // a failing subtree never aborts the batch
+            await processPage(block.id, [...pathSegments, title], depth + 1, childTitle);
           }
         }
         ctx.onProgress(items.length);
@@ -146,6 +145,15 @@ export function makeNotionProvider(deps: NotionProviderDeps): SourceProvider {
         if (items.length >= ctx.cap) break;
         await processPage(pageId, [], 0);
       }
+
+      // Systemic failure: pages were requested but NONE produced an item (e.g. a
+      // revoked token or a Notion outage failing every retrieve). Surface it so the
+      // job lands "failed" rather than a misleading empty "success". A legitimately
+      // empty page still yields one item, so this only fires on total failure.
+      if (pageIds.length > 0 && items.length === 0) {
+        throw new Error(`Notion: all ${pageIds.length} selected page(s) failed to fetch`);
+      }
+
       return items.slice(0, ctx.cap);
     },
   };

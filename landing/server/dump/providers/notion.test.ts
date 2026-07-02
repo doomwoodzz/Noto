@@ -131,4 +131,46 @@ describe("notion provider", () => {
     const capped = await makeNotionProvider({ getClient: () => client, delayMs: 0 }).fetch(ctx(["ok", "ok"], 1));
     expect(capped).toHaveLength(1);
   });
+
+  it("throws when every selected page fails (systemic failure, not empty success)", async () => {
+    const client = fakeClient({ pages: {}, children: {} }); // every retrievePage → 404 throw
+    const provider = makeNotionProvider({ getClient: () => client, delayMs: 0 });
+    await expect(provider.fetch(ctx(["a", "b"]))).rejects.toThrow(/all .* selected page/i);
+  });
+
+  it("a failing child page does not abort its parent or siblings", async () => {
+    // parent has two child_page blocks: 'good' resolves, 'bad' is missing → its
+    // retrievePage throws, but the parent + the good child still yield items.
+    const client = fakeClient({
+      pages: { parent: { last_edited_time: "t0" }, good: { last_edited_time: "t1" } }, // 'bad' absent
+      children: {
+        parent: [{ results: [
+          { id: "good", type: "child_page", has_children: true, child_page: { title: "Good" } },
+          { id: "bad", type: "child_page", has_children: true, child_page: { title: "Bad" } },
+        ] }],
+        good: [{ results: [{ id: "g", type: "paragraph", paragraph: { rich_text: [{ plain_text: "good body" }] } }] }],
+      },
+    });
+    const provider = makeNotionProvider({ getClient: () => client, delayMs: 0 });
+    const items = await provider.fetch(ctx(["parent"]));
+    const keys = items.map((i) => i.sourceKey);
+    expect(keys).toContain("notion:parent");
+    expect(keys).toContain("notion:good");
+    expect(keys.some((k) => k.startsWith("notion:bad"))).toBe(false); // failed child skipped, no crash
+  });
+
+  it("terminates on a cyclic child_page reference (seen guard)", async () => {
+    // parent → child 'c' → points back to 'parent'. Must terminate, not infinite-loop.
+    const client = fakeClient({
+      pages: { parent: { last_edited_time: "t0" }, c: { last_edited_time: "t1" } },
+      children: {
+        parent: [{ results: [{ id: "c", type: "child_page", has_children: true, child_page: { title: "C" } }] }],
+        c: [{ results: [{ id: "parent", type: "child_page", has_children: true, child_page: { title: "Parent Again" } }] }],
+      },
+    });
+    const provider = makeNotionProvider({ getClient: () => client, delayMs: 0 });
+    const items = await provider.fetch(ctx(["parent"]));
+    // parent + c each once; the back-reference to parent is skipped by `seen`.
+    expect(items.map((i) => i.sourceKey).sort()).toEqual(["notion:c", "notion:parent"]);
+  });
 });
