@@ -53,4 +53,13 @@ describe("redactSecrets", () => {
     const { count } = redactSecrets(`AKIAIOSFODNN7EXAMPLE and ${tok}`);
     expect(count).toBe(2);
   });
+
+  it("does not catastrophically backtrack on many unterminated BEGIN markers (ReDoS guard)", () => {
+    // ~1.4 MB of repeated BEGIN with no END. With an unbounded lazy quantifier this
+    // takes ~30s+ (test would time out); the bounded pattern runs in single-digit ms.
+    const evil = "-----BEGIN PRIVATE KEY-----\n".repeat(50000);
+    const { body, count } = redactSecrets(evil);
+    expect(count).toBe(0);        // no complete key block → nothing redacted
+    expect(body).toBe(evil);      // body unchanged
+  }, 3000); // 3s timeout: fails hard if the regex is still super-linear
 });

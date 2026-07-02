@@ -11,7 +11,7 @@ export const SECRET_PATTERNS: { label: string; re: RegExp }[] = [
   { label: "google-api-key",   re: /\bAIza[0-9A-Za-z_-]{35}\b/g },
   { label: "openai-key",       re: /\bsk-(?:proj-)?[A-Za-z0-9_-]{20,}\b/g },
   { label: "jwt",              re: /\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b/g },
-  { label: "private-key",      re: /-----BEGIN (?:RSA |EC |OPENSSH |DSA |PGP )?PRIVATE KEY-----[\s\S]*?-----END (?:RSA |EC |OPENSSH |DSA |PGP )?PRIVATE KEY-----/g },
+  { label: "private-key",      re: /-----BEGIN (?:RSA |EC |OPENSSH |DSA |PGP )?PRIVATE KEY-----[\s\S]{0,8000}?-----END (?:RSA |EC |OPENSSH |DSA |PGP )?PRIVATE KEY-----/g },
 ];
 
 // Generic high-entropy assignment: key|secret|token|password = "<value>".

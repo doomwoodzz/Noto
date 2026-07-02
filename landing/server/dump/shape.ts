@@ -34,6 +34,8 @@ export async function shapeJob(job: DumpJobRow): Promise<void> {
   const counts: DumpCounts = {
     fetched: 0, shaped: 0, redacted: 0, duplicates: 0, updates: 0, overCap: 0, totalAvailable: 0,
   };
+  // overCap/totalAvailable are populated by the connector providers (GitHub/Notion) in
+  // P4/P5; the raw provider caps at enumeration and does not report over-cap counts.
 
   // 1) Fetch RawItems from the provider, capped.
   const cap = computeCap(job.vault_id);
@@ -63,6 +65,8 @@ export async function shapeJob(job: DumpJobRow): Promise<void> {
   const sourceSlug = slugifySource(job.source_slug);
   const seenHashes = new Set<string>(); // within-this-dump duplicate collapse
   const usedPaths = new Set<string>();  // avoid in-job path collisions before commit
+  const stagedTitles: string[] = [];    // enriched titles staged earlier in THIS job (sibling link candidates)
+  let processed = 0;                     // notes processed so far (throttles count writes)
 
   // 2) Split each RawItem into atomic notes, then shape each note.
   for (const raw of rawItems) {
@@ -105,7 +109,7 @@ export async function shapeJob(job: DumpJobRow): Promise<void> {
 
       // Link candidates: semantic neighbours ∪ sibling-dump titles in THIS job.
       const neighbours = await semanticSearchNotes(job.user_id, `${note.title}\n${cleaned.slice(0, 400)}`, 10);
-      const siblingTitles = currentJobTitles(job.id, note.sourceKey);
+      const siblingTitles = stagedTitles; // titles staged earlier in THIS job (pushed after staging below)
       const candidateTitles = uniqueTitles([...neighbours.map((n) => n.title), ...siblingTitles]);
 
       const enriched = await enrichNote({
@@ -136,27 +140,16 @@ export async function shapeJob(job: DumpJobRow): Promise<void> {
         shaped: JSON.stringify(shaped), redactionCount: redacted.count,
         dedupOf: cls.dedupOf ?? null,
       });
+      stagedTitles.push(enriched.title); // now a sibling candidate for later notes in this job
       if (cls.status === "update") counts.updates = (counts.updates ?? 0) + 1;
       counts.shaped = (counts.shaped ?? 0) + 1;
-      setDumpJobCounts(job.id, counts);
+      processed += 1;
+      if (processed % 10 === 0) setDumpJobCounts(job.id, counts); // throttle DB writes
     }
   }
 
   setDumpJobCounts(job.id, counts);
   setDumpJobStatus(job.id, "awaiting_review");
-}
-
-/** Titles of notes already staged (shaped) in this job — sibling link candidates. */
-function currentJobTitles(jobId: string, exceptSourceKey: string): string[] {
-  const out: string[] = [];
-  for (const i of listDumpItems(jobId)) {
-    if (i.source_key === exceptSourceKey || !i.shaped) continue;
-    try {
-      const s = JSON.parse(i.shaped) as ShapedNote;
-      if (s.title) out.push(s.title);
-    } catch { /* skip */ }
-  }
-  return out;
 }
 
 function uniqueTitles(titles: string[]): string[] {
