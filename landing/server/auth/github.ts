@@ -131,7 +131,7 @@ export async function handleGithubCallback(req: Request, res: Response): Promise
         const tok = (await tokResp.json()) as { access_token?: string };
         if (tok.access_token) {
           userTokenCipher = encryptKey(tok.access_token);
-          const who = await ghFetch(API_USER, { token: tok.access_token, tokenType: "Bearer" });
+          const who = await ghFetch(API_USER, { token: tok.access_token });
           if (who.ok) login = ((await who.json()) as { login?: string }).login ?? null;
         }
       }

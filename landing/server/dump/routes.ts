@@ -64,7 +64,7 @@ export async function listInstallationRepos(
   const { token } = await mintInstallationToken(installationId, fetchImpl);
   const out: { fullName: string; defaultBranch: string }[] = [];
   for (let page = 1; page <= 10; page++) {
-    const resp = await ghFetch(`${GITHUB_API}/installation/repositories?per_page=100&page=${page}`, { token, tokenType: "Bearer" }, fetchImpl);
+    const resp = await ghFetch(`${GITHUB_API}/installation/repositories?per_page=100&page=${page}`, { token }, fetchImpl);
     if (!resp.ok) throw new Error(`GitHub repositories → ${resp.status}`);
     const json = (await resp.json()) as { repositories?: { full_name: string; default_branch: string }[] };
     const batch = json.repositories ?? [];

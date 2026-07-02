@@ -94,4 +94,11 @@ describe("github provider", () => {
     const items = await provider.fetch(ctx(100));
     expect(items.map((i) => i.origin.path)).toEqual(["README.md", "docs/intro.md"]);
   });
+
+  it("throws when every prose blob fails (systemic failure, not an empty dump)", async () => {
+    const provider = makeGithubProvider(
+      fakeClient({ getBlob: async () => { throw new Error("500"); } }),
+    );
+    await expect(provider.fetch(ctx(100))).rejects.toThrow(/all .* content file/i);
+  });
 });

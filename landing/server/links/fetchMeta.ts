@@ -62,7 +62,9 @@ function isPrivateV6(ip: string): boolean {
   return false;
 }
 
-async function assertPublicHost(hostname: string): Promise<void> {
+/** SSRF guard: reject a hostname that resolves to a private/loopback/link-local IP.
+ *  Shared by safeFetch and the connector clients (GitHub/Notion). */
+export async function assertPublicHost(hostname: string): Promise<void> {
   // Literal IPs are validated directly; hostnames are resolved first.
   if (isIP(hostname)) {
     if (isPrivateIp(hostname)) throw new Error("Refusing to fetch a private address");

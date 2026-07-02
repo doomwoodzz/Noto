@@ -51,7 +51,8 @@ export function isProsePath(path: string, glob?: string): boolean {
     const dirRe = globToDirRe(glob);
     if (dirRe && dirRe.test(path)) return true;
   }
-  return /\.(md|markdown|mdx)$/i.test(path) && /^docs\//i.test(path);
+  // not docs/, not top-level prose, not under an explicit glob → excluded.
+  return false;
 }
 
 function parseRef(ref: unknown): { repo: string; includeIssues: boolean; glob?: string } {
@@ -64,7 +65,7 @@ function parseRef(ref: unknown): { repo: string; includeIssues: boolean; glob?: 
 /** Default GhClient over the SSRF-checked authenticated ghFetch. */
 function defaultClient(): GhClient {
   async function getJson<T>(token: string, url: string): Promise<T> {
-    const resp = await ghFetch(url, { token, tokenType: "Bearer" });
+    const resp = await ghFetch(url, { token });
     if (!resp.ok) throw new Error(`GitHub ${url} → ${resp.status}`);
     return (await resp.json()) as T;
   }
@@ -106,7 +107,7 @@ export function makeGithubProvider(client: GhClient = defaultClient()): SourcePr
       const { repo, includeIssues, glob } = parseRef(ctx.sourceRef);
       const token = await client.mintToken(ctx.userId);
       const { default_branch } = await client.getRepo(token, repo);
-      const { tree } = await client.getTree(token, repo, default_branch);
+      const { tree, truncated } = await client.getTree(token, repo, default_branch);
 
       // Deterministic order: path-sorted prose blobs, truncated at cap. Sort by
       // codepoint (not localeCompare) so the order is locale-independent and
@@ -115,6 +116,8 @@ export function makeGithubProvider(client: GhClient = defaultClient()): SourcePr
         .filter((e) => e.type === "blob" && isProsePath(e.path, glob))
         .sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0))
         .slice(0, ctx.cap);
+
+      if (truncated) console.warn(`[dump] GitHub tree for ${repo} was truncated; some files may be omitted.`);
 
       const items: RawItem[] = [];
       let fetched = 0;
@@ -140,6 +143,14 @@ export function makeGithubProvider(client: GhClient = defaultClient()): SourcePr
         } catch {
           // Partial failure: skip this file, keep the rest.
         }
+      }
+
+      // If there were prose files but EVERY blob fetch failed, this is a systemic
+      // failure (revoked scope, GitHub outage) — surface it so the job lands "failed"
+      // rather than a misleading empty "success". A repo with genuinely no prose
+      // (prose.length === 0) still returns [] normally.
+      if (prose.length > 0 && items.length === 0) {
+        throw new Error(`GitHub: all ${prose.length} content file(s) failed to fetch`);
       }
 
       if (includeIssues && items.length < ctx.cap) {
