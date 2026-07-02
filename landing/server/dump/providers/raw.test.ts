@@ -61,7 +61,8 @@ describe("getProvider", () => {
     expect(getProvider("github")).toBeDefined();
     expect(typeof getProvider("github").fetch).toBe("function");
   });
-  it("throws 'not yet available' for notion (extended in P5)", () => {
-    expect(() => getProvider("notion")).toThrow(/not yet available/i);
+  it("returns a provider for 'notion' (registered in P5)", () => {
+    expect(getProvider("notion")).toBeDefined();
+    expect(typeof getProvider("notion").fetch).toBe("function");
   });
 });
