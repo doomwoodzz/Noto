@@ -21,6 +21,7 @@ import { env } from "./env.ts";
 import { authRouter } from "./auth/routes.ts";
 import { notesRouter } from "./notes/routes.ts";
 import { aiRouter } from "./ai/routes.ts";
+import { dumpRouter } from "./dump/routes.ts";
 import { linksRouter } from "./links/routes.ts";
 import { ensureCsrfCookie, csrfProtection } from "./auth/csrf.ts";
 import { resolveApiToken } from "./auth/pat.ts";
@@ -110,6 +111,7 @@ export function createApp(): Express {
   app.use("/api/auth", authRouter);
   app.use("/api", notesRouter);
   app.use("/api/ai", aiRouter);
+  app.use("/api/dump", dumpRouter);
   app.use("/api/links", linksRouter);
   app.use("/api/tokens", tokensRouter);
   app.use("/api/memory", memoryRouter);
