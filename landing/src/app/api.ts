@@ -229,11 +229,11 @@ export const api = {
     remove: (jobId: string, purgeNotes: boolean) =>
       request<void>("DELETE", `/api/dump/jobs/${jobId}${purgeNotes ? "?purgeNotes=1" : ""}`),
     githubRepos: () =>
-      request<{ repos: GithubRepoOption[] }>("GET", "/api/dump/github/repos"),
+      request<GithubRepoOption[]>("GET", "/api/dump/github/repos"),
     notionPages: () =>
       request<{ pages: NotionPageOption[] }>("GET", "/api/dump/notion/pages"),
     connectors: () =>
-      request<{ connectors: ConnectorInfo[] }>("GET", "/api/connectors"),
+      request<ConnectorInfo[]>("GET", "/api/connectors"),
     disconnect: (provider: string) =>
       request<void>("DELETE", `/api/connectors/${provider}`),
   },

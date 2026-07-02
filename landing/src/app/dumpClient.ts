@@ -18,13 +18,13 @@ export const realDumpClient: DumpClient = {
     await api.dump.remove(jobId, purgeNotes);
   },
   async githubRepos() {
-    return (await api.dump.githubRepos()).repos;
+    return api.dump.githubRepos();
   },
   async notionPages() {
     return (await api.dump.notionPages()).pages;
   },
   async connectors() {
-    return (await api.dump.connectors()).connectors;
+    return api.dump.connectors();
   },
   async disconnect(provider) {
     await api.dump.disconnect(provider);
