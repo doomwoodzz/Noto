@@ -8,6 +8,13 @@
 import type { VaultFile } from "../noto-core";
 import type { CitationMeta } from "../workspace/citationClient";
 import type { ActivityEntry, RevertOutcome } from "../workspace/activityClient";
+import type {
+  PublicDumpJob,
+  DumpSource,
+  ConnectorInfo,
+  GithubRepoOption,
+  NotionPageOption,
+} from "../workspace/dumpTypes";
 
 export interface PublicUser {
   id: string;
@@ -200,6 +207,35 @@ export const api = {
       }
       return data as RevertOutcome;
     },
+  },
+
+  /* dump (bulk ingest → atomic notes; cookie-session only, never PAT) */
+  dump: {
+    start: (source: DumpSource) =>
+      request<{ jobId: string }>("POST", "/api/dump", { source }),
+    poll: (jobId: string) =>
+      request<PublicDumpJob>("GET", `/api/dump/jobs/${jobId}`),
+    commit: (
+      jobId: string,
+      selectedItemIds: string[],
+      updates?: Record<string, "overwrite" | "skip">,
+    ) =>
+      request<{ ok: true }>("POST", `/api/dump/jobs/${jobId}/commit`, {
+        selectedItemIds,
+        ...(updates ? { updates } : {}),
+      }),
+    cancel: (jobId: string) =>
+      request<{ ok: true }>("POST", `/api/dump/jobs/${jobId}/cancel`),
+    remove: (jobId: string, purgeNotes: boolean) =>
+      request<void>("DELETE", `/api/dump/jobs/${jobId}${purgeNotes ? "?purgeNotes=1" : ""}`),
+    githubRepos: () =>
+      request<{ repos: GithubRepoOption[] }>("GET", "/api/dump/github/repos"),
+    notionPages: () =>
+      request<{ pages: NotionPageOption[] }>("GET", "/api/dump/notion/pages"),
+    connectors: () =>
+      request<{ connectors: ConnectorInfo[] }>("GET", "/api/connectors"),
+    disconnect: (provider: string) =>
+      request<void>("DELETE", `/api/connectors/${provider}`),
   },
 
   /* notes */
