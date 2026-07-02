@@ -22,6 +22,7 @@ const COMMANDS: Command[] = [
   { id: "toggle-context", title: "Toggle context panel", icon: "panel" },
   { id: "create-lecture", title: "Create lecture note", icon: "mic" },
   { id: "insert-backlink", title: "Insert backlink", icon: "link" },
+  { id: "open-dump", title: "Dump…", icon: "spark" },
 ];
 
 export function CommandPalette({ onClose, onCommand }: Props) {

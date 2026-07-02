@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "../styles/workspace.css";
 import { McpSettings } from "./McpSettings";
+import { DumpModal } from "./DumpModal";
+import type { DumpClient } from "./dumpClient";
 import { CreateVaultModal } from "./CreateVaultModal";
 import type { McpClient } from "./mcpClient";
 import { ActivityView } from "./ActivityView";
@@ -41,6 +43,8 @@ interface Props {
   citationClient?: CitationClient;
   /** MCP client for the "Connect AI tools" Settings panel (omit in the demo). */
   mcpClient?: McpClient;
+  /** Bulk-ingest backend for the Dump modal (omit in the demo). */
+  dumpClient?: DumpClient;
   /** Provenance/trust surface backend (omit in the demo). */
   activityClient?: ActivityClient;
 }
@@ -51,6 +55,7 @@ export function NotoWindow({
   aiClient = mockAIClient,
   citationClient = mockCitationClient,
   mcpClient,
+  dumpClient,
   activityClient,
 }: Props) {
   const files = controller.files;
@@ -62,6 +67,7 @@ export function NotoWindow({
 
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [mcpOpen, setMcpOpen] = useState(false);
+  const [dumpOpen, setDumpOpen] = useState(false);
   const [createVaultOpen, setCreateVaultOpen] = useState(false);
   const [activityOpen, setActivityOpen] = useState(false);
   const [activityFileId, setActivityFileId] = useState<string | undefined>(undefined);
@@ -219,9 +225,10 @@ export function NotoWindow({
           }
           break;
         }
+        case "open-dump": if (dumpClient) setDumpOpen(true); break;
       }
     },
-    [ws, ai, controller],
+    [ws, ai, controller, dumpClient],
   );
 
   /* ------------------------------- render -------------------------------- */
@@ -306,6 +313,7 @@ export function NotoWindow({
             onToggleTheme={controller.onToggleTheme}
             onLogout={controller.onLogout}
             onOpenConnect={mcpClient ? () => setMcpOpen(true) : undefined}
+            onOpenDump={dumpClient ? () => setDumpOpen(true) : undefined}
             onOpenActivity={activityClient ? () => openActivity() : undefined}
             vaults={controller.vaults}
             activeVaultId={controller.activeVaultId}
@@ -331,6 +339,7 @@ export function NotoWindow({
       <Toasts toasts={toasts} />
       {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} onCommand={paletteCommand} />}
       {mcpOpen && mcpClient && <McpSettings client={mcpClient} onClose={() => setMcpOpen(false)} />}
+      {dumpOpen && dumpClient && <DumpModal client={dumpClient} onClose={() => setDumpOpen(false)} toast={toast} />}
       {activityOpen && activityClient && (
         <ActivityView
           client={activityClient}
