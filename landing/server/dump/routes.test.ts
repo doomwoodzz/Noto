@@ -53,4 +53,42 @@ describe("/api/dump", () => {
       srv.close();
     }
   });
+
+  it("cancelling a queued job does not leak into the cancel set", async () => {
+    const srv = await startTestServer();
+    try {
+      const client = await signup(srv.baseURL, `cx-${crypto.randomUUID()}@t.local`);
+      const { jobId } = await (await client.req("POST", "/api/dump", { source: { type: "raw", text: "x" } })).json() as { jobId: string };
+      // Job is 'queued' (worker interval is not running in tests; only drainOnce advances it).
+      const cancel = await client.req("POST", `/api/dump/jobs/${jobId}/cancel`);
+      expect(cancel.status).toBe(200);
+      const { isCancelled } = await import("./jobs.ts");
+      expect(isCancelled(jobId)).toBe(false); // resolved synchronously → never flagged → no leak
+      const job = await (await client.req("GET", `/api/dump/jobs/${jobId}`)).json() as { status: string };
+      expect(job.status).toBe("cancelled");
+    } finally {
+      srv.close();
+    }
+  });
+
+  it("cancelling an in-flight (committing) job flags then reaps via the worker", async () => {
+    const srv = await startTestServer();
+    try {
+      const client = await signup(srv.baseURL, `ci-${crypto.randomUUID()}@t.local`);
+      const { jobId } = await (await client.req("POST", "/api/dump", { source: { type: "raw", text: "x" } })).json() as { jobId: string };
+      const { drainOnce, isCancelled } = await import("./jobs.ts");
+      await drainOnce(); // → awaiting_review
+      const commit = await client.req("POST", `/api/dump/jobs/${jobId}/commit`, { selectedItemIds: [] });
+      expect(commit.status).toBe(202); // status is now 'committing'
+      const cancel = await client.req("POST", `/api/dump/jobs/${jobId}/cancel`);
+      expect(cancel.status).toBe(200);
+      expect(isCancelled(jobId)).toBe(true); // in-flight → flagged, worker not yet run
+      await drainOnce();                      // processJob observes the flag → cancels + reaps
+      expect(isCancelled(jobId)).toBe(false); // reaped
+      const job = await (await client.req("GET", `/api/dump/jobs/${jobId}`)).json() as { status: string };
+      expect(job.status).toBe("cancelled");
+    } finally {
+      srv.close();
+    }
+  });
 });

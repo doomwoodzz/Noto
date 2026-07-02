@@ -19,6 +19,10 @@ export function requestCancel(jobId: string): void {
 export function isCancelled(jobId: string): boolean {
   return cancels.has(jobId);
 }
+/** Remove a job id from the cancel set (used when a job is resolved without the worker). */
+export function clearCancel(jobId: string): void {
+  cancels.delete(jobId);
+}
 
 async function processJob(job: DumpJobRow): Promise<void> {
   try {

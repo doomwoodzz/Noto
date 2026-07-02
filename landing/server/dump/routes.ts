@@ -88,8 +88,14 @@ dumpRouter.post("/jobs/:id/cancel", (req: Request, res: Response) => {
   const uid = cookieUser(req, res); if (!uid) return;
   const job = getOwnedDumpJob(uid, req.params.id as string);
   if (!job) { res.status(404).json({ error: "Job not found" }); return; }
-  requestCancel(job.id);
-  if (job.status === "awaiting_review" || job.status === "queued") setDumpJobStatus(job.id, "cancelled");
+  if (job.status === "awaiting_review" || job.status === "queued") {
+    // Resolved synchronously here — the worker never processes it, so do NOT set a
+    // cancel flag (that would leak into the in-memory Set forever).
+    setDumpJobStatus(job.id, "cancelled");
+  } else {
+    // In-flight (fetching/shaping/committing): the worker must observe + reap the flag.
+    requestCancel(job.id);
+  }
   res.json({ ok: true });
 });
 
