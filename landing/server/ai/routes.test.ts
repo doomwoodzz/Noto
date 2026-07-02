@@ -144,3 +144,17 @@ describe("ai API", () => {
     expect(markdown).toContain("## AI Lecture Notes");
   });
 });
+
+describe("AI chat route — optional notePath (untrusted threading)", () => {
+  it("accepts an optional notePath without a 400 (schema is additive)", async () => {
+    const a = await signup(`ai-notepath-${crypto.randomUUID()}@example.com`);
+    const res = await a.req("POST", "/api/ai/chat", {
+      noteTitle: "Readme",
+      noteContent: "plain body",
+      notePath: "Dump/acme/Readme.md",
+      question: "what is this?",
+    });
+    // 200 (mock OpenAI) or 502/503 (AI unavailable) — but NOT 400 (schema rejected the field).
+    expect(res.status).not.toBe(400);
+  });
+});
