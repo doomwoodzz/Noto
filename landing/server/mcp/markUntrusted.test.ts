@@ -40,4 +40,12 @@ describe("markUntrustedResults", () => {
     expect(out[0].untrusted).toBe(true);
     expect(out[1].untrusted).toBeUndefined();
   });
+
+  it("is idempotent — re-tagging an already-tagged result adds nothing new", () => {
+    const once = markUntrustedResults([{ path: "Dump/a.md" }]);
+    const twice = markUntrustedResults(once);
+    expect(twice).toHaveLength(1);
+    expect(twice[0].untrusted).toBe(true);
+    expect(twice[0].untrustedNote).toMatch(/untrusted/i);
+  });
 });
