@@ -62,7 +62,9 @@ function parseShaped(item: DumpItemRow): ShapedNote | null {
   }
 }
 
-/** Create one new note: file → audit(dump:create) → embed → dump_sources → mark committed. */
+/** Create one new note: file → audit(dump:create) → dump_sources → mark committed → embed. */
+// DB writes are contiguous (no await between file write and dump_sources) so a crash can't
+// orphan a file without its dump_sources row; reembedNote is best-effort and runs last.
 async function commitNew(
   userId: string,
   vaultId: string,
@@ -84,7 +86,6 @@ async function commitNew(
     afterHash: sha256Hex(content),
     sourceClient: "web",
   });
-  await reembedNote(file.id, content);
   // dump_sources.content_hash MUST be the CLEANED-BODY hash (sha256Hex(shaped.body)),
   // NOT the assembled note hash: shaping's classifyItem compares against
   // contentHash(cleaned) = sha256Hex(shaped.body), and the assembled note embeds a
@@ -93,10 +94,13 @@ async function commitNew(
   // "update" instead of "duplicate", breaking idempotency (design §9 / decision D6).
   upsertDumpSource({ userId, sourceKey: item.source_key, fileId: file.id, contentHash: sha256Hex(shaped.body), jobId });
   updateDumpItem(item.id, { status: "committed", file_id: file.id });
+  await reembedNote(file.id, content);
   return { fileId: file.id, title: shaped.title };
 }
 
-/** Overwrite an existing note (re-dump update): snapshot → audit(dump:update) → updateFile → embed. */
+/** Overwrite an existing note (re-dump update): snapshot → audit(dump:update) → updateFile → dump_sources → mark committed → embed. */
+// DB writes are contiguous (no await between file write and dump_sources) so a crash can't
+// orphan a file without its dump_sources row; reembedNote is best-effort and runs last.
 async function commitUpdate(
   userId: string,
   item: DumpItemRow,
@@ -122,12 +126,12 @@ async function commitUpdate(
   });
   writeSnapshot(auditId, old.content); // BEFORE updateFile (Global Constraints §5)
   updateFile(old.id, { content });
-  await reembedNote(old.id, content);
   // Store the CLEANED-BODY hash so a subsequent identical re-dump classifies as
   // "duplicate" (see commitNew for the full rationale — the assembled hash would
   // drift every dump via the provenance dumpedAt stamp).
   upsertDumpSource({ userId, sourceKey: item.source_key, fileId: old.id, contentHash: sha256Hex(shaped.body), jobId });
   updateDumpItem(item.id, { status: "committed", file_id: old.id });
+  await reembedNote(old.id, content);
   return { fileId: old.id, title: shaped.title };
 }
 
@@ -198,9 +202,10 @@ async function commitMoc(
 function mocSourceId(job: DumpJobRow): string {
   if (job.source_type === "raw") return job.id;
   try {
-    const ref = JSON.parse(job.source_ref) as { repo?: string; workspaceId?: string };
+    const ref = JSON.parse(job.source_ref) as { repo?: string };
     if (job.source_type === "github" && ref.repo) return ref.repo;
-    if (job.source_type === "notion" && ref.workspaceId) return ref.workspaceId;
+    // notion: sourceRef carries no workspace id, so notion MOCs are currently keyed by
+    // the (constant) source_slug → one per-user "Notion Import" hub. Revisit granularity in P5.
   } catch {
     /* fall through */
   }
@@ -311,7 +316,10 @@ export async function commitJob(job: DumpJobRow): Promise<void> {
         committedTitles.push(result.title);
         // A freshly-created note becomes a valid existing-title target for later
         // notes in the same pass (keeps resolution + path dedupe consistent).
-        existing.set(result.title.toLowerCase(), result.title);
+        // Key by the SAME normalization vaultTitleIndex/resolveLinks use so a title
+        // carrying surrounding whitespace can't diverge from the resolution index.
+        const canon = normalizeTitle(result.title);
+        if (canon) existing.set(canon.toLowerCase(), canon);
       } else {
         failed += 1;
       }
