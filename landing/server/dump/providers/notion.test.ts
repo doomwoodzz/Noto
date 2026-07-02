@@ -1,11 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { makeNotionProvider } from "./notion.ts";
-import type { NotionClient } from "../../connectors/notion.ts";
+import type { NotionClient, NotionBlock } from "../../connectors/notion.ts";
 
 // A scripted fake Notion client: pages + their block children.
 function fakeClient(script: {
   pages: Record<string, { last_edited_time: string; url?: string }>;
-  children: Record<string, { results: any[]; next?: string }[]>; // pages of children per blockId
+  children: Record<string, { results: NotionBlock[]; next?: string }[]>; // pages of children per blockId
 }): NotionClient {
   const cursors: Record<string, number> = {};
   return {

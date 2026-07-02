@@ -91,7 +91,7 @@ export function makeNotionProvider(deps: NotionProviderDeps): SourceProvider {
         if (seen.has(pageId)) return;
         seen.add(pageId);
 
-        let lastEdited = "";
+        let lastEdited: string;
         let url: string | undefined;
         try {
           await delay(delayMs);
