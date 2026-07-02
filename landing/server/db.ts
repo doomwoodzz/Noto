@@ -744,6 +744,15 @@ export function deleteFile(fileId: string): void {
   stmtDeleteFile.run(fileId);
 }
 
+const stmtDeleteOwnedFile = db.prepare(
+  "DELETE FROM files WHERE id = ? AND vault_id IN (SELECT id FROM vaults WHERE user_id = ?)",
+);
+/** Delete a file the user owns. FK CASCADE removes note_passages + dump_sources. Returns true if a row was deleted. */
+export function deleteOwnedFile(userId: string, fileId: string): boolean {
+  const info = stmtDeleteOwnedFile.run(fileId, userId);
+  return Number(info.changes) > 0;
+}
+
 /**
  * Lazily ensure the user has at least one vault. New accounts get an empty
  * vault plus a single Welcome note. Runs in a transaction so a partial seed

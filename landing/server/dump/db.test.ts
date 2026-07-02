@@ -16,7 +16,7 @@ import {
   insertDumpItem, listDumpItems, updateDumpItem,
   getDumpSource, upsertDumpSource,
   saveConnectorToken, getConnectorToken, listConnectors, deleteConnector,
-  createUser, createVault, createFile,
+  createUser, createVault, createFile, getOwnedFile, deleteOwnedFile,
 } from "../db.ts";
 
 describe("dump accessors", () => {
@@ -80,5 +80,14 @@ describe("dump accessors", () => {
     const row = getConnectorToken(userId, "notion");
     expect(row?.access_token_cipher).toBeInstanceOf(Uint8Array);
     expect(Array.from(row!.access_token_cipher!)).toEqual([1, 2, 3, 250, 0, 255]);
+  });
+
+  it("deletes a file by owner (cascades passages/sources)", () => {
+    const u = createUser({ email: `del-${crypto.randomUUID()}@t.local` });
+    const v = createVault(u.id, { name: "V" });
+    const f = createFile(v.id, { path: "Dump/x/a.md", title: "A", content: "# A" });
+    expect(deleteOwnedFile(u.id, f.id)).toBe(true);
+    expect(getOwnedFile(u.id, f.id)).toBeUndefined();
+    expect(deleteOwnedFile(u.id, f.id)).toBe(false);
   });
 });
