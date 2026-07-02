@@ -10,10 +10,12 @@ export interface ParsedProvenance extends ProvenanceOrigin {
 const FIELDS = ["type", "ref", "url", "path", "repo"] as const;
 
 function esc(v: string): string {
-  return v.replace(/"/g, "%22").replace(/[\r\n]+/g, " ");
+  // Escape the escape char first so a literal "%22"/"%" round-trips losslessly.
+  return v.replace(/%/g, "%25").replace(/"/g, "%22").replace(/[\r\n]+/g, " ");
 }
 function unesc(v: string): string {
-  return v.replace(/%22/g, '"');
+  // Reverse order of esc: decode %22 before %25 so "%2522" → "%22" (not '"').
+  return v.replace(/%22/g, '"').replace(/%25/g, "%");
 }
 
 /** Build the single-line HTML-comment marker. `untrusted=1` is always present. */
@@ -28,14 +30,16 @@ export function buildProvenanceMarker(origin: ProvenanceOrigin, dumpedAt: number
   return `<!-- noto:source ${parts.join(" ")} -->`;
 }
 
-/** Parse a marker from the LAST 4 lines of a note body. Returns null if absent. */
+/** Parse a marker from the LAST 4 non-empty lines of a note body. Returns null if absent. */
 export function parseProvenanceMarker(noteBody: string): ParsedProvenance | null {
-  const lines = noteBody.split(/\r\n|\r|\n/);
+  const lines = noteBody.split(/\r\n|\r|\n/).filter((l) => l.trim().length > 0);
   const tail = lines.slice(Math.max(0, lines.length - 4));
   const line = tail.find((l) => l.trim().startsWith("<!-- noto:source "));
   if (!line) return null;
   const inner = line.trim().replace(/^<!--\s*noto:source\s*/, "").replace(/-->\s*$/, "");
-  const out: ParsedProvenance = { type: "raw", untrusted: false };
+  // A marker is present ⇒ the note is externally sourced. Fail CLOSED: treat as
+  // untrusted unless an explicit `untrusted=0` says otherwise.
+  const out: ParsedProvenance = { type: "raw", untrusted: true };
   const re = /(\w+)=(?:"([^"]*)"|(\S+))/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(inner))) {

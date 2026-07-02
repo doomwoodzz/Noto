@@ -72,4 +72,13 @@ describe("dump accessors", () => {
     deleteConnector(userId, "github");
     expect(getConnectorToken(userId, "github")).toBeUndefined();
   });
+
+  it("round-trips a Uint8Array cipher through the connector BLOB column", () => {
+    const { userId } = freshUserVault();
+    const cipher = new Uint8Array([1, 2, 3, 250, 0, 255]);
+    saveConnectorToken({ userId, provider: "notion", externalAccount: "ws", accessTokenCipher: cipher });
+    const row = getConnectorToken(userId, "notion");
+    expect(row?.access_token_cipher).toBeInstanceOf(Uint8Array);
+    expect(Array.from(row!.access_token_cipher!)).toEqual([1, 2, 3, 250, 0, 255]);
+  });
 });
