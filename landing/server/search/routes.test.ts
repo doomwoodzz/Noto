@@ -41,6 +41,31 @@ describe("GET /api/search", () => {
   });
 });
 
+describe("GET /api/search — untrusted tagging (§10.3 L2)", () => {
+  it("tags a Dump/ result as untrusted and leaves a normal note alone", async () => {
+    const cookie = await signup(s.baseURL, "search-untrusted@example.com");
+    const { vaults } = await (await cookie.req("GET", "/api/vaults")).json();
+    const vaultId = vaults[0].id;
+    await cookie.req("POST", `/api/vaults/${vaultId}/files`, {
+      path: "Dump/acme/X.md", title: "Dumped Photosynthesis",
+      content: "# Dumped\n\nPhotosynthesis converts sunlight into glucose.",
+    });
+    await cookie.req("POST", `/api/vaults/${vaultId}/files`, {
+      path: "Notes/Y.md", title: "Notes Photosynthesis",
+      content: "# Notes\n\nPhotosynthesis converts sunlight into glucose.",
+    });
+    const pat = makePatClient(s.baseURL, await mintToken(cookie, ["read"], "r"));
+    const { results } = (await (await pat.req("GET", "/api/search?q=Photosynthesis&limit=10")).json()) as {
+      results: { path: string; untrusted?: boolean; untrustedNote?: string }[];
+    };
+    const dumped = results.find((r) => r.path === "Dump/acme/X.md");
+    const normal = results.find((r) => r.path === "Notes/Y.md");
+    expect(dumped?.untrusted).toBe(true);
+    expect(dumped?.untrustedNote).toMatch(/untrusted/i);
+    expect(normal?.untrusted).toBeUndefined();
+  });
+});
+
 describe("GET /api/notes", () => {
   it("lists recent notes as refs (no bodies)", async () => {
     const pat = await seed("notes-list@example.com");

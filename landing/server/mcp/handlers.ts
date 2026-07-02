@@ -1,4 +1,5 @@
 import type { NotoBridgeClient } from "./bridge.ts";
+import { markUntrustedResults } from "./markUntrusted.ts";
 
 export interface ToolResult { [key: string]: unknown; content: { type: "text"; text: string }[]; isError?: boolean }
 const ok = (data: unknown): ToolResult => ({ content: [{ type: "text", text: JSON.stringify(data) }] });
@@ -8,7 +9,10 @@ const fail = (e: unknown): ToolResult => ({ content: [{ type: "text", text: e in
 export function makeHandlers(client: NotoBridgeClient, ctx: { scope: string }) {
   return {
     async search_notes(a: { query: string; scope?: string; tag?: string; limit?: number }) {
-      try { return ok(await client.searchNotes({ query: a.query, scope: a.scope ?? ctx.scope, tag: a.tag, limit: a.limit })); } catch (e) { return fail(e); }
+      try {
+        const { results } = await client.searchNotes({ query: a.query, scope: a.scope ?? ctx.scope, tag: a.tag, limit: a.limit });
+        return ok({ results: markUntrustedResults(results) });
+      } catch (e) { return fail(e); }
     },
     async list_notes(a: { by?: string; limit?: number }) {
       try { return ok(await client.listNotes({ by: a.by, limit: a.limit })); } catch (e) { return fail(e); }
