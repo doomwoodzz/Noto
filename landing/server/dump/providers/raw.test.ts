@@ -57,8 +57,11 @@ describe("getProvider", () => {
   it("returns the raw provider for 'raw'", () => {
     expect(getProvider("raw")).toBe(rawProvider);
   });
-  it("throws 'not yet available' for github/notion (extended in P4/P5)", () => {
-    expect(() => getProvider("github")).toThrow(/not yet available/i);
+  it("returns a provider for 'github' (registered in P4)", () => {
+    expect(getProvider("github")).toBeDefined();
+    expect(typeof getProvider("github").fetch).toBe("function");
+  });
+  it("throws 'not yet available' for notion (extended in P5)", () => {
     expect(() => getProvider("notion")).toThrow(/not yet available/i);
   });
 });
