@@ -838,7 +838,9 @@ html[data-theme="light"] .nw-ai { box-shadow: 0 30px 60px rgba(15, 22, 35, 0.22)
   background: transparent; border: 1px solid transparent; color: inherit; font-family: inherit; text-align: left;
 }
 .nw-vswitch-trigger:hover { background: var(--nw-card); border-color: var(--nw-line-2); }
-.nw-vault-menu { position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 30; }
+/* z-index must stay above .nw-menu-scrim (40); the base .nw-menu is 50, so this
+   override only adjusts positioning — keep it at 50 or the scrim eats clicks. */
+.nw-vault-menu { position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 50; }
 .nw-menu-label { font-size: 11px; color: var(--nw-dim); padding: 6px 10px 4px; }
 .nw-menu-sep { height: 1px; background: var(--nw-line); margin: 6px 8px; }
 .nw-vault-item { display: flex; align-items: center; gap: 9px; width: 100%; }
