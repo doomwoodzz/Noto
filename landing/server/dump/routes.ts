@@ -18,6 +18,10 @@ import { makeNotionClient } from "../connectors/notion.ts";
 export const dumpRouter = express.Router();
 const jsonBody = express.json({ limit: "2mb" });
 const dumpLimiter = rateLimit({ windowMs: 60_000, limit: 20, standardHeaders: "draft-7", legacyHeaders: false, message: { error: "Too many dumps. Please slow down." } });
+// The connector pickers each fan out to up to 10 GitHub / 5 Notion upstream calls,
+// so they need their own throttle — the global /api limiter alone would let one user
+// drive thousands of upstream calls/min.
+const connectorListLimiter = rateLimit({ windowMs: 60_000, limit: 30, standardHeaders: "draft-7", legacyHeaders: false, message: { error: "Too many connector requests. Please slow down." } });
 
 // Cookie-session ONLY. Dump is never reachable via PAT/MCP.
 function cookieUser(req: Request, res: Response): string | null {
@@ -75,7 +79,7 @@ export async function listInstallationRepos(
   return out;
 }
 
-dumpRouter.get("/github/repos", async (req: Request, res: Response) => {
+dumpRouter.get("/github/repos", connectorListLimiter, async (req: Request, res: Response) => {
   const uid = cookieUser(req, res); if (!uid) return;
   if (!env.githubConfigured || !keyvaultConfigured()) { res.status(503).json({ error: "GitHub connector is not configured" }); return; }
   const conn = getConnectorToken(uid, "github");
@@ -88,7 +92,7 @@ dumpRouter.get("/github/repos", async (req: Request, res: Response) => {
 });
 
 // Notion page/database picker — searches the user's GRANTED content only.
-dumpRouter.get("/notion/pages", async (req: Request, res: Response) => {
+dumpRouter.get("/notion/pages", connectorListLimiter, async (req: Request, res: Response) => {
   const uid = cookieUser(req, res); if (!uid) return;
   if (!env.notionConfigured || !keyvaultConfigured()) {
     res.status(503).json({ error: "Notion connector is not configured" });
@@ -172,6 +176,14 @@ dumpRouter.delete("/jobs/:id", (req: Request, res: Response) => {
   const uid = cookieUser(req, res); if (!uid) return;
   const job = getOwnedDumpJob(uid, req.params.id as string);
   if (!job) { res.status(404).json({ error: "Job not found" }); return; }
+  // Refuse to delete a job the worker is actively processing: a hard delete during
+  // commitJob's await window would purge the notes materialized so far while the
+  // worker keeps creating the rest, orphaning them. The client must cancel first
+  // (which drives the job to a terminal state the worker no longer touches).
+  if (job.status === "fetching" || job.status === "shaping" || job.status === "committing") {
+    res.status(409).json({ error: "Job is still processing — cancel it before deleting." });
+    return;
+  }
   if (req.query.purgeNotes === "1") for (const item of listDumpItems(job.id)) if (item.file_id) deleteOwnedFile(uid, item.file_id);
   db.prepare("DELETE FROM dump_jobs WHERE id = ? AND user_id = ?").run(job.id, uid);
   res.status(204).end();
