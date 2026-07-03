@@ -15,6 +15,7 @@ import type { SourceProvider, FetchCtx, RawItem } from "../types.ts";
 
 const MAX_DEPTH = 4;          // bounded child-page recursion
 const MAX_BLOCK_PAGES = 50;   // hard ceiling on cursor pages per block (5000 blocks)
+const MAX_BLOCK_DEPTH = 8;    // bounded nested-block recursion (sub-lists/toggles)
 
 interface NotionProviderDeps {
   /** Resolve a client for the user. Production: build from the stored token. */
@@ -59,7 +60,7 @@ export function makeNotionProvider(deps: NotionProviderDeps): SourceProvider {
 
       // Fetch the flat block list of a block id, paging the cursor, and inline
       // each table's row children right after the table block.
-      async function fetchBlocks(blockId: string): Promise<NotionBlock[]> {
+      async function fetchBlocks(blockId: string, depth = 0): Promise<NotionBlock[]> {
         const collected: NotionBlock[] = [];
         let cursor: string | undefined;
         for (let page = 0; page < MAX_BLOCK_PAGES; page++) {
@@ -68,8 +69,21 @@ export function makeNotionProvider(deps: NotionProviderDeps): SourceProvider {
           for (const block of res.results) {
             collected.push(block);
             if (block.type === "table" && block.has_children) {
-              const rows = await fetchBlocks(block.id); // table_row children
+              const rows = await fetchBlocks(block.id, depth + 1); // table_row children
               for (const row of rows) if (row.type === "table_row") collected.push(row);
+            } else if (
+              block.has_children &&
+              block.type !== "child_page" &&
+              block.type !== "child_database" &&
+              depth < MAX_BLOCK_DEPTH
+            ) {
+              // Nested content — sub-lists, to_do sub-items, toggle bodies, column
+              // layouts — lives as fetched children. Inline it (flattened) so it
+              // isn't silently dropped. child_page/child_database are handled
+              // separately as their own RawItems, so they're excluded here to
+              // avoid double-processing the same content.
+              const nested = await fetchBlocks(block.id, depth + 1);
+              for (const child of nested) collected.push(child);
             }
           }
           if (!res.has_more || !res.next_cursor) break;

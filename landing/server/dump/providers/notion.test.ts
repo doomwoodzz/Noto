@@ -117,6 +117,32 @@ describe("notion provider", () => {
     expect(items[0].body).toContain("| 1 | 2 |");
   });
 
+  it("inlines the children of nested list items instead of dropping them", async () => {
+    const client = fakeClient({
+      pages: { p1: { last_edited_time: "t" } },
+      children: {
+        p1: [{ results: [
+          { id: "parent", type: "bulleted_list_item", has_children: true, bulleted_list_item: { rich_text: [{ plain_text: "Parent" }] } },
+        ] }],
+        parent: [{ results: [
+          { id: "ca", type: "bulleted_list_item", bulleted_list_item: { rich_text: [{ plain_text: "Child A" }] } },
+          { id: "cb", type: "to_do", has_children: true, to_do: { rich_text: [{ plain_text: "Child B" }], checked: false } },
+        ] }],
+        cb: [{ results: [
+          { id: "gc", type: "paragraph", paragraph: { rich_text: [{ plain_text: "Grandchild" }] } },
+        ] }],
+      },
+    });
+    const provider = makeNotionProvider({ getClient: () => client, delayMs: 0 });
+    const items = await provider.fetch(ctx(["p1"]));
+    // The parent bullet, its sub-items, AND a deeper grandchild are all preserved
+    // (previously only "Parent" survived — the children were never fetched).
+    expect(items[0].body).toContain("Parent");
+    expect(items[0].body).toContain("Child A");
+    expect(items[0].body).toContain("Child B");
+    expect(items[0].body).toContain("Grandchild");
+  });
+
   it("stops at the cap and reports a partial failure without aborting the batch", async () => {
     const client = fakeClient({
       pages: { ok: { last_edited_time: "t" } }, // "bad" is missing → retrievePage throws
