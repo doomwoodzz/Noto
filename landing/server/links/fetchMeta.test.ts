@@ -71,4 +71,22 @@ describe("isPrivateIp (SSRF guard)", () => {
   it("rejects IPv4-mapped IPv6 to a private address", () => {
     expect(isPrivateIp("::ffff:127.0.0.1")).toBe(true);
   });
+  it("rejects private IPv6 in non-canonical encodings (expanded / hex-mapped / compat)", () => {
+    for (const ip of [
+      "::ffff:7f00:1",             // hex IPv4-mapped loopback (127.0.0.1)
+      "0:0:0:0:0:0:0:1",           // fully-expanded loopback
+      "::127.0.0.1",               // deprecated IPv4-compatible loopback
+      "::ffff:c0a8:1",             // hex IPv4-mapped 192.168.0.1
+      "fe80:0:0:0:0:0:0:1",        // expanded link-local
+      "fc00::1", "fd12:3456::1",   // unique-local
+      "ff02::1",                   // multicast
+    ]) {
+      expect(isPrivateIp(ip), ip).toBe(true);
+    }
+  });
+  it("still allows public IPv6 (Cloudflare / Google DNS)", () => {
+    for (const ip of ["2606:4700:4700::1111", "2001:4860:4860::8888"]) {
+      expect(isPrivateIp(ip), ip).toBe(false);
+    }
+  });
 });
