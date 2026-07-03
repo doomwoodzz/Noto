@@ -28,13 +28,19 @@ async function processJob(job: DumpJobRow): Promise<void> {
   try {
     if (cancels.has(job.id)) {
       setDumpJobStatus(job.id, "cancelled");
-      cancels.delete(job.id);
       return;
     }
     if (job.status === "queued") await shapeJob(job);
     else if (job.status === "committing") await commitJob(job);
   } catch (err) {
     setDumpJobStatus(job.id, "failed", err instanceof Error ? err.message : String(err));
+  } finally {
+    // Always reap the cancel flag once the worker is done with this pass —
+    // whether it saw the pre-dispatch flag above OR shapeJob/commitJob observed
+    // it at an in-flight checkpoint (which sets a terminal status and returns,
+    // so the job never re-enters processJob). Without this, every mid-flight
+    // cancel leaks its id into the module-global Set for the process lifetime.
+    cancels.delete(job.id);
   }
 }
 

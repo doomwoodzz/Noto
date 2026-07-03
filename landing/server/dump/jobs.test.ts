@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { enqueueDump, drainOnce, requestCancel } from "./jobs.ts";
+import { enqueueDump, drainOnce, requestCancel, isCancelled } from "./jobs.ts";
 import { getOwnedDumpJob, createUser, createVault } from "../db.ts";
 
 describe("dump worker", () => {
@@ -19,5 +19,8 @@ describe("dump worker", () => {
     requestCancel(job.id);
     await drainOnce();
     expect(getOwnedDumpJob(u.id, job.id)?.status).toBe("cancelled");
+    // The cancel flag must be reaped once the worker has handled the job, or the
+    // module-global cancel Set leaks an entry per cancelled job for the process life.
+    expect(isCancelled(job.id)).toBe(false);
   });
 });
