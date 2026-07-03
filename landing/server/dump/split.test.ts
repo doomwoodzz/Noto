@@ -45,4 +45,22 @@ describe("splitIntoNotes", () => {
     const out = splitIntoNotes(item(`# Single\n\n${big}`));
     expect(out).toHaveLength(1);
   });
+
+  it("does not treat '#' comment lines inside a fenced code block as headings", () => {
+    // A large Dockerfile-style paste: only in-fence '# Stage' comments, no real
+    // markdown headings → must stay a single note with the fence intact.
+    const big = "RUN echo hello\n".repeat(500); // > 6000 chars
+    const body = "```dockerfile\n# Stage: build\n" + big + "# Stage: runtime\n" + big + "```";
+    const out = splitIntoNotes(item(body));
+    expect(out).toHaveLength(1);
+    expect(out[0].body).toContain("```dockerfile");
+  });
+
+  it("still splits on real headings that sit outside code fences", () => {
+    const big = "x".repeat(7000);
+    const body = `## Alpha\n\n\`\`\`\n# not a heading\n\`\`\`\n\n${big}\n\n## Beta\n\n${big}`;
+    const out = splitIntoNotes(item(body));
+    expect(out).toHaveLength(2);
+    expect(out.map((n) => n.title)).toEqual(["Alpha", "Beta"]);
+  });
 });

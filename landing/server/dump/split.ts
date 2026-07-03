@@ -28,8 +28,18 @@ function parseHeading(line: string): { level: number; text: string } | null {
 export function splitIntoNotes(item: RawItem): { title: string; body: string; sourceKey: string }[] {
   const lines = item.body.split(/\r\n|\r|\n/);
 
+  // Scan for headings, but ignore `#` lines inside fenced code blocks: a comment
+  // like `# Stage: build` inside a ```dockerfile fence is not a markdown heading,
+  // and splitting on it would tear the fence across two notes (design §7: never
+  // splits mid-paragraph — and never mid-fence).
   const headings: HeadingLine[] = [];
+  let inFence = false;
   for (let i = 0; i < lines.length; i++) {
+    if (/^\s*(?:```|~~~)/.test(lines[i])) {
+      inFence = !inFence;
+      continue;
+    }
+    if (inFence) continue;
     const h = parseHeading(lines[i]);
     if (h) headings.push({ level: h.level, text: h.text, lineIndex: i });
   }
