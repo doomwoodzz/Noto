@@ -54,14 +54,14 @@ describe("dump accessors", () => {
     expect(items[0].redaction_count).toBe(1);
   });
 
-  it("upserts + reads a dump_source by (user, key)", () => {
+  it("upserts + reads a dump_source by (user, vault, key)", () => {
     const { userId, vaultId } = freshUserVault();
     // dump_sources.file_id has a FK to files(id) (foreign_keys = ON), so reference a real file.
     const f1 = createFile(vaultId, { path: "n/a.md", title: "A", content: "x" });
-    upsertDumpSource({ userId, sourceKey: "raw:k", fileId: f1.id, contentHash: "h1", jobId: "j1" });
-    expect(getDumpSource(userId, "raw:k")?.content_hash).toBe("h1");
-    upsertDumpSource({ userId, sourceKey: "raw:k", fileId: f1.id, contentHash: "h2", jobId: "j2" });
-    expect(getDumpSource(userId, "raw:k")?.content_hash).toBe("h2");
+    upsertDumpSource({ userId, vaultId, sourceKey: "raw:k", fileId: f1.id, contentHash: "h1", jobId: "j1" });
+    expect(getDumpSource(userId, vaultId, "raw:k")?.content_hash).toBe("h1");
+    upsertDumpSource({ userId, vaultId, sourceKey: "raw:k", fileId: f1.id, contentHash: "h2", jobId: "j2" });
+    expect(getDumpSource(userId, vaultId, "raw:k")?.content_hash).toBe("h2");
   });
 
   it("saves + reads + deletes a connector token", () => {

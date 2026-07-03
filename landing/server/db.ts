@@ -317,12 +317,13 @@ db.exec(`
 
   CREATE TABLE IF NOT EXISTS dump_sources (
     user_id      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    vault_id     TEXT NOT NULL REFERENCES vaults(id) ON DELETE CASCADE,
     source_key   TEXT NOT NULL,
     file_id      TEXT NOT NULL REFERENCES files(id) ON DELETE CASCADE,
     content_hash TEXT NOT NULL,
     job_id       TEXT,
     created_at   INTEGER NOT NULL,
-    PRIMARY KEY (user_id, source_key)
+    PRIMARY KEY (user_id, vault_id, source_key)
   );
   CREATE INDEX IF NOT EXISTS idx_dump_sources_file ON dump_sources(file_id);
 
@@ -342,6 +343,49 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_connector_tokens_user ON connector_tokens(user_id);
 `);
+
+// Additive migration: vault-scope dump_sources. The original schema keyed re-dump
+// idempotency on (user_id, source_key) only — vault-independent — so re-dumping the
+// same source into a DIFFERENT vault matched the first vault's row and overwrote the
+// wrong vault's note (or silently skipped the import). SQLite can't widen a PRIMARY
+// KEY in place, so rebuild with (user_id, vault_id, source_key). vault_id is
+// backfilled from each source's own file (accurate), falling back to the user's
+// first vault; rows whose file and user are both gone are dropped (OR IGNORE).
+{
+  const cols = db.prepare("PRAGMA table_info(dump_sources)").all() as Array<{ name: string }>;
+  if (cols.length > 0 && !cols.some((c) => c.name === "vault_id")) {
+    db.exec("BEGIN");
+    try {
+      db.exec(`
+        CREATE TABLE dump_sources_new (
+          user_id      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          vault_id     TEXT NOT NULL REFERENCES vaults(id) ON DELETE CASCADE,
+          source_key   TEXT NOT NULL,
+          file_id      TEXT NOT NULL REFERENCES files(id) ON DELETE CASCADE,
+          content_hash TEXT NOT NULL,
+          job_id       TEXT,
+          created_at   INTEGER NOT NULL,
+          PRIMARY KEY (user_id, vault_id, source_key)
+        )
+      `);
+      db.exec(`
+        INSERT OR IGNORE INTO dump_sources_new (user_id, vault_id, source_key, file_id, content_hash, job_id, created_at)
+        SELECT ds.user_id,
+               COALESCE((SELECT f.vault_id FROM files f WHERE f.id = ds.file_id),
+                        (SELECT v.id FROM vaults v WHERE v.user_id = ds.user_id ORDER BY v.created_at LIMIT 1)),
+               ds.source_key, ds.file_id, ds.content_hash, ds.job_id, ds.created_at
+        FROM dump_sources ds
+      `);
+      db.exec("DROP TABLE dump_sources");
+      db.exec("ALTER TABLE dump_sources_new RENAME TO dump_sources");
+      db.exec("CREATE INDEX IF NOT EXISTS idx_dump_sources_file ON dump_sources(file_id)");
+      db.exec("COMMIT");
+    } catch (err) {
+      db.exec("ROLLBACK");
+      throw err;
+    }
+  }
+}
 
 // O(n) scan on boot; fine for the MAX_FILES_PER_VAULT * MAX_VAULTS_PER_USER ceiling.
 // Backfill files_fts for any notes created before the FTS table existed.
@@ -1343,16 +1387,18 @@ export function updateDumpItem(itemId: string, patch: Partial<Pick<DumpItemRow, 
 }
 
 /* ---------------------------- dump sources ----------------------------- */
-const stmtGetDumpSource = db.prepare("SELECT * FROM dump_sources WHERE user_id = ? AND source_key = ?");
+// Dedup identity is (user_id, vault_id, source_key): the same source dumped into
+// two different vaults is two independent notes, each with its own idempotency.
+const stmtGetDumpSource = db.prepare("SELECT * FROM dump_sources WHERE user_id = ? AND vault_id = ? AND source_key = ?");
 const stmtUpsertDumpSource = db.prepare(
-  "INSERT INTO dump_sources (user_id, source_key, file_id, content_hash, job_id, created_at) VALUES (?,?,?,?,?,?) " +
-  "ON CONFLICT(user_id, source_key) DO UPDATE SET file_id=excluded.file_id, content_hash=excluded.content_hash, job_id=excluded.job_id",
+  "INSERT INTO dump_sources (user_id, vault_id, source_key, file_id, content_hash, job_id, created_at) VALUES (?,?,?,?,?,?,?) " +
+  "ON CONFLICT(user_id, vault_id, source_key) DO UPDATE SET file_id=excluded.file_id, content_hash=excluded.content_hash, job_id=excluded.job_id",
 );
-export function getDumpSource(userId: string, sourceKey: string): DumpSourceRow | undefined {
-  return stmtGetDumpSource.get(userId, sourceKey) as DumpSourceRow | undefined;
+export function getDumpSource(userId: string, vaultId: string, sourceKey: string): DumpSourceRow | undefined {
+  return stmtGetDumpSource.get(userId, vaultId, sourceKey) as DumpSourceRow | undefined;
 }
-export function upsertDumpSource(input: { userId: string; sourceKey: string; fileId: string; contentHash: string; jobId?: string|null }): void {
-  stmtUpsertDumpSource.run(input.userId, input.sourceKey, input.fileId, input.contentHash, input.jobId ?? null, Date.now());
+export function upsertDumpSource(input: { userId: string; vaultId: string; sourceKey: string; fileId: string; contentHash: string; jobId?: string|null }): void {
+  stmtUpsertDumpSource.run(input.userId, input.vaultId, input.sourceKey, input.fileId, input.contentHash, input.jobId ?? null, Date.now());
 }
 
 /* -------------------------- connector tokens --------------------------- */

@@ -63,7 +63,7 @@ export interface DumpItemRow {
 }
 
 export interface DumpSourceRow {
-  user_id: string; source_key: string; file_id: string;
+  user_id: string; vault_id: string; source_key: string; file_id: string;
   content_hash: string; job_id: string | null; created_at: number;
 }
 

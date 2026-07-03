@@ -97,8 +97,8 @@ export async function shapeJob(job: DumpJobRow): Promise<void> {
       }
       seenHashes.add(hash);
 
-      // Across-dump dedup vs. dump_sources.
-      const cls = classifyItem(job.user_id, note.sourceKey, hash);
+      // Across-dump dedup vs. dump_sources (scoped to this job's vault).
+      const cls = classifyItem(job.user_id, job.vault_id, note.sourceKey, hash);
       if (cls.status === "duplicate") {
         counts.duplicates = (counts.duplicates ?? 0) + 1;
         insertDumpItem({

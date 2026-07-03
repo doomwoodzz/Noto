@@ -92,7 +92,7 @@ async function commitNew(
   // per-dump `dumpedAt` timestamp in its provenance marker (so its hash changes every
   // dump). Storing the assembled hash would make identical re-dumps misclassify as
   // "update" instead of "duplicate", breaking idempotency (design §9 / decision D6).
-  upsertDumpSource({ userId, sourceKey: item.source_key, fileId: file.id, contentHash: sha256Hex(shaped.body), jobId });
+  upsertDumpSource({ userId, vaultId, sourceKey: item.source_key, fileId: file.id, contentHash: sha256Hex(shaped.body), jobId });
   updateDumpItem(item.id, { status: "committed", file_id: file.id });
   await reembedNote(file.id, content);
   return { fileId: file.id, title: shaped.title };
@@ -103,6 +103,7 @@ async function commitNew(
 // orphan a file without its dump_sources row; reembedNote is best-effort and runs last.
 async function commitUpdate(
   userId: string,
+  vaultId: string,
   item: DumpItemRow,
   shaped: ShapedNote,
   links: string[],
@@ -112,6 +113,13 @@ async function commitUpdate(
   const old = item.dedup_of ? getOwnedFile(userId, item.dedup_of) : undefined;
   if (!old) {
     updateDumpItem(item.id, { status: "failed", error: "Target note for update no longer exists" });
+    return null;
+  }
+  // Defense in depth: getOwnedFile is user-scoped only, so never overwrite a note
+  // that lives in a different vault than the one this job targets. Vault-scoped
+  // dedup already guarantees this, but a bad dedup_of must fail the item, not clobber.
+  if (old.vault_id !== vaultId) {
+    updateDumpItem(item.id, { status: "failed", error: "Update target is in a different vault" });
     return null;
   }
   const content = assembleNoteBody(shaped, links, dumpedAt);
@@ -129,7 +137,7 @@ async function commitUpdate(
   // Store the CLEANED-BODY hash so a subsequent identical re-dump classifies as
   // "duplicate" (see commitNew for the full rationale — the assembled hash would
   // drift every dump via the provenance dumpedAt stamp).
-  upsertDumpSource({ userId, sourceKey: item.source_key, fileId: old.id, contentHash: sha256Hex(shaped.body), jobId });
+  upsertDumpSource({ userId, vaultId, sourceKey: item.source_key, fileId: old.id, contentHash: sha256Hex(shaped.body), jobId });
   updateDumpItem(item.id, { status: "committed", file_id: old.id });
   await reembedNote(old.id, content);
   return { fileId: old.id, title: shaped.title };
@@ -150,7 +158,7 @@ async function commitMoc(
 ): Promise<void> {
   const sourceId = mocSourceId(job);
   const mocKey = `${job.source_type}:${sourceId}:__index__`;
-  const existing = getDumpSource(userId, mocKey);
+  const existing = getDumpSource(userId, vaultId, mocKey);
   const sourceLabel = job.source_slug;
 
   if (existing) {
@@ -174,7 +182,7 @@ async function commitMoc(
       await reembedNote(old.id, content);
       // MOC is not classified via classifyItem, so its content_hash tracks the actual
       // note content (sha256Hex(content)) rather than a cleaned body.
-      upsertDumpSource({ userId, sourceKey: mocKey, fileId: old.id, contentHash: sha256Hex(content), jobId: job.id });
+      upsertDumpSource({ userId, vaultId, sourceKey: mocKey, fileId: old.id, contentHash: sha256Hex(content), jobId: job.id });
       return;
     }
     // Mapped file vanished — fall through and recreate.
@@ -194,8 +202,11 @@ async function commitMoc(
     afterHash: sha256Hex(content),
     sourceClient: "web",
   });
+  // dump_sources write stays contiguous with the file/audit writes (reembed last),
+  // matching commitNew/commitUpdate — a crash can't leave the MOC file without its
+  // dump_sources row.
+  upsertDumpSource({ userId, vaultId, sourceKey: mocKey, fileId: file.id, contentHash: sha256Hex(content), jobId: job.id });
   await reembedNote(file.id, content);
-  upsertDumpSource({ userId, sourceKey: mocKey, fileId: file.id, contentHash: sha256Hex(content), jobId: job.id });
 }
 
 /** Stable per-source id for the MOC key. raw has no persistent source identity → scope to the job. */
@@ -306,7 +317,7 @@ export async function commitJob(job: DumpJobRow): Promise<void> {
       const links = resolveLinks(shaped, shaped.title, existing, siblings);
       let result: { fileId: string; title: string } | null;
       if (isUpdate) {
-        result = await commitUpdate(userId, item, shaped, links, dumpedAt, job.id);
+        result = await commitUpdate(userId, vaultId, item, shaped, links, dumpedAt, job.id);
       } else {
         const notePath = uniqueNotePath(vaultId, job.source_slug, shaped.title);
         result = await commitNew(userId, vaultId, item, shaped, links, notePath, dumpedAt, job.id);
