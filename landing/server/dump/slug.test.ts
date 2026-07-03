@@ -12,4 +12,16 @@ describe("slug", () => {
     expect(slugifyTitle("  spaced  ")).toBe("spaced");
     expect(slugifyTitle("")).toBe("Untitled");
   });
+  it("scrubs C0 control chars (NUL/BEL/ESC) that pathSchema would reject", () => {
+    expect(slugifyTitle("evil\x00name")).toBe("evil name");
+    expect(slugifyTitle("a\x07b\x1bc")).toBe("a b c");
+    expect(slugifySource("repo\x00/path")).toBe("repo -path");
+    // A title that is ONLY control chars collapses to the fallback.
+    expect(slugifyTitle("\x00\x01\x02")).toBe("Untitled");
+  });
+  it("normalizes Unicode (NFC) so combining and precomposed titles slug identically", () => {
+    const combining = "Café";   // C a f e + combining acute U+0301
+    const precomposed = "Café";  // C a f é (U+00E9)
+    expect(slugifyTitle(combining)).toBe(slugifyTitle(precomposed));
+  });
 });
