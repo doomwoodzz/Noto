@@ -85,12 +85,14 @@ export function DumpModal({
           .then((j) => {
             setJob(j);
             if (j.status === "awaiting_review" && j.manifest) {
+              // The manifest is ready and the worker is now paused waiting for the
+              // user to commit — STOP polling. Continuing would rebuild the manifest
+              // server-side every second and re-seed the selection on every tick,
+              // making it impossible to hold an empty/edited selection. Seed the
+              // defaults once here; the user then edits freely with no interference.
+              stopPolling();
               const manifest = j.manifest;
-              setSelected((prev) =>
-                prev.size > 0
-                  ? prev
-                  : new Set(manifestToRows(manifest).filter((r) => r.defaultSelected).map((r) => r.itemId)),
-              );
+              setSelected(new Set(manifestToRows(manifest).filter((r) => r.defaultSelected).map((r) => r.itemId)));
             }
             if (j.status === "done") {
               stopPolling();
@@ -187,8 +189,9 @@ export function DumpModal({
 
   /* ------------------------------- render ------------------------------- */
   const running = job !== null && job.status !== "awaiting_review";
-  const reviewing = job?.status === "awaiting_review" && job.manifest;
-  const rows: ManifestRow[] = reviewing ? manifestToRows(job!.manifest!) : [];
+  const reviewing = job?.status === "awaiting_review" && Boolean(job.manifest);
+  const rows: ManifestRow[] =
+    job?.status === "awaiting_review" && job.manifest ? manifestToRows(job.manifest) : [];
 
   return (
     <>
