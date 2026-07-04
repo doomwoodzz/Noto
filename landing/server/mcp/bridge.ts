@@ -1,5 +1,5 @@
 // Mirrors noto-mcp/src/notoClient.ts return types (the frozen tool contract).
-export interface SearchResult { fileId: string; title: string; headingPath: string[]; snippet: string; score: number }
+export interface SearchResult { fileId: string; title: string; path: string; headingPath: string[]; snippet: string; score: number }
 export interface NoteRef { fileId: string; title: string; path: string; updatedAt: number }
 export interface Memory { id: string; text: string; type: string; scope: string; sourceClient: string; lastUsed: number; score?: number }
 
