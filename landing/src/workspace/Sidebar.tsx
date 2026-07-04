@@ -24,6 +24,7 @@ interface Props {
   onToggleTheme?: () => void;
   onLogout?: () => void;
   onOpenConnect?: () => void;
+  onOpenDump?: () => void;
   onOpenActivity?: () => void;
   vaults?: import("./vaultIcons").VaultSummary[];
   activeVaultId?: string;
@@ -40,7 +41,7 @@ export function Sidebar(props: Props) {
     vaultName, files, pinned, recent, folderOrder, openFolders,
     currentNoteId, activeKind, filtering,
     onNewNote, onOpenHome, onOpenGraph, onOpenNote, onToggleFolder,
-    account, theme, onToggleTheme, onLogout, onOpenConnect, onOpenActivity,
+    account, theme, onToggleTheme, onLogout, onOpenConnect, onOpenDump, onOpenActivity,
     vaults, activeVaultId, onSelectVault, onCreateVault,
   } = props;
 
@@ -128,7 +129,7 @@ export function Sidebar(props: Props) {
       </div>
 
       {account !== undefined && (
-        <AccountFooter account={account} theme={theme} onToggleTheme={onToggleTheme} onLogout={onLogout} onOpenConnect={onOpenConnect} />
+        <AccountFooter account={account} theme={theme} onToggleTheme={onToggleTheme} onLogout={onLogout} onOpenConnect={onOpenConnect} onOpenDump={onOpenDump} />
       )}
     </aside>
   );
@@ -158,13 +159,14 @@ function Section({ icon, label, children }: { icon?: IconName; label: string; ch
 }
 
 function AccountFooter({
-  account, theme, onToggleTheme, onLogout, onOpenConnect,
+  account, theme, onToggleTheme, onLogout, onOpenConnect, onOpenDump,
 }: {
   account: { email: string | null } | null;
   theme?: "light" | "dark";
   onToggleTheme?: () => void;
   onLogout?: () => void;
   onOpenConnect?: () => void;
+  onOpenDump?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   if (!account) return null;
@@ -199,6 +201,15 @@ function AccountFooter({
               >
                 <Icon name="settings" size={14} stroke={1.7} />
                 <span>Connect AI tools</span>
+              </button>
+            )}
+            {onOpenDump && (
+              <button
+                className="nw-menu-item"
+                onClick={() => { setOpen(false); onOpenDump(); }}
+              >
+                <Icon name="folder" size={14} stroke={1.7} />
+                <span>Dump into Noto…</span>
               </button>
             )}
             <button className="nw-menu-item" disabled title="Settings are coming soon">
