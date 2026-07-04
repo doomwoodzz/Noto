@@ -29,6 +29,7 @@ import { memoryRouter } from "./memory/routes.ts";
 import { searchRouter } from "./search/routes.ts";
 import { activityRouter } from "./audit/routes.ts";
 import { mountMcp } from "./mcp/routes.ts";
+import { dumpRouter } from "./dump/routes.ts";
 
 export function createApp(): Express {
   const app = express();
@@ -110,6 +111,7 @@ export function createApp(): Express {
   app.use("/api/auth", authRouter);
   app.use("/api", notesRouter);
   app.use("/api/ai", aiRouter);
+  app.use("/api/dump", dumpRouter);
   app.use("/api/links", linksRouter);
   app.use("/api/tokens", tokensRouter);
   app.use("/api/memory", memoryRouter);
