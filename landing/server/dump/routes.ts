@@ -16,8 +16,9 @@ import {
   getConnectorToken,
 } from "../db.ts";
 import { env } from "../env.ts";
-import { keyvaultConfigured } from "../ai/keyvault.ts";
+import { keyvaultConfigured, decryptKey } from "../ai/keyvault.ts";
 import { mintInstallationToken, ghFetch, type FetchImpl } from "../connectors/githubApp.ts";
+import { makeNotionClient } from "../connectors/notion.ts";
 import { enqueueDump, requestCancel } from "./jobs.ts";
 import { buildManifest } from "./shape.ts";
 import { slugifySource } from "./slug.ts";
@@ -111,6 +112,39 @@ dumpRouter.get("/github/repos", async (req: Request, res: Response) => {
   }
 });
 
+// Notion page/database picker — searches the user's GRANTED content only.
+dumpRouter.get("/notion/pages", async (req: Request, res: Response) => {
+  const uid = cookieUser(req, res); if (!uid) return;
+  if (!env.notionConfigured || !keyvaultConfigured()) {
+    res.status(503).json({ error: "Notion connector is not configured" });
+    return;
+  }
+  const row = getConnectorToken(uid, "notion");
+  if (!row || !row.access_token_cipher) {
+    res.status(409).json({ error: "Notion is not connected" });
+    return;
+  }
+
+  const pages: { id: string; title: string; type: "page" | "database" }[] = [];
+  try {
+    const client = makeNotionClient(decryptKey(row.access_token_cipher));
+    let cursor: string | undefined;
+    for (let page = 0; page < 5 && pages.length < 200; page++) {
+      const result = await client.search({ cursor, pageSize: 100 });
+      for (const item of result.results) {
+        const type = item.object === "database" ? "database" : "page";
+        pages.push({ id: item.id, title: notionTitle(item), type });
+      }
+      if (!result.has_more || !result.next_cursor) break;
+      cursor = result.next_cursor;
+    }
+  } catch {
+    res.status(502).json({ error: "Could not reach Notion" });
+    return;
+  }
+  res.json({ pages: pages.slice(0, 200) });
+});
+
 dumpRouter.get("/jobs/:id", (req: Request, res: Response) => {
   const uid = cookieUser(req, res); if (!uid) return;
   const job = getOwnedDumpJob(uid, req.params.id as string);
@@ -164,3 +198,22 @@ dumpRouter.delete("/jobs/:id", (req: Request, res: Response) => {
   db.prepare("DELETE FROM dump_jobs WHERE id = ? AND user_id = ?").run(job.id, uid);
   res.status(204).end();
 });
+
+/** Best-effort human title for a Notion page (title property) or database (top-level title). */
+function notionTitle(item: { properties?: Record<string, unknown>; title?: Array<{ plain_text?: string }> }): string {
+  // Database: top-level `title` rich-text array.
+  if (Array.isArray(item.title)) {
+    const t = item.title.map((r) => r?.plain_text ?? "").join("").trim();
+    if (t) return t;
+  }
+  // Page: find the property whose type is "title".
+  const props = item.properties ?? {};
+  for (const value of Object.values(props)) {
+    const v = value as { type?: string; title?: Array<{ plain_text?: string }> };
+    if (v?.type === "title" && Array.isArray(v.title)) {
+      const t = v.title.map((r) => r?.plain_text ?? "").join("").trim();
+      if (t) return t;
+    }
+  }
+  return "Untitled";
+}
