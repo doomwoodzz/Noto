@@ -5,7 +5,7 @@ import {
   insertDumpItem, listDumpItems, updateDumpItem,
   getDumpSource, upsertDumpSource,
   saveConnectorToken, getConnectorToken, listConnectors, deleteConnector,
-  createUser, createVault, createFile,
+  createUser, createVault, createFile, deleteOwnedFile, getOwnedFile,
 } from "../db.ts";
 
 describe("dump migrations", () => {
@@ -61,6 +61,15 @@ describe("dump accessors", () => {
     expect(getDumpSource(userId, "raw:k")?.content_hash).toBe("h1");
     upsertDumpSource({ userId, sourceKey: "raw:k", fileId: file.id, contentHash: "h2", jobId: "j2" });
     expect(getDumpSource(userId, "raw:k")?.content_hash).toBe("h2");
+  });
+
+  it("deletes a file by owner (cascades passages/sources)", () => {
+    const u = createUser({ email: `del-${crypto.randomUUID()}@t.local` });
+    const v = createVault(u.id, { name: "V" });
+    const f = createFile(v.id, { path: "Dump/x/a.md", title: "A", content: "# A" });
+    expect(deleteOwnedFile(u.id, f.id)).toBe(true);
+    expect(getOwnedFile(u.id, f.id)).toBeUndefined();
+    expect(deleteOwnedFile(u.id, f.id)).toBe(false);
   });
 
   it("saves + reads + deletes a connector token", () => {

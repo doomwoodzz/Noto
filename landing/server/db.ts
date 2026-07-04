@@ -1363,6 +1363,15 @@ export function updateDumpItem(
   );
 }
 
+const stmtDeleteOwnedFile = db.prepare(
+  "DELETE FROM files WHERE id = ? AND vault_id IN (SELECT id FROM vaults WHERE user_id = ?)",
+);
+/** Delete a file the user owns. FK CASCADE removes note_passages + dump_sources. Returns true if a row was deleted. */
+export function deleteOwnedFile(userId: string, fileId: string): boolean {
+  const info = stmtDeleteOwnedFile.run(fileId, userId);
+  return Number(info.changes) > 0;
+}
+
 /* ---------------------------- dump sources ----------------------------- */
 
 const stmtGetDumpSource = db.prepare("SELECT * FROM dump_sources WHERE user_id = ? AND source_key = ?");
