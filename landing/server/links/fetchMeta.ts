@@ -10,7 +10,9 @@
  * trivially unit-testable.
  */
 import { lookup } from "node:dns/promises";
+import dns from "node:dns";
 import { isIP } from "node:net";
+import { Agent, fetch as undiciFetch } from "undici";
 
 export interface ExtractedMeta {
   siteName: string;
@@ -75,6 +77,43 @@ async function assertPublicHost(hostname: string): Promise<void> {
   }
 }
 
+/**
+ * DNS-rebinding defence: `assertPublicHost` alone is a check-then-use — the
+ * fetch would re-resolve the hostname, and a hostile DNS server can answer the
+ * check with a public IP and the connect with a private one. So the socket
+ * connector itself uses this guarded lookup: every address the connection will
+ * actually dial is validated here, leaving no window between check and use.
+ */
+export function guardedLookup(
+  hostname: string,
+  options: dns.LookupOptions,
+  callback: (err: NodeJS.ErrnoException | null, address: string | dns.LookupAddress[], family?: number) => void,
+): void {
+  dns.lookup(hostname, { ...options, all: true }, (err, addresses) => {
+    if (err) {
+      callback(err, "");
+      return;
+    }
+    const list = addresses as dns.LookupAddress[];
+    if (list.length === 0) {
+      callback(Object.assign(new Error("Host did not resolve"), { code: "ENOTFOUND" }), "");
+      return;
+    }
+    for (const a of list) {
+      if (isPrivateIp(a.address)) {
+        callback(Object.assign(new Error("Refusing to fetch a private address"), { code: "ECONNREFUSED" }), "");
+        return;
+      }
+    }
+    if (options.all) callback(null, list);
+    else callback(null, list[0].address, list[0].family);
+  });
+}
+
+// All safeFetch traffic dials through this agent so the guarded lookup is
+// applied on every hop (initial request and each followed redirect alike).
+const ssrfGuardedAgent = new Agent({ connect: { lookup: guardedLookup } });
+
 export interface SafeFetchOptions {
   accept: string;
   timeoutMs?: number;
@@ -96,13 +135,16 @@ export async function safeFetch(rawUrl: string, opts: SafeFetchOptions): Promise
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     for (let hop = 0; ; hop++) {
+      // Fast-fail (and literal-IP) check; the connection itself re-validates
+      // every resolved address via ssrfGuardedAgent's pinned lookup.
       await assertPublicHost(current.hostname);
-      const response = await fetch(current.href, {
+      const response = (await undiciFetch(current.href, {
         method: "GET",
         redirect: "manual",
         signal: controller.signal,
         headers: { "User-Agent": DESKTOP_UA, Accept: opts.accept },
-      });
+        dispatcher: ssrfGuardedAgent,
+      })) as unknown as Response;
       const status = response.status;
       const location = response.headers.get("location");
       if (status >= 300 && status < 400 && location) {
