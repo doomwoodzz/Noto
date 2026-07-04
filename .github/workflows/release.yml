@@ -1,0 +1,79 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Resolve version
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          BUNDLE_VERSION="$(date -u +%Y%m%d%H%M)"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "BUNDLE_VERSION=$BUNDLE_VERSION" >> "$GITHUB_ENV"
+
+      - name: Validate Sparkle secrets
+        run: |
+          test -n "${SPARKLE_PUBLIC_ED_KEY}" || (echo "SPARKLE_PUBLIC_ED_KEY is required" && exit 1)
+          test -n "${SPARKLE_PRIVATE_KEY}" || (echo "SPARKLE_PRIVATE_KEY is required" && exit 1)
+        env:
+          SPARKLE_PUBLIC_ED_KEY: ${{ secrets.SPARKLE_PUBLIC_ED_KEY }}
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+
+      - name: Build release executable
+        run: swift build -c release --product Noto
+
+      - name: Package DMG
+        run: zsh scripts/package-noto-dmg.sh
+        env:
+          VERSION: ${{ env.VERSION }}
+          BUNDLE_VERSION: ${{ env.BUNDLE_VERSION }}
+          SPARKLE_PUBLIC_ED_KEY: ${{ secrets.SPARKLE_PUBLIC_ED_KEY }}
+
+      - name: Find Sparkle tools
+        run: |
+          TOOLS_DIR="$(dirname "$(find .build/artifacts -path '*/Sparkle/bin/generate_appcast' -type f | head -n 1)")"
+          test -n "$TOOLS_DIR" || (echo "Could not find Sparkle generate_appcast tool" && exit 1)
+          echo "SPARKLE_TOOLS_DIR=$TOOLS_DIR" >> "$GITHUB_ENV"
+
+      - name: Generate appcast
+        run: |
+          mkdir -p .release-feed
+          cp "dist/Noto-${VERSION}.dmg" .release-feed/
+          printf "%s" "$SPARKLE_PRIVATE_KEY" | "$SPARKLE_TOOLS_DIR/generate_appcast" \
+            --ed-key-file - \
+            --download-url-prefix "https://github.com/doomwoodzz/Noto/releases/download/${GITHUB_REF_NAME}/" \
+            .release-feed
+          cp .release-feed/appcast.xml appcast.xml
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+
+      - name: Upload GitHub Release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/Noto-${{ env.VERSION }}.dmg
+            appcast.xml
+
+      - name: Commit appcast
+        run: |
+          cp appcast.xml /tmp/noto-appcast.xml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git checkout main
+          cp /tmp/noto-appcast.xml appcast.xml
+          git add appcast.xml
+          git diff --cached --quiet || git commit -m "chore: update appcast for ${GITHUB_REF_NAME}"
+          git push origin main
