@@ -1,0 +1,48 @@
+/* Dump modal + connectors panel. Mirrors the MCP panel (.nw-mcp-panel). */
+.nw-dump-panel {
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  z-index: 50; width: min(680px, calc(100vw - 32px)); max-height: calc(100vh - 64px);
+  display: flex; flex-direction: column; overflow: hidden;
+  background: var(--nw-surface, #fff); color: var(--nw-ink, #1a1f2b);
+  border: 1px solid var(--nw-border, rgba(127, 140, 170, 0.22));
+  border-radius: 14px; box-shadow: 0 24px 64px rgba(15, 23, 42, 0.28);
+}
+.nw-dump-head { display: flex; justify-content: space-between; align-items: center; padding: 16px 18px 10px; }
+.nw-dump-head h2 { font-size: 16px; margin: 0; }
+.nw-dump-x { background: none; border: 0; font-size: 22px; cursor: pointer; color: var(--nw-muted, #7f8caa); }
+.nw-dump-x:hover { background: rgba(127, 140, 170, 0.12); color: var(--nw-ink, #1a1f2b); border-radius: 6px; }
+
+.nw-dump-tabs { display: flex; gap: 4px; padding: 0 18px; border-bottom: 1px solid var(--nw-border, rgba(127, 140, 170, 0.18)); }
+.nw-dump-tab { background: none; border: 0; padding: 8px 12px; cursor: pointer; font-size: 13px;
+  color: var(--nw-muted, #7f8caa); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.nw-dump-tab.is-active { color: var(--nw-ink, #1a1f2b); border-bottom-color: var(--nw-accent, #6366f1); }
+
+.nw-dump-body { padding: 16px 18px; overflow: auto; }
+.nw-dump-textarea { width: 100%; min-height: 200px; resize: vertical; font: inherit; padding: 10px 12px;
+  border: 1px solid var(--nw-border, rgba(127, 140, 170, 0.3)); border-radius: 10px; background: transparent; color: inherit; }
+.nw-dump-drop { border: 1px dashed var(--nw-border, rgba(127, 140, 170, 0.4)); border-radius: 10px; padding: 18px; text-align: center; }
+.nw-dump-filelist { margin: 10px 0 0; padding: 0; list-style: none; font-size: 13px; color: var(--nw-muted, #7f8caa); }
+
+.nw-dump-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  padding: 12px 18px 16px; border-top: 1px solid var(--nw-border, rgba(127, 140, 170, 0.18)); }
+.nw-dump-btn { padding: 8px 16px; border-radius: 10px; border: 0; cursor: pointer; font-size: 13px; font-weight: 600;
+  background: var(--nw-accent, #6366f1); color: #fff; }
+.nw-dump-btn:disabled { opacity: 0.5; cursor: default; }
+.nw-dump-btn-ghost { background: transparent; color: var(--nw-muted, #7f8caa); border: 1px solid var(--nw-border, rgba(127, 140, 170, 0.3)); }
+
+.nw-dump-progress { display: flex; flex-direction: column; gap: 6px; padding: 8px 0; }
+.nw-dump-phase { font-weight: 600; }
+.nw-dump-counts { font-size: 13px; color: var(--nw-muted, #7f8caa); }
+.nw-dump-err { color: #c0392b; font-size: 13px; }
+
+.nw-dump-manifest { display: flex; flex-direction: column; gap: 6px; }
+.nw-dump-row { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border-radius: 10px;
+  border: 1px solid var(--nw-border, rgba(127, 140, 170, 0.18)); }
+.nw-dump-row.is-disabled { opacity: 0.55; }
+.nw-dump-row-main { flex: 1; min-width: 0; }
+.nw-dump-row-title { font-weight: 600; font-size: 14px; }
+.nw-dump-row-summary { font-size: 12.5px; color: var(--nw-muted, #7f8caa); }
+.nw-dump-row-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; font-size: 11.5px; color: var(--nw-muted, #7f8caa); }
+.nw-dump-badge { padding: 1px 6px; border-radius: 999px; background: rgba(99, 102, 241, 0.14); color: var(--nw-accent, #6366f1); }
+.nw-dump-badge-warn { background: rgba(192, 57, 43, 0.14); color: #c0392b; }
+.nw-dump-tag { padding: 1px 6px; border-radius: 999px; background: rgba(127, 140, 170, 0.14); }

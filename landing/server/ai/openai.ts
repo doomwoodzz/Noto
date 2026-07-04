@@ -24,6 +24,7 @@ export const MAX_TOKENS = {
   flashcards: 700,
   findLinks: 300,
   lecture: 1200,
+  dumpEnrich: 300,
 } as const;
 
 let client: OpenAI | null = null;

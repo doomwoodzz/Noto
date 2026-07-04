@@ -17,6 +17,8 @@ import { hashPassword, verifyPassword } from "./password.ts";
 import { createSession, destroySession, getCurrentUser } from "./session.ts";
 import { ensureCsrfCookie } from "./csrf.ts";
 import { startGoogleLogin, handleGoogleCallback } from "./google.ts";
+import { startGithubInstall, handleGithubCallback } from "./github.ts";
+import { startNotionInstall, handleNotionCallback } from "./notion.ts";
 
 export const authRouter = Router();
 
@@ -141,3 +143,11 @@ authRouter.patch("/preferences", (req: Request, res: Response) => {
 /* ------------------------------ Google OAuth --------------------------- */
 authRouter.get("/google", authLimiter, startGoogleLogin);
 authRouter.get("/google/callback", handleGoogleCallback);
+
+/* ------------------------------ GitHub App ----------------------------- */
+authRouter.get("/github/install", authLimiter, startGithubInstall);
+authRouter.get("/github/callback", handleGithubCallback);
+
+/* ------------------------------ Notion OAuth --------------------------- */
+authRouter.get("/notion/install", startNotionInstall);
+authRouter.get("/notion/callback", handleNotionCallback);

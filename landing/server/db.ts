@@ -15,6 +15,10 @@ import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import crypto from "node:crypto";
 import { env } from "./env.ts";
+import type {
+  DumpJobRow, DumpItemRow, DumpSourceRow, ConnectorTokenRow,
+  DumpStatus, DumpItemStatus, DumpCounts,
+} from "./dump/types.ts";
 
 mkdirSync(dirname(env.DATABASE_PATH), { recursive: true });
 
@@ -185,6 +189,61 @@ db.exec(`
     ON ai_response_cache(note_hash);
   CREATE INDEX IF NOT EXISTS ai_response_cache_feature
     ON ai_response_cache(feature);
+
+  CREATE TABLE IF NOT EXISTS dump_jobs (
+    id          TEXT PRIMARY KEY,
+    user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    vault_id    TEXT NOT NULL REFERENCES vaults(id) ON DELETE CASCADE,
+    source_type TEXT NOT NULL,
+    source_ref  TEXT NOT NULL,
+    source_slug TEXT NOT NULL,
+    status      TEXT NOT NULL,
+    counts      TEXT NOT NULL DEFAULT '{}',
+    error       TEXT,
+    created_at  INTEGER NOT NULL,
+    updated_at  INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_dump_jobs_user ON dump_jobs(user_id, created_at);
+
+  CREATE TABLE IF NOT EXISTS dump_items (
+    id              TEXT PRIMARY KEY,
+    job_id          TEXT NOT NULL REFERENCES dump_jobs(id) ON DELETE CASCADE,
+    source_key      TEXT NOT NULL,
+    status          TEXT NOT NULL,
+    redaction_count INTEGER NOT NULL DEFAULT 0,
+    shaped          TEXT,
+    file_id         TEXT,
+    dedup_of        TEXT,
+    error           TEXT
+  );
+  CREATE INDEX IF NOT EXISTS idx_dump_items_job ON dump_items(job_id);
+
+  CREATE TABLE IF NOT EXISTS dump_sources (
+    user_id      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    source_key   TEXT NOT NULL,
+    file_id      TEXT NOT NULL REFERENCES files(id) ON DELETE CASCADE,
+    content_hash TEXT NOT NULL,
+    job_id       TEXT,
+    created_at   INTEGER NOT NULL,
+    PRIMARY KEY (user_id, source_key)
+  );
+  CREATE INDEX IF NOT EXISTS idx_dump_sources_file ON dump_sources(file_id);
+
+  CREATE TABLE IF NOT EXISTS connector_tokens (
+    id                   TEXT PRIMARY KEY,
+    user_id              TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    provider             TEXT NOT NULL,
+    external_account     TEXT,
+    installation_id      TEXT,
+    access_token_cipher  BLOB,
+    refresh_token_cipher BLOB,
+    expires_at           INTEGER,
+    scopes               TEXT,
+    created_at           INTEGER NOT NULL,
+    updated_at           INTEGER NOT NULL,
+    UNIQUE (user_id, provider)
+  );
+  CREATE INDEX IF NOT EXISTS idx_connector_tokens_user ON connector_tokens(user_id);
 `);
 
 // Additive migration: older databases predate the `pinned` column. Add it once
@@ -1211,6 +1270,164 @@ export function incrementAiCacheHit(id: number): void {
 
 export function deleteAiCacheRow(id: number): void {
   stmtAiCacheDeleteById.run(id);
+}
+
+/* ----------------------------- dump jobs ------------------------------- */
+
+const stmtInsertDumpJob = db.prepare(
+  "INSERT INTO dump_jobs (id, user_id, vault_id, source_type, source_ref, source_slug, status, counts, error, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+);
+const stmtOwnedDumpJob = db.prepare("SELECT * FROM dump_jobs WHERE id = ? AND user_id = ?");
+const stmtSetDumpJobStatus = db.prepare("UPDATE dump_jobs SET status = ?, updated_at = ? WHERE id = ?");
+const stmtSetDumpJobStatusErr = db.prepare("UPDATE dump_jobs SET status = ?, error = ?, updated_at = ? WHERE id = ?");
+const stmtSetDumpJobCounts = db.prepare("UPDATE dump_jobs SET counts = ?, updated_at = ? WHERE id = ?");
+const stmtClaimableJobs = db.prepare(
+  "SELECT * FROM dump_jobs WHERE status IN ('queued','committing') ORDER BY created_at ASC LIMIT ?",
+);
+
+export function createDumpJob(input: {
+  userId: string;
+  vaultId: string;
+  sourceType: "raw" | "github" | "notion";
+  sourceRef: unknown;
+  sourceSlug: string;
+}): DumpJobRow {
+  const id = newId();
+  const ts = now();
+  stmtInsertDumpJob.run(
+    id, input.userId, input.vaultId, input.sourceType,
+    JSON.stringify(input.sourceRef), input.sourceSlug, "queued", "{}", null, ts, ts,
+  );
+  return stmtOwnedDumpJob.get(id, input.userId) as unknown as DumpJobRow;
+}
+export function getOwnedDumpJob(userId: string, jobId: string): DumpJobRow | undefined {
+  return stmtOwnedDumpJob.get(jobId, userId) as DumpJobRow | undefined;
+}
+export function setDumpJobStatus(jobId: string, status: DumpStatus, error?: string | null): void {
+  if (error !== undefined) stmtSetDumpJobStatusErr.run(status, error, now(), jobId);
+  else stmtSetDumpJobStatus.run(status, now(), jobId);
+}
+export function setDumpJobCounts(jobId: string, counts: DumpCounts): void {
+  stmtSetDumpJobCounts.run(JSON.stringify(counts), now(), jobId);
+}
+export function claimableDumpJobs(limit = 5): DumpJobRow[] {
+  return stmtClaimableJobs.all(limit) as unknown as DumpJobRow[];
+}
+
+/* ----------------------------- dump items ------------------------------ */
+
+const stmtInsertDumpItem = db.prepare(
+  "INSERT INTO dump_items (id, job_id, source_key, status, redaction_count, shaped, file_id, dedup_of, error) VALUES (?,?,?,?,?,?,?,?,?)",
+);
+const stmtItemsByJob = db.prepare("SELECT * FROM dump_items WHERE job_id = ? ORDER BY rowid ASC");
+const stmtItemById = db.prepare("SELECT * FROM dump_items WHERE id = ?");
+const stmtUpdateDumpItem = db.prepare(
+  "UPDATE dump_items SET status=?, shaped=?, file_id=?, dedup_of=?, error=?, redaction_count=? WHERE id=?",
+);
+
+export function insertDumpItem(input: {
+  jobId: string;
+  sourceKey: string;
+  status: DumpItemStatus;
+  shaped?: string | null;
+  dedupOf?: string | null;
+  redactionCount?: number;
+}): DumpItemRow {
+  const id = newId();
+  stmtInsertDumpItem.run(
+    id, input.jobId, input.sourceKey, input.status,
+    input.redactionCount ?? 0, input.shaped ?? null, null, input.dedupOf ?? null, null,
+  );
+  return stmtItemById.get(id) as unknown as DumpItemRow;
+}
+export function listDumpItems(jobId: string): DumpItemRow[] {
+  return stmtItemsByJob.all(jobId) as unknown as DumpItemRow[];
+}
+export function getDumpItem(itemId: string): DumpItemRow | undefined {
+  return stmtItemById.get(itemId) as DumpItemRow | undefined;
+}
+export function updateDumpItem(
+  itemId: string,
+  patch: Partial<Pick<DumpItemRow, "status" | "shaped" | "file_id" | "dedup_of" | "error" | "redaction_count">>,
+): void {
+  const cur = stmtItemById.get(itemId) as DumpItemRow | undefined;
+  if (!cur) return;
+  stmtUpdateDumpItem.run(
+    patch.status ?? cur.status,
+    patch.shaped !== undefined ? patch.shaped : cur.shaped,
+    patch.file_id !== undefined ? patch.file_id : cur.file_id,
+    patch.dedup_of !== undefined ? patch.dedup_of : cur.dedup_of,
+    patch.error !== undefined ? patch.error : cur.error,
+    patch.redaction_count ?? cur.redaction_count,
+    itemId,
+  );
+}
+
+const stmtDeleteOwnedFile = db.prepare(
+  "DELETE FROM files WHERE id = ? AND vault_id IN (SELECT id FROM vaults WHERE user_id = ?)",
+);
+/** Delete a file the user owns. FK CASCADE removes note_passages + dump_sources. Returns true if a row was deleted. */
+export function deleteOwnedFile(userId: string, fileId: string): boolean {
+  const info = stmtDeleteOwnedFile.run(fileId, userId);
+  return Number(info.changes) > 0;
+}
+
+/* ---------------------------- dump sources ----------------------------- */
+
+const stmtGetDumpSource = db.prepare("SELECT * FROM dump_sources WHERE user_id = ? AND source_key = ?");
+const stmtUpsertDumpSource = db.prepare(
+  "INSERT INTO dump_sources (user_id, source_key, file_id, content_hash, job_id, created_at) VALUES (?,?,?,?,?,?) " +
+  "ON CONFLICT(user_id, source_key) DO UPDATE SET file_id=excluded.file_id, content_hash=excluded.content_hash, job_id=excluded.job_id",
+);
+
+export function getDumpSource(userId: string, sourceKey: string): DumpSourceRow | undefined {
+  return stmtGetDumpSource.get(userId, sourceKey) as DumpSourceRow | undefined;
+}
+export function upsertDumpSource(input: {
+  userId: string;
+  sourceKey: string;
+  fileId: string;
+  contentHash: string;
+  jobId?: string | null;
+}): void {
+  stmtUpsertDumpSource.run(input.userId, input.sourceKey, input.fileId, input.contentHash, input.jobId ?? null, now());
+}
+
+/* -------------------------- connector tokens --------------------------- */
+
+const stmtGetConnector = db.prepare("SELECT * FROM connector_tokens WHERE user_id = ? AND provider = ?");
+const stmtListConnectors = db.prepare("SELECT * FROM connector_tokens WHERE user_id = ? ORDER BY created_at ASC");
+const stmtDeleteConnector = db.prepare("DELETE FROM connector_tokens WHERE user_id = ? AND provider = ?");
+const stmtUpsertConnector = db.prepare(
+  "INSERT INTO connector_tokens (id, user_id, provider, external_account, installation_id, access_token_cipher, refresh_token_cipher, expires_at, scopes, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?) " +
+  "ON CONFLICT(user_id, provider) DO UPDATE SET external_account=excluded.external_account, installation_id=excluded.installation_id, access_token_cipher=excluded.access_token_cipher, refresh_token_cipher=excluded.refresh_token_cipher, expires_at=excluded.expires_at, scopes=excluded.scopes, updated_at=excluded.updated_at",
+);
+
+export function saveConnectorToken(input: {
+  userId: string;
+  provider: "github" | "notion";
+  externalAccount?: string | null;
+  installationId?: string | null;
+  accessTokenCipher?: Uint8Array | null;
+  refreshTokenCipher?: Uint8Array | null;
+  expiresAt?: number | null;
+  scopes?: string | null;
+}): void {
+  const ts = now();
+  stmtUpsertConnector.run(
+    newId(), input.userId, input.provider, input.externalAccount ?? null, input.installationId ?? null,
+    input.accessTokenCipher ?? null, input.refreshTokenCipher ?? null, input.expiresAt ?? null,
+    input.scopes ?? null, ts, ts,
+  );
+}
+export function getConnectorToken(userId: string, provider: "github" | "notion"): ConnectorTokenRow | undefined {
+  return stmtGetConnector.get(userId, provider) as ConnectorTokenRow | undefined;
+}
+export function listConnectors(userId: string): ConnectorTokenRow[] {
+  return stmtListConnectors.all(userId) as unknown as ConnectorTokenRow[];
+}
+export function deleteConnector(userId: string, provider: "github" | "notion"): void {
+  stmtDeleteConnector.run(userId, provider);
 }
 
 export { db };

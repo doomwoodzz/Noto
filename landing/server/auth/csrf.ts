@@ -43,12 +43,29 @@ function timingSafeEqualStr(a: string, b: string): boolean {
   return crypto.timingSafeEqual(ab, bb);
 }
 
+/** APP_ORIGIN normalized to a bare origin (tolerates a configured trailing slash/path). */
+function appOrigin(): string {
+  try {
+    return new URL(env.APP_ORIGIN).origin;
+  } catch {
+    return env.APP_ORIGIN;
+  }
+}
+
 function originAllowed(req: Request): boolean {
   const origin = req.get("origin");
-  if (origin) return origin === env.APP_ORIGIN;
-  // Some legitimate clients omit Origin; fall back to Referer prefix check.
+  if (origin) return origin === appOrigin();
+  // Some legitimate clients omit Origin; fall back to comparing the Referer's
+  // parsed origin. A raw string-prefix check would be bypassable via a
+  // lookalike host (e.g. https://our-origin.evil.com), so parse first.
   const referer = req.get("referer");
-  if (referer) return referer.startsWith(env.APP_ORIGIN);
+  if (referer) {
+    try {
+      return new URL(referer).origin === appOrigin();
+    } catch {
+      return false;
+    }
+  }
   // No Origin and no Referer on a state-changing request → reject.
   return false;
 }

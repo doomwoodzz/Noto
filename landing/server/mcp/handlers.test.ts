@@ -49,3 +49,25 @@ describe("makeHandlers", () => {
     expect(r.content[0].text).toContain("confined to Memory/");
   });
 });
+
+describe("search_notes — untrusted tagging (§10.3 L2)", () => {
+  it("tags Dump/ results as untrusted and leaves normal results alone", async () => {
+    const client = fakeClient({
+      searchNotes: vi.fn(async () => ({
+        results: [
+          { fileId: "a", title: "Readme", path: "Dump/acme/Readme.md", headingPath: [], snippet: "x", score: 0.9 },
+          { fileId: "b", title: "Biology", path: "Notes/Biology.md", headingPath: [], snippet: "y", score: 0.8 },
+        ],
+      })),
+    });
+    const h = makeHandlers(client, { scope: "proj" });
+    const r = await h.search_notes({ query: "q" });
+    const parsed = JSON.parse(r.content[0].text) as {
+      results: { fileId: string; path: string; untrusted?: boolean; untrustedNote?: string }[];
+    };
+    expect(parsed.results[0].untrusted).toBe(true);
+    expect(parsed.results[0].untrustedNote).toMatch(/untrusted/i);
+    expect(parsed.results[1].untrusted).toBeUndefined();
+    expect(r.isError).toBeUndefined();
+  });
+});
