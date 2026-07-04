@@ -13,7 +13,11 @@ import { getCurrentUser } from "../auth/session.ts";
 import {
   db, ensureDefaultVault, getVaultsForUser, getOwnedVault, getOwnedDumpJob,
   listDumpItems, updateDumpItem, setDumpJobStatus, deleteOwnedFile,
+  getConnectorToken,
 } from "../db.ts";
+import { env } from "../env.ts";
+import { keyvaultConfigured } from "../ai/keyvault.ts";
+import { mintInstallationToken, ghFetch, type FetchImpl } from "../connectors/githubApp.ts";
 import { enqueueDump, requestCancel } from "./jobs.ts";
 import { buildManifest } from "./shape.ts";
 import { slugifySource } from "./slug.ts";
@@ -71,6 +75,40 @@ dumpRouter.post("/", dumpLimiter, jsonBody, (req: Request, res: Response) => {
     sourceRef: parsed.data.source, sourceSlug: sourceSlugFor(parsed.data.source),
   });
   res.status(201).json({ jobId: job.id });
+});
+
+const GITHUB_API = "https://api.github.com";
+
+/** List repos the installation can see. Injectable for tests (no network). */
+export async function listInstallationRepos(
+  installationId: string,
+  fetchImpl: FetchImpl = fetch,
+): Promise<{ fullName: string; defaultBranch: string }[]> {
+  const { token } = await mintInstallationToken(installationId, fetchImpl);
+  const out: { fullName: string; defaultBranch: string }[] = [];
+  for (let page = 1; page <= 10; page++) {
+    const resp = await ghFetch(`${GITHUB_API}/installation/repositories?per_page=100&page=${page}`, { token, tokenType: "Bearer" }, fetchImpl);
+    if (!resp.ok) throw new Error(`GitHub repositories → ${resp.status}`);
+    const json = (await resp.json()) as { repositories?: { full_name: string; default_branch: string }[] };
+    const batch = json.repositories ?? [];
+    for (const r of batch) out.push({ fullName: r.full_name, defaultBranch: r.default_branch });
+    if (batch.length < 100) break;
+  }
+  return out;
+}
+
+dumpRouter.get("/github/repos", async (req: Request, res: Response) => {
+  const uid = cookieUser(req, res); if (!uid) return;
+  // Config gate (503) precedes the connection gate (409) so an unconfigured
+  // server never leaks whether a connector row exists.
+  if (!env.githubConfigured || !keyvaultConfigured()) { res.status(503).json({ error: "GitHub connector is not configured" }); return; }
+  const conn = getConnectorToken(uid, "github");
+  if (!conn?.installation_id) { res.status(409).json({ error: "GitHub is not connected" }); return; }
+  try {
+    res.json(await listInstallationRepos(conn.installation_id));
+  } catch {
+    res.status(502).json({ error: "Could not reach GitHub" });
+  }
 });
 
 dumpRouter.get("/jobs/:id", (req: Request, res: Response) => {
