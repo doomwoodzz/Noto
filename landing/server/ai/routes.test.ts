@@ -143,4 +143,17 @@ describe("ai API", () => {
     const { markdown } = await res.json();
     expect(markdown).toContain("## AI Lecture Notes");
   });
+
+  // §10.3 L2: the chat schema accepts an optional notePath (untrusted threading).
+  it("accepts an optional notePath without a 400 (schema is additive)", async () => {
+    const a = await signup("ai-notepath@example.com");
+    const res = await a.req("POST", "/api/ai/chat", {
+      noteTitle: "Readme",
+      noteContent: "plain body",
+      notePath: "Dump/acme/Readme.md",
+      question: "what is this?",
+    });
+    // 200 with the mocked OpenAI wrapper — but the guarantee we lock is: never 400.
+    expect(res.status).not.toBe(400);
+  });
 });
