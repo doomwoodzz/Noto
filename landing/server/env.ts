@@ -47,6 +47,18 @@ const schema = z.object({
   GOOGLE_CLIENT_SECRET: z.string().optional(),
   GOOGLE_REDIRECT_URI: z.string().url().optional(),
 
+  /** GitHub App connector — optional; the feature returns 503 until these are set. */
+  GITHUB_APP_ID: z.string().optional(),
+  GITHUB_APP_PRIVATE_KEY: z.string().optional(),   // PEM (with literal \n or real newlines)
+  GITHUB_APP_SLUG: z.string().optional(),          // for the install URL
+  GITHUB_CLIENT_ID: z.string().optional(),
+  GITHUB_CLIENT_SECRET: z.string().optional(),
+  GITHUB_REDIRECT_URI: z.string().url().optional(),
+  /** Notion OAuth connector — optional (wired in P5). */
+  NOTION_CLIENT_ID: z.string().optional(),
+  NOTION_CLIENT_SECRET: z.string().optional(),
+  NOTION_REDIRECT_URI: z.string().url().optional(),
+
   /**
    * OpenAI — optional; the authenticated AI features (chat, summarize,
    * flashcards, find-links, lecture transcription) return a clear 503 until
@@ -133,6 +145,10 @@ export const env = {
     raw.GOOGLE_CLIENT_ID && raw.GOOGLE_CLIENT_SECRET && raw.GOOGLE_REDIRECT_URI,
   ),
   openaiConfigured: Boolean(raw.OPENAI_API_KEY),
+  githubConfigured: Boolean(
+    raw.GITHUB_APP_ID && raw.GITHUB_APP_PRIVATE_KEY && raw.GITHUB_CLIENT_ID && raw.GITHUB_CLIENT_SECRET && raw.GITHUB_REDIRECT_URI,
+  ),
+  notionConfigured: Boolean(raw.NOTION_CLIENT_ID && raw.NOTION_CLIENT_SECRET && raw.NOTION_REDIRECT_URI),
   aiCacheTtlSeconds: raw.AI_CACHE_TTL_DAYS * 24 * 60 * 60,
 } as const;
 

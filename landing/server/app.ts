@@ -30,6 +30,7 @@ import { searchRouter } from "./search/routes.ts";
 import { activityRouter } from "./audit/routes.ts";
 import { mountMcp } from "./mcp/routes.ts";
 import { dumpRouter } from "./dump/routes.ts";
+import { connectorsRouter } from "./connectors/routes.ts";
 
 export function createApp(): Express {
   const app = express();
@@ -45,7 +46,13 @@ export function createApp(): Express {
   // 'wasm-unsafe-eval' lets the in-browser embedding model (onnxruntime-web)
   // compile its WASM. It permits WebAssembly only — not arbitrary eval/new Function.
   const scriptSrc = ["'self'", "'wasm-unsafe-eval'"];
-  const connectSrc = ["'self'", "https://accounts.google.com"];
+  const connectSrc = [
+    "'self'",
+    "https://accounts.google.com",
+    "https://github.com",
+    "https://api.github.com",
+    "https://api.notion.com",
+  ];
   if (!env.isProd) {
     connectSrc.push("ws:", "http://localhost:5173");
   }
@@ -112,6 +119,7 @@ export function createApp(): Express {
   app.use("/api", notesRouter);
   app.use("/api/ai", aiRouter);
   app.use("/api/dump", dumpRouter);
+  app.use("/api/connectors", connectorsRouter);
   app.use("/api/links", linksRouter);
   app.use("/api/tokens", tokensRouter);
   app.use("/api/memory", memoryRouter);
