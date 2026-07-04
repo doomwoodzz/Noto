@@ -2,6 +2,7 @@
 import type { SourceProvider } from "../types.ts";
 import { rawProvider } from "./raw.ts";
 import { makeGithubProvider } from "./github.ts";
+import { notionProvider } from "./notion.ts";
 
 export function getProvider(type: "raw" | "github" | "notion"): SourceProvider {
   switch (type) {
@@ -10,7 +11,7 @@ export function getProvider(type: "raw" | "github" | "notion"): SourceProvider {
     case "github":
       return makeGithubProvider();
     case "notion":
-      throw new Error(`The ${type} connector is not yet available.`);
+      return notionProvider;
     default: {
       const _exhaustive: never = type;
       throw new Error(`Unknown source type: ${String(_exhaustive)}`);
