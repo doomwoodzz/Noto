@@ -66,11 +66,19 @@ describe("buildMocBody", () => {
     expect(body).toContain("- [[Readme]]\n- [[Architecture]]");
   });
 
+  it("pluralizes the member count: singular for one member, plural otherwise", () => {
+    const single = buildMocBody("acme-repo", ["Readme"], 1700000000000);
+    expect(single).toContain("· 1 note ·");
+    expect(single).not.toContain("· 1 notes ·");
+    const many = buildMocBody("acme-repo", ["Readme", "Architecture", "Setup"], 1700000000000);
+    expect(many).toContain("· 3 notes ·");
+  });
+
   it("does not call Date.now — same input yields identical output", () => {
     const a = buildMocBody("s", ["A"], 42);
     const b = buildMocBody("s", ["A"], 42);
     expect(a).toBe(b);
-    expect(a).toContain("· 1 notes ·");
+    expect(a).toContain("· 1 note ·");
   });
 });
 
