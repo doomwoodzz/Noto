@@ -51,7 +51,7 @@ export function buildMocBody(sourceLabel: string, memberTitles: string[], update
   const stamp = new Date(updatedAt).toISOString().replace("T", " ").replace(/\.\d+Z$/, "Z");
   const header =
     `# ${sourceLabel} — Index\n\n` +
-    `> Source index · ${memberTitles.length} notes · Last updated ${stamp}`;
+    `> Source index · ${memberTitles.length} ${memberTitles.length === 1 ? "note" : "notes"} · Last updated ${stamp}`;
   const list = memberTitles.map((t) => `- [[${t}]]`).join("\n");
   return list ? `${header}\n\n${list}\n` : `${header}\n`;
 }
