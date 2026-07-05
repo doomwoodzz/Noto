@@ -13,6 +13,10 @@ export default defineConfig({
       SESSION_SECRET: "test-session-secret-at-least-32-chars-long",
       APP_ORIGIN: "http://localhost:5173",
       VAULT_KEY_SECRET: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+      // Dummy key so the AI routes (gated on env.openaiConfigured) run offline
+      // and deterministically without a real OpenAI key. dotenv runs with
+      // override:false, so this also shadows any real local key during tests.
+      OPENAI_API_KEY: "sk-test-dummy-not-a-real-key",
     },
   },
 });
