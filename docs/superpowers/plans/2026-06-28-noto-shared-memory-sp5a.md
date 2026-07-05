@@ -668,7 +668,7 @@ Expected: all green (prior 203 + the SP5a tests). The `embedder.test.ts` loads t
 Run: `cd landing && npm run typecheck:server && npm run lint && npm run build`
 Expected: clean.
 
-Run: `cd /Users/SV/Desktop/Noto/noto-mcp && npm test && npm run typecheck && npm run build`
+Run: `cd <repo-root>/noto-mcp && npm test && npm run typecheck && npm run build`
 Expected: 21 green (stdio unchanged; still 9 tools).
 
 - [ ] **Step 2: Live paraphrase smoke (real model + entrypoint)**

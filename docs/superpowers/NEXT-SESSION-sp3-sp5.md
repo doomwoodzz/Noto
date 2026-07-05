@@ -1,6 +1,6 @@
 # Noto Shared-Memory Wedge — Continue Here (SP3 → SP5)
 
-> **Paste this whole file as the first message of a fresh Claude Code session** (run from the repo root `/Users/SV/Desktop/Noto`). It is a self-contained handoff: it tells you what exists, what's decided, and what to build next.
+> **Paste this whole file as the first message of a fresh Claude Code session** (run from the repo root `<repo-root>`). It is a self-contained handoff: it tells you what exists, what's decided, and what to build next.
 
 ## Your task
 
