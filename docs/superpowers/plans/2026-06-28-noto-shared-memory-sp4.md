@@ -703,7 +703,7 @@ Expected: all green (prior 190 + the SP4 server tests + the 2 new config tests).
 Run: `cd landing && npm run typecheck:server && npm run lint && npm run build`
 Expected: clean.
 
-Run: `cd /Users/SV/Desktop/Noto/noto-mcp && npm test && npm run typecheck && npm run build`
+Run: `cd <repo-root>/noto-mcp && npm test && npm run typecheck && npm run build`
 Expected: 21 tests green (stdio unchanged); still exactly 9 tools.
 
 - [ ] **Step 2: Live HTTP smoke (real entrypoint)**
