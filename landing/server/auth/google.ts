@@ -43,7 +43,7 @@ function signState(payload: object): string {
   const mac = crypto.createHmac("sha256", env.SESSION_SECRET).update(body).digest("base64url");
   return `${body}.${mac}`;
 }
-function verifyState(value: string): any | null {
+function verifyState(value: string): Record<string, unknown> | null {
   const dot = value.lastIndexOf(".");
   if (dot < 0) return null;
   const body = value.slice(0, dot);
@@ -90,7 +90,7 @@ export function startGoogleLogin(_req: Request, res: Response): void {
   res.redirect(url.toString());
 }
 
-function decodeJwtPayload(jwt: string): any | null {
+function decodeJwtPayload(jwt: string): Record<string, unknown> | null {
   const parts = jwt.split(".");
   if (parts.length !== 3) return null;
   try {
@@ -131,13 +131,13 @@ export async function handleGoogleCallback(req: Request, res: Response): Promise
   }
 
   // Exchange the authorization code for tokens.
-  let tokenJson: any;
+  let tokenJson: Record<string, unknown>;
   try {
     const body = new URLSearchParams({
       client_id: env.GOOGLE_CLIENT_ID!,
       client_secret: env.GOOGLE_CLIENT_SECRET!,
       code,
-      code_verifier: saved.codeVerifier,
+      code_verifier: String(saved.codeVerifier),
       grant_type: "authorization_code",
       redirect_uri: env.GOOGLE_REDIRECT_URI!,
     });
@@ -147,7 +147,7 @@ export async function handleGoogleCallback(req: Request, res: Response): Promise
       body,
     });
     if (!resp.ok) return fail(res, "oauth_token");
-    tokenJson = await resp.json();
+    tokenJson = (await resp.json()) as Record<string, unknown>;
   } catch {
     return fail(res, "oauth_token");
   }

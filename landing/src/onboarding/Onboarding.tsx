@@ -19,10 +19,17 @@ const POST_AUTH_DEST = "/app";
 
 export function Onboarding() {
   const [stepIdx, setStepIdx] = useState(0);
-  const [mode, setMode] = useState<Mode>("signup");
+  // Seed mode/oauthError from the OAuth return params during the initial render
+  // (lazy initializers) so the mount effect doesn't have to setState for them.
+  const [mode, setMode] = useState<Mode>(() => {
+    const modeParam = new URLSearchParams(window.location.search).get("mode");
+    return modeParam === "signin" || modeParam === "signup" ? modeParam : "signup";
+  });
   const [email, setEmail] = useState("");
   const [theme, setTheme] = useTheme();
-  const [oauthError, setOauthError] = useState<string | null>(null);
+  const [oauthError, setOauthError] = useState<string | null>(
+    () => new URLSearchParams(window.location.search).get("error"),
+  );
   const [googleEnabled, setGoogleEnabled] = useState(true);
   const [ready, setReady] = useState(false);
 
@@ -32,8 +39,6 @@ export function Onboarding() {
     const stepParam = params.get("step");
     const errorParam = params.get("error");
     const modeParam = params.get("mode");
-    if (errorParam) setOauthError(errorParam);
-    if (modeParam === "signin" || modeParam === "signup") setMode(modeParam);
 
     let cancelled = false;
     // Reflect whether Google OAuth is configured so we don't dead-end users on
