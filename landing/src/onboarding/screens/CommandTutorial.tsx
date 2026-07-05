@@ -29,6 +29,7 @@ export function CommandTutorial({ onNext, onBack }: { onNext: () => void; onBack
   const [active, setActive] = useState(0);
   const [pressedKey, setPressedKey] = useState<PressedKey>(null);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const runRef = useRef<() => void>(() => {});
 
   const run = useCallback(() => {
     timers.current.forEach(clearTimeout);
@@ -49,10 +50,14 @@ export function CommandTutorial({ onNext, onBack }: { onNext: () => void; onBack
     add(() => setPhase("fire"), 5250);
     add(() => setPressedKey(null), 5550);
     add(() => { setPhase("idle"); setActive(0); }, 6300);
-    add(() => run(), 7100);
+    add(() => runRef.current(), 7100);
   }, []);
 
   useEffect(() => {
+    // Kick off the looping animation on mount. The recursive restart at 7100ms
+    // goes through runRef so `run` itself needn't depend on `run` (stable []).
+    runRef.current = run;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     run();
     return () => timers.current.forEach(clearTimeout);
   }, [run]);

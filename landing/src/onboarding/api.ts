@@ -55,14 +55,16 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
 
-  let data: any = null;
+  let data: unknown = null;
   try {
     data = await res.json();
   } catch {
     /* empty body (e.g. 204) */
   }
   if (!res.ok) {
-    throw new ApiError(data?.error ?? "Something went wrong. Please try again.", res.status);
+    const message =
+      (data as { error?: string } | null)?.error ?? "Something went wrong. Please try again.";
+    throw new ApiError(message, res.status);
   }
   return data as T;
 }

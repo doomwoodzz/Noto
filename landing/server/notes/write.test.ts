@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { startTestServer, signup, mintToken, makePatClient, makeCookieClient, type TestServer } from "../test-helpers.ts";
+import { startTestServer, signup, mintToken, makePatClient, type TestServer } from "../test-helpers.ts";
 
 let s: TestServer;
 beforeAll(async () => { s = await startTestServer(); });

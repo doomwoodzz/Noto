@@ -52,9 +52,17 @@ export function ActivityView({ client, initialFileId, onClose, onOpenNote }: Pro
     return () => { cancelled = true; };
   }, [client, tool, source, initialFileId]);
 
+  // load() sets loading state and returns a cleanup that cancels the in-flight
+  // request; running it on mount / when its inputs change is the intended effect.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => load(), [load]);
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") (confirm ? setConfirm(null) : onClose()); };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (confirm) setConfirm(null);
+        else onClose();
+      }
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose, confirm]);
