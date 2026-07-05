@@ -25,6 +25,7 @@ const STATE_COOKIE = "noto_gh_oauth";
 const INSTALL_BASE = "https://github.com/apps";
 const TOKEN_ENDPOINT = "https://github.com/login/oauth/access_token";
 const API_USER = "https://api.github.com/user";
+const API_USER_INSTALLATIONS = "https://api.github.com/user/installations";
 const COOKIE_TTL_MS = 10 * 60 * 1000;
 
 function b64url(buf: Buffer): string {
@@ -109,35 +110,59 @@ export async function handleGithubCallback(req: Request, res: Response): Promise
   const current = getCurrentUser(req);
   if (!current || current.id !== saved.userId) return fail(res, "github_session");
 
-  // Exchange `code` (when present) for a user token to read the GitHub login.
-  // The user token is short-lived identity context only; we persist the
-  // installation_id (tokens are minted on demand from the App JWT).
+  // Exchange `code` for a user token. This is MANDATORY — it is the only proof
+  // that the authenticated user actually controls the supplied installation_id.
+  // Without it an attacker could bind a victim's installation (whose token is
+  // minted on demand from the App JWT) to their own account (confused-deputy
+  // IDOR). A missing/empty code means we cannot verify ownership → fail closed.
+  if (typeof code !== "string" || code.length === 0) return fail(res, "github_code");
+
+  let userToken: string;
+  try {
+    const body = new URLSearchParams({
+      client_id: env.GITHUB_CLIENT_ID!,
+      client_secret: env.GITHUB_CLIENT_SECRET!,
+      code,
+      redirect_uri: env.GITHUB_REDIRECT_URI!,
+    });
+    const tokResp = await fetch(TOKEN_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
+      body,
+    });
+    if (!tokResp.ok) return fail(res, "github_code");
+    const tok = (await tokResp.json()) as { access_token?: string };
+    if (!tok.access_token) return fail(res, "github_code");
+    userToken = tok.access_token;
+  } catch {
+    return fail(res, "github_code");
+  }
+
+  // Prove the authenticated user owns this installation: list the installations
+  // accessible to the *user token* and require installation_id to be among them.
+  // Reading id robustly guards against pagination/shape drift; a single page is
+  // sufficient for the common case (a user rarely has >30 installations).
+  let installations: Array<{ id?: unknown }>;
+  try {
+    const listResp = await ghFetch(API_USER_INSTALLATIONS, { token: userToken, tokenType: "Bearer" });
+    if (!listResp.ok) return fail(res, "github_install");
+    const parsed = (await listResp.json()) as { installations?: Array<{ id?: unknown }> };
+    installations = Array.isArray(parsed.installations) ? parsed.installations : [];
+  } catch {
+    return fail(res, "github_install");
+  }
+
+  const owns = installations.some((inst) => inst != null && String(inst.id) === installation_id);
+  if (!owns) return fail(res, "github_install_mismatch");
+
+  // Ownership proven — capture the login identity and encrypt the retained token.
   let login: string | null = null;
-  let userTokenCipher: Uint8Array | null = null;
-  if (typeof code === "string" && code.length > 0) {
-    try {
-      const body = new URLSearchParams({
-        client_id: env.GITHUB_CLIENT_ID!,
-        client_secret: env.GITHUB_CLIENT_SECRET!,
-        code,
-        redirect_uri: env.GITHUB_REDIRECT_URI!,
-      });
-      const tokResp = await fetch(TOKEN_ENDPOINT, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
-        body,
-      });
-      if (tokResp.ok) {
-        const tok = (await tokResp.json()) as { access_token?: string };
-        if (tok.access_token) {
-          userTokenCipher = encryptKey(tok.access_token);
-          const who = await ghFetch(API_USER, { token: tok.access_token, tokenType: "Bearer" });
-          if (who.ok) login = ((await who.json()) as { login?: string }).login ?? null;
-        }
-      }
-    } catch {
-      // Identity is best-effort — the installation_id is what makes the connector work.
-    }
+  const userTokenCipher: Uint8Array = encryptKey(userToken);
+  try {
+    const who = await ghFetch(API_USER, { token: userToken, tokenType: "Bearer" });
+    if (who.ok) login = ((await who.json()) as { login?: string }).login ?? null;
+  } catch {
+    // Identity display name is best-effort; ownership is already established.
   }
 
   saveConnectorToken({
