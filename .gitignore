@@ -1,8 +1,24 @@
+# macOS
+.DS_Store
+
+# Local tooling / AI config
 .superpowers/
 .worktrees/
+.gstack/
+.claude/
+
+# Dependencies / build
 node_modules/
 /server/
 .build/
 .swiftpm/
 DerivedData/
 dist/
+
+# Secrets & local data (belt-and-braces; landing/.gitignore covers landing/)
+.env
+.env.*
+!.env.example
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
