@@ -1,6 +1,7 @@
 {
   "name": "noto-mcp",
   "version": "0.1.0",
+  "license": "MIT",
   "description": "MCP server exposing your Noto notes + shared memory to AI tools.",
   "type": "module",
   "bin": {

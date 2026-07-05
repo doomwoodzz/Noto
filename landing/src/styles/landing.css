@@ -1403,7 +1403,7 @@ html[data-theme="dark"] .lr-privacy {
 /* Hero / on-dark button variants */
 .f-btn-light {
   background: #fff;
-  color: var(--page-ink);
+  color: #0C0D0F;
   border-color: #fff;
 }
 .f-btn-light:hover { background: #EEF2F8; }
