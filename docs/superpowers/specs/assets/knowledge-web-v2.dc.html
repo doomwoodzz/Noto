@@ -1,0 +1,1087 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="_ds/noto-design-system-98968553-38e4-429e-884c-1379a7eda9f2/tokens/fonts.css">
+  <link rel="stylesheet" href="_ds/noto-design-system-98968553-38e4-429e-884c-1379a7eda9f2/tokens/colors.css">
+  <link rel="stylesheet" href="_ds/noto-design-system-98968553-38e4-429e-884c-1379a7eda9f2/tokens/typography.css">
+  <link rel="stylesheet" href="_ds/noto-design-system-98968553-38e4-429e-884c-1379a7eda9f2/tokens/spacing.css">
+  <link rel="stylesheet" href="_ds/noto-design-system-98968553-38e4-429e-884c-1379a7eda9f2/tokens/app-theme.css">
+  <link rel="stylesheet" href="_ds/noto-design-system-98968553-38e4-429e-884c-1379a7eda9f2/tokens/page-theme.css">
+  <link rel="stylesheet" href="_ds/noto-design-system-98968553-38e4-429e-884c-1379a7eda9f2/styles.css">
+  <script src="_ds/noto-design-system-98968553-38e4-429e-884c-1379a7eda9f2/_ds_bundle.js"></script>
+  <style>
+    @keyframes notoIn { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: none; } }
+    @keyframes notoSpin { to { transform: rotate(360deg); } }
+    html, body { margin: 0; padding: 0; background: #08090a; height: 100%; }
+  </style>
+</helmet>
+
+<div data-screen-label="Knowledge Web" style="width:100%;height:100vh;display:flex;flex-direction:column;background:var(--nw-window);font-family:var(--nw-font);overflow:hidden;position:relative;">
+
+  <!-- title bar -->
+  <div style="height:54px;flex:none;display:flex;align-items:center;gap:14px;padding:0 14px;border-bottom:1px solid var(--nw-line);background:var(--nw-titlebar);">
+    <div style="flex:1;min-width:0;display:flex;align-items:center;gap:9px;">
+      <svg width="22" height="22" viewBox="0 0 32 32" fill="none" stroke="var(--nw-accent)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 24V8l14 16V8"></path></svg>
+      <span style="font-size:15px;font-weight:700;color:var(--nw-ink);letter-spacing:-0.01em;">NOTO</span>
+    </div>
+    <div style="flex:none;display:flex;justify-content:center;">
+      <div onClick="{{ onOpenSS }}" style="display:flex;align-items:center;gap:9px;width:440px;height:34px;padding:0 13px;border-radius:9px;background:var(--nw-field);border:1px solid var(--nw-line-2);cursor:text;">
+        <span style="display:flex;color:var(--nw-dim);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.6-3.6"></path></svg></span>
+        <span style="flex:1;font-size:13.5px;color:var(--nw-dim);">Smart Search…</span>
+        <span style="font-size:11px;color:var(--nw-dim);border:1px solid var(--nw-line-3);border-radius:5px;padding:1px 5px;font-family:var(--nw-mono);">⌘⇧F</span>
+      </div>
+    </div>
+    <div style="flex:1;min-width:0;display:flex;align-items:center;justify-content:flex-end;gap:10px;">
+      <button style="display:flex;align-items:center;gap:7px;height:34px;padding:0 14px;border-radius:9px;cursor:pointer;border:1px solid var(--nw-accent-border);background:var(--nw-accent-soft);color:var(--nw-accent-ink);font-size:13px;font-weight:600;font-family:inherit;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"></path></svg>Ask AI</button>
+      <button style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:9px;cursor:pointer;border:1px solid var(--nw-line-2);background:transparent;color:var(--nw-muted);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13A8 8 0 1 1 11 4a6.5 6.5 0 0 0 9 9z"></path></svg></button>
+      <button style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:9px;cursor:pointer;border:1px solid var(--nw-line-2);background:transparent;color:var(--nw-muted);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="14" rx="2.5"></rect><path d="M15 5v14"></path></svg></button>
+    </div>
+  </div>
+
+  <!-- body -->
+  <div style="flex:1;display:flex;min-height:0;">
+    <!-- sidebar -->
+    <div style="width:264px;flex:none;display:flex;flex-direction:column;background:var(--nw-sidebar);border-right:1px solid var(--nw-line);min-height:0;">
+      <div style="padding:16px 14px 10px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:0 4px;">
+          <div style="width:30px;height:30px;border-radius:9px;background:linear-gradient(140deg,#578ffa,#3c6fd6);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:#fff;flex:none;">S</div>
+          <div style="min-width:0;">
+            <div style="font-size:14px;font-weight:600;color:var(--nw-ink);line-height:1.2;">School Vault</div>
+            <div style="font-size:11px;color:var(--nw-dim);">Local vault · 300 notes</div>
+          </div>
+        </div>
+        <button style="width:100%;display:flex;align-items:center;justify-content:center;gap:7px;height:36px;border-radius:9px;cursor:pointer;border:none;background:var(--nw-accent);color:#fff;font-size:13.5px;font-weight:600;font-family:inherit;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>New note</button>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:4px 8px 14px;min-height:0;">
+        <div style="display:flex;align-items:center;gap:10px;height:34px;padding:0 10px;border-radius:8px;color:var(--nw-soft-2);font-size:13.5px;font-weight:500;cursor:pointer;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-7 8 7"></path><path d="M6 9.5V20h12V9.5"></path></svg>Home</div>
+        <div style="display:flex;align-items:center;gap:10px;height:34px;padding:0 10px;border-radius:8px;background:var(--nw-accent-soft);color:var(--nw-ink);font-size:13.5px;font-weight:600;cursor:pointer;"><span style="display:flex;color:var(--nw-accent-ink);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2.3"></circle><circle cx="18" cy="7" r="2.3"></circle><circle cx="12" cy="18" r="2.3"></circle><path d="M8.2 6.8l7.5 0.4"></path><path d="M7 8.1l3.9 7.9"></path><path d="M17 9.2l-3.9 6.8"></path></svg></span>Knowledge Web</div>
+        <div style="margin-top:18px;">
+          <div style="display:flex;align-items:center;gap:6px;padding:0 10px 6px;font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:var(--nw-dim);">Folders</div>
+          <sc-for list="{{ folders }}" as="f" hint-placeholder-count="6">
+            <div style="display:flex;align-items:center;gap:8px;height:32px;padding:0 10px;border-radius:8px;color:var(--nw-muted);font-size:13px;font-weight:500;cursor:pointer;">
+              <span style="display:flex;color:var(--nw-dim);"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></span>
+              <span style="display:flex;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 7.5a2 2 0 0 1 2-2h4l2 2.5h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"></path></svg></span>
+              <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ f.name }}</span>
+              <span style="font-size:11px;color:var(--nw-dim);">{{ f.count }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      <div style="flex:none;border-top:1px solid var(--nw-line);padding:8px;">
+        <div style="display:flex;align-items:center;gap:9px;padding:6px 8px;border-radius:9px;color:var(--nw-soft-2);">
+          <div style="width:26px;height:26px;border-radius:8px;flex:none;background:linear-gradient(140deg,#578ffa,#3c6fd6);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;">J</div>
+          <span style="flex:1;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">jordan@school.edu</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- pane -->
+    <div style="flex:1;display:flex;flex-direction:column;min-width:0;background:var(--nw-workspace);">
+      <div style="height:44px;flex:none;display:flex;align-items:center;gap:5px;padding:0 8px;border-bottom:1px solid var(--nw-line);background:var(--nw-pane-head);">
+        <div style="display:flex;align-items:center;gap:8px;height:30px;padding:0 11px;border-radius:8px;font-size:13px;font-weight:500;color:var(--nw-muted);cursor:pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg>Photosynthesis</div>
+        <div style="display:flex;align-items:center;gap:8px;height:30px;padding:0 7px 0 11px;border-radius:8px;font-size:13px;font-weight:500;color:var(--nw-ink);background:var(--nw-tab-active);border:1px solid var(--nw-line-2);cursor:pointer;">
+          <span style="display:flex;color:var(--nw-accent-ink);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2.3"></circle><circle cx="18" cy="7" r="2.3"></circle><circle cx="12" cy="18" r="2.3"></circle><path d="M8.2 6.8l7.5 0.4"></path><path d="M7 8.1l3.9 7.9"></path><path d="M17 9.2l-3.9 6.8"></path></svg></span>
+          Knowledge Web
+          <span style="display:flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:5px;opacity:0.55;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M6 6l12 12"></path><path d="M18 6L6 18"></path></svg></span>
+        </div>
+        <button style="display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:7px;cursor:pointer;border:none;background:transparent;color:var(--nw-dim);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg></button>
+      </div>
+
+      <!-- graph area -->
+      <div style="flex:1;position:relative;background:#0c0d0f;overflow:hidden;min-width:0;">
+        <canvas ref="{{ canvas }}" style="position:absolute;inset:0;width:100%;height:100%;display:block;"></canvas>
+
+        <!-- Obsidian-style floating panel -->
+        <div style="position:absolute;top:14px;left:14px;width:256px;background:rgba(20,22,25,0.94);border:1px solid rgba(255,255,255,0.12);border-radius:12px;box-shadow:0 22px 40px rgba(0,0,0,0.45);z-index:10;max-height:calc(100% - 28px);overflow-y:auto;">
+          <button onClick="{{ onToggleFilters }}" style="width:100%;display:flex;align-items:center;gap:7px;padding:11px 12px;background:transparent;border:none;cursor:pointer;color:var(--nw-soft-2);font-family:inherit;font-size:12.5px;font-weight:600;text-align:left;">
+            <span style="{{ chevFilters }}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></span>
+            <span style="flex:1;">Filters</span>
+          </button>
+          <sc-if value="{{ openFilters }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:0 12px 12px;">
+              <div style="display:flex;align-items:center;gap:8px;height:30px;padding:0 10px;border-radius:8px;background:var(--nw-field);border:1px solid var(--nw-line-2);">
+                <span style="display:flex;color:var(--nw-dim);"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.6-3.6"></path></svg></span>
+                <input value="{{ search }}" onInput="{{ onSearch }}" placeholder="Search nodes…" style="flex:1;border:none;background:transparent;color:var(--nw-ink);font-size:12.5px;font-family:inherit;min-width:0;outline:none;">
+              </div>
+              <sc-if value="{{ hasResults }}" hint-placeholder-val="{{ false }}">
+                <div style="margin-top:6px;max-height:160px;overflow-y:auto;display:flex;flex-direction:column;gap:1px;">
+                  <sc-for list="{{ results }}" as="r" hint-placeholder-count="0">
+                    <button onClick="{{ r.onClick }}" style="display:flex;align-items:center;gap:8px;padding:5px 7px;border-radius:7px;border:none;background:transparent;cursor:pointer;color:var(--nw-soft);font-size:12px;font-family:inherit;text-align:left;width:100%;">
+                      <span style="{{ r.dotStyle }}"></span>
+                      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ r.label }}</span>
+                    </button>
+                  </sc-for>
+                </div>
+              </sc-if>
+            </div>
+          </sc-if>
+          <div style="height:1px;background:var(--nw-line);"></div>
+          <button onClick="{{ onToggleGroups }}" style="width:100%;display:flex;align-items:center;gap:7px;padding:11px 12px;background:transparent;border:none;cursor:pointer;color:var(--nw-soft-2);font-family:inherit;font-size:12.5px;font-weight:600;text-align:left;">
+            <span style="{{ chevGroups }}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></span>
+            <span style="flex:1;">Groups</span>
+          </button>
+          <sc-if value="{{ openGroups }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:0 12px 12px;display:flex;flex-direction:column;gap:7px;">
+              <sc-for list="{{ groups }}" as="g" hint-placeholder-count="4">
+                <div style="display:flex;align-items:center;gap:6px;">
+                  <input type="checkbox" checked="{{ g.visible }}" onChange="{{ g.onToggle }}" style="accent-color:var(--nw-accent);width:13px;height:13px;flex:none;cursor:pointer;margin:0;">
+                  <button onClick="{{ g.onColor }}" title="Change color" style="width:17px;height:17px;border-radius:50%;border:1px solid rgba(255,255,255,0.18);padding:3px;background:transparent;cursor:pointer;flex:none;display:flex;">
+                    <span style="{{ g.dotStyle }}"></span>
+                  </button>
+                  <input value="{{ g.query }}" onInput="{{ g.onQuery }}" style="flex:1;min-width:0;height:25px;padding:0 7px;border-radius:7px;background:var(--nw-field);border:1px solid var(--nw-line-2);color:var(--nw-soft);font-size:11px;font-family:var(--nw-mono);outline:none;">
+                  <span style="font-size:10.5px;color:var(--nw-dim);min-width:16px;text-align:right;">{{ g.count }}</span>
+                  <button onClick="{{ g.onRemove }}" style="display:flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:5px;border:none;background:transparent;cursor:pointer;color:var(--nw-dim);flex:none;padding:0;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M6 6l12 12"></path><path d="M18 6L6 18"></path></svg></button>
+                </div>
+              </sc-for>
+              <button onClick="{{ onAddGroup }}" style="align-self:flex-start;display:flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:8px;border:1px solid var(--nw-line-3);background:transparent;cursor:pointer;color:var(--nw-muted);font-size:11.5px;font-weight:500;font-family:inherit;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>New group</button>
+            </div>
+          </sc-if>
+          <div style="height:1px;background:var(--nw-line);"></div>
+          <button onClick="{{ onToggleDsp }}" style="width:100%;display:flex;align-items:center;gap:7px;padding:11px 12px;background:transparent;border:none;cursor:pointer;color:var(--nw-soft-2);font-family:inherit;font-size:12.5px;font-weight:600;text-align:left;">
+            <span style="{{ chevDsp }}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></span>
+            <span style="flex:1;">Display</span>
+          </button>
+          <sc-if value="{{ openDsp }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:0 12px 12px;display:flex;flex-direction:column;gap:9px;">
+              <div style="display:flex;flex-direction:column;gap:3px;"><span style="font-size:11.5px;color:var(--nw-muted);">Node size</span><input type="range" min="0" max="1" step="0.01" value="{{ sNode }}" onInput="{{ onNode }}" style="width:100%;accent-color:var(--nw-accent);height:14px;margin:0;"></div>
+              <div style="display:flex;flex-direction:column;gap:3px;"><span style="font-size:11.5px;color:var(--nw-muted);">Link thickness</span><input type="range" min="0" max="1" step="0.01" value="{{ sLink }}" onInput="{{ onLink }}" style="width:100%;accent-color:var(--nw-accent);height:14px;margin:0;"></div>
+              <div style="display:flex;flex-direction:column;gap:3px;"><span style="font-size:11.5px;color:var(--nw-muted);">Text fade threshold</span><input type="range" min="0" max="1" step="0.01" value="{{ sText }}" onInput="{{ onText }}" style="width:100%;accent-color:var(--nw-accent);height:14px;margin:0;"></div>
+            </div>
+          </sc-if>
+          <div style="height:1px;background:var(--nw-line);"></div>
+          <button onClick="{{ onToggleForces }}" style="width:100%;display:flex;align-items:center;gap:7px;padding:11px 12px;background:transparent;border:none;cursor:pointer;color:var(--nw-soft-2);font-family:inherit;font-size:12.5px;font-weight:600;text-align:left;">
+            <span style="{{ chevForces }}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></span>
+            <span style="flex:1;">Forces</span>
+          </button>
+          <sc-if value="{{ openForces }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:0 12px 13px;display:flex;flex-direction:column;gap:9px;">
+              <div style="display:flex;flex-direction:column;gap:3px;"><span style="font-size:11.5px;color:var(--nw-muted);">Center force</span><input type="range" min="0" max="1" step="0.01" value="{{ sCenter }}" onInput="{{ onCenter }}" style="width:100%;accent-color:var(--nw-accent);height:14px;margin:0;"></div>
+              <div style="display:flex;flex-direction:column;gap:3px;"><span style="font-size:11.5px;color:var(--nw-muted);">Repel force</span><input type="range" min="0" max="1" step="0.01" value="{{ sRepel }}" onInput="{{ onRepel }}" style="width:100%;accent-color:var(--nw-accent);height:14px;margin:0;"></div>
+              <div style="display:flex;flex-direction:column;gap:3px;"><span style="font-size:11.5px;color:var(--nw-muted);">Link force</span><input type="range" min="0" max="1" step="0.01" value="{{ sSpring }}" onInput="{{ onSpring }}" style="width:100%;accent-color:var(--nw-accent);height:14px;margin:0;"></div>
+            </div>
+          </sc-if>
+        </div>
+
+        <!-- node info card -->
+        <sc-if value="{{ hasInfo }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;right:14px;bottom:14px;width:290px;background:rgba(22,24,29,0.96);border:1px solid var(--nw-line-3);border-radius:12px;box-shadow:0 22px 40px rgba(0,0,0,0.45);padding:13px 14px;z-index:15;animation:notoIn 220ms cubic-bezier(0.22,1,0.36,1);">
+            <div style="display:flex;align-items:flex-start;gap:8px;">
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:14.5px;font-weight:600;color:var(--nw-ink);line-height:1.3;">{{ infoTitle }}</div>
+                <div style="font-size:11px;color:var(--nw-dim);margin-top:3px;font-family:var(--nw-mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ infoPath }}</div>
+              </div>
+              <button onClick="{{ onCloseInfo }}" style="display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:6px;border:none;background:transparent;cursor:pointer;color:var(--nw-dim);flex:none;padding:0;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M6 6l12 12"></path><path d="M18 6L6 18"></path></svg></button>
+            </div>
+            <div style="display:flex;gap:12px;margin-top:9px;font-size:11.5px;color:var(--nw-accent-ink);"><span>{{ infoLinks }} links</span><span>{{ infoBacklinks }} backlinks</span><span style="color:var(--nw-muted);">degree {{ infoDegree }}</span></div>
+            <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:var(--nw-dim);margin:11px 0 5px;">Neighbors ({{ neighborCount }})</div>
+            <div style="max-height:140px;overflow-y:auto;display:flex;flex-direction:column;gap:1px;">
+              <sc-for list="{{ neighbors }}" as="nb" hint-placeholder-count="0">
+                <button onClick="{{ nb.onClick }}" style="display:flex;align-items:center;gap:8px;padding:4px 6px;border-radius:6px;border:none;background:transparent;cursor:pointer;color:var(--nw-soft-2);font-size:12px;font-family:inherit;text-align:left;width:100%;">
+                  <span style="{{ nb.dotStyle }}"></span>
+                  <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ nb.label }}</span>
+                </button>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- hover preview -->
+        <sc-if value="{{ hasPreview }}" hint-placeholder-val="{{ false }}">
+          <div ref="{{ preview }}" style="position:absolute;left:0;top:0;width:300px;pointer-events:none;z-index:20;background:var(--nw-card);border:1px solid var(--nw-line-3);border-radius:12px;box-shadow:0 18px 44px rgba(0,0,0,0.4);padding:13px 14px;animation:notoIn 220ms cubic-bezier(0.22,1,0.36,1);transform:translate(-2000px,-2000px);">
+            <div style="font-size:14px;font-weight:600;color:var(--nw-ink);line-height:1.35;">{{ pvTitle }}</div>
+            <div style="font-size:11px;color:var(--nw-dim);margin-top:3px;font-family:var(--nw-mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ pvPath }}</div>
+            <div style="display:flex;gap:10px;margin-top:8px;font-size:11.5px;color:var(--nw-accent-ink);"><span>{{ pvLinks }}</span><span>{{ pvBacklinks }}</span></div>
+            <div style="margin-top:9px;font-size:12.5px;line-height:1.5;color:var(--nw-muted);display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;">{{ pvSnippet }}</div>
+          </div>
+        </sc-if>
+
+        <div style="position:absolute;left:16px;bottom:12px;font-size:11px;color:var(--nw-dim);z-index:5;">{{ stats }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Smart Search overlay -->
+  <div onClick="{{ onCloseSS }}" style="{{ ssBackdrop }}"></div>
+  <div style="{{ ssPanel }}">
+    <div style="flex:none;display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--nw-line);">
+      <span style="display:flex;color:var(--nw-dim);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.6-3.6"></path></svg></span>
+      <input ref="{{ ssInput }}" value="{{ ssQuery }}" onInput="{{ onSSInput }}" onKeyDown="{{ onSSKey }}" placeholder="Smart Search — find notes across your vault…" style="flex:1;border:none;background:transparent;color:var(--nw-ink);font-size:14.5px;font-family:inherit;min-width:0;outline:none;">
+      <sc-if value="{{ ssLoading }}" hint-placeholder-val="{{ false }}">
+        <span style="width:14px;height:14px;flex:none;border-radius:50%;border:2px solid rgba(87,143,250,0.25);border-top-color:var(--nw-accent);animation:notoSpin 0.8s linear infinite;"></span>
+      </sc-if>
+      <span style="{{ ssBadge }}">Semantic</span>
+      <span style="flex:none;font-size:11px;color:var(--nw-dim);border:1px solid var(--nw-line-3);border-radius:5px;padding:1px 5px;font-family:var(--nw-mono);">esc</span>
+    </div>
+    <sc-if value="{{ ssHint }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:18px 14px;font-size:13px;color:var(--nw-dim);line-height:1.5;">Type to search your vault. Matching notes light up in the Knowledge Web behind this panel — hover a result to spotlight it, press ↵ to jump to it.</div>
+    </sc-if>
+    <div style="flex:1;min-height:0;overflow-y:auto;padding:6px;">
+      <sc-for list="{{ ssResults }}" as="r" hint-placeholder-count="0">
+        <button onClick="{{ r.onClick }}" onMouseEnter="{{ r.onEnter }}" onMouseLeave="{{ r.onLeave }}" style="{{ r.style }}">
+          <span style="display:flex;align-items:baseline;gap:9px;min-width:0;">
+            <span style="{{ r.dotStyle }}"></span>
+            <span style="font-size:13.5px;font-weight:600;color:var(--nw-ink);flex:0 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ r.title }}</span>
+            <span style="font-size:11.5px;color:var(--nw-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ r.trail }}</span>
+          </span>
+          <span style="display:block;font-size:12.75px;line-height:1.5;color:var(--nw-soft);overflow:hidden;text-align:left;">
+            <sc-for list="{{ r.parts }}" as="p" hint-placeholder-count="0"><span style="{{ p.style }}">{{ p.text }}</span></sc-for>
+          </span>
+        </button>
+      </sc-for>
+    </div>
+    <sc-if value="{{ ssHasFoot }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:none;padding:9px 14px;font-size:11.5px;color:var(--nw-dim);border-top:1px solid var(--nw-line);">{{ ssFoot }}</div>
+    </sc-if>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;previewDelay&quot;: { &quot;editor&quot;: &quot;range&quot;, &quot;default&quot;: 3, &quot;min&quot;: 1, &quot;max&quot;: 6, &quot;step&quot;: 0.5, &quot;unit&quot;: &quot;s&quot;, &quot;tsType&quot;: &quot;number&quot;, &quot;section&quot;: &quot;Interaction&quot;, &quot;description&quot;: &quot;How long a node must be hovered before its note preview appears&quot; },
+  &quot;dimStrength&quot;: { &quot;editor&quot;: &quot;range&quot;, &quot;default&quot;: 0.7, &quot;min&quot;: 0, &quot;max&quot;: 1, &quot;step&quot;: 0.05, &quot;tsType&quot;: &quot;number&quot;, &quot;section&quot;: &quot;Interaction&quot;, &quot;description&quot;: &quot;How strongly the rest of the graph fades when hovering or selecting a node&quot; }
+}">
+class Component extends DCLogic {
+  state = { tick: 0 };
+
+  bump() { this.setState(function (s) { return { tick: s.tick + 1 }; }); }
+
+  PALETTE = ['#578FFA', '#5BC98B', '#F0A44B', '#E8D06B', '#B07AD6', '#F27D9D', '#54BFC7', '#F54740', '#8F99AE', '#9C8A6E'];
+
+  // ------------------------------ data ------------------------------
+  buildData() {
+    let seed = 1337;
+    const rand = function () {
+      seed += 0x6D2B79F5;
+      let r = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      r = (r + Math.imul(r ^ (r >>> 7), 61 | r)) ^ r;
+      return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+    };
+    const FOLDERS = [
+      { name: 'AI Lecture Notes', n: 46, stems: ['Photosynthesis Lecture', 'Cell Respiration', 'Enzyme Kinetics', 'Mitosis & Meiosis', 'Neural Signaling', 'Genetics Overview', 'Protein Folding', 'Krebs Cycle', 'ATP Synthesis', 'Membrane Transport', 'DNA Replication', 'Immune Response', 'Action Potentials', 'Homeostasis'] },
+      { name: 'Biology', n: 44, stems: ['Chloroplast', 'Mitochondria', 'Osmosis', 'Ribosome', 'Cell Wall', 'Golgi Apparatus', 'Photosystem II', 'Calvin Cycle', 'Stomata', 'Xylem & Phloem', 'Natural Selection', 'Punnett Squares', 'Trophic Levels', 'Nitrogen Cycle'] },
+      { name: 'Chemistry', n: 38, stems: ['Covalent Bonds', 'Ionic Bonds', 'Redox Reactions', 'Molarity', 'Equilibrium', 'Le Chatelier', 'Acids & Bases', 'Electron Config', 'Periodic Trends', 'Thermochemistry', 'Reaction Rates', 'Stoichiometry'] },
+      { name: 'History', n: 36, stems: ['French Revolution', 'Industrial Revolution', 'Cold War', 'Silk Road', 'Roman Republic', 'Meiji Restoration', 'Printing Press', 'Treaty of Versailles', 'Great Depression', 'Decolonization', 'Bronze Age Collapse', 'Enlightenment'] },
+      { name: 'Math', n: 34, stems: ['Chain Rule', 'Integrals', 'Limits', 'Linear Maps', 'Eigenvalues', 'Matrix Inverse', 'Taylor Series', 'Vectors', 'Derivatives', 'Probability Basics', 'Set Theory', 'Induction'] },
+      { name: 'Literature', n: 30, stems: ['The Odyssey', 'Hamlet', 'Metaphor & Simile', 'Narrative Voice', 'Romanticism', 'Modernism', 'Beloved', 'Sonnet Form', 'The Great Gatsby', 'Unreliable Narrator'] },
+      { name: 'Philosophy', n: 26, stems: ['Epistemology', 'Utilitarianism', 'Categorical Imperative', 'Stoicism', 'Free Will', 'Mind-Body Problem', 'Social Contract', 'Empiricism', 'Phenomenology'] },
+      { name: 'Personal', n: 24, stems: ['Weekly Review', 'Reading List', 'Study Plan', 'Exam Prep', 'Habit Tracker', 'Project Ideas', 'Journal — March', 'Semester Goals'] },
+      { name: 'References', n: 22, stems: ['Campbell Biology Ch. 8', 'Feynman Lectures', 'Khan Academy Links', 'Style Guide', 'Citation Formats', 'Lab Manual', 'Course Syllabus', 'Office Hours'] },
+    ];
+    const SUFF = ['', ' II', ' III', ' — Review', ' — Summary', ' — Notes', ' — Draft'];
+    const POOL = [
+      'Connected during lecture review; a few claims still need sources.',
+      'Summarized from class notes, then expanded with textbook margins.',
+      'Includes open questions flagged for the next study session.',
+      'Backlinked from the weekly review — revisit before the exam.',
+      'Noto suggested two related notes worth merging into this one.',
+    ];
+    const nodes = [], links = [];
+    FOLDERS.forEach(function (f) {
+      f.start = nodes.length;
+      for (let i = 0; i < f.n; i++) {
+        const title = f.stems[i % f.stems.length] + SUFF[Math.floor(i / f.stems.length) % SUFF.length];
+        nodes.push({
+          i: nodes.length, title: title, folder: f.name, path: f.name + '/' + title + '.md',
+          snippet: title + ' — key ideas, definitions, and examples pulled together from ' + f.name + '. ' + POOL[Math.floor(rand() * POOL.length)],
+          deg: 0, ins: 0, outs: 0, nb: [],
+        });
+      }
+    });
+    const seen = new Set();
+    const addLink = function (a, b) {
+      if (a === b) return;
+      const k = a < b ? a + '-' + b : b + '-' + a;
+      if (seen.has(k)) return;
+      seen.add(k);
+      links.push([a, b]);
+      nodes[a].outs++; nodes[b].ins++;
+      nodes[a].deg++; nodes[b].deg++;
+      nodes[a].nb.push(b); nodes[b].nb.push(a);
+    };
+    FOLDERS.forEach(function (f) {
+      for (let j = 1; j < f.n; j++) {
+        addLink(f.start + j, f.start + Math.floor(Math.pow(rand(), 1.7) * j));
+        if (j > 2 && rand() < 0.42) addLink(f.start + j, f.start + Math.floor(Math.pow(rand(), 1.7) * j));
+      }
+    });
+    for (let i = 0; i < 48; i++) {
+      const a = Math.floor(rand() * nodes.length);
+      const b = Math.floor(rand() * nodes.length);
+      if (nodes[a].folder !== nodes[b].folder) addLink(a, b);
+    }
+    FOLDERS.forEach(function (f, fi) {
+      const ang = (fi / FOLDERS.length) * Math.PI * 2 - Math.PI / 2;
+      const cx = Math.cos(ang) * 430, cy = Math.sin(ang) * 290;
+      for (let i = 0; i < f.n; i++) {
+        const n = nodes[f.start + i];
+        n.x0 = cx + (rand() - 0.5) * 300;
+        n.y0 = cy + (rand() - 0.5) * 260;
+      }
+    });
+    const maxDeg = nodes.reduce(function (m, n) { return Math.max(m, n.deg); }, 1);
+    return { nodes: nodes, links: links, folders: FOLDERS, maxDeg: maxDeg, rand: rand };
+  }
+
+  // --------------------------- groups / matching ---------------------------
+  match(q, node) {
+    q = (q || '').trim().toLowerCase();
+    if (!q) return false;
+    if (q.indexOf('path:') === 0) {
+      const p = q.slice(5).trim();
+      return p ? node.path.toLowerCase().indexOf(p) === 0 : false;
+    }
+    return node.title.toLowerCase().indexOf(q) >= 0;
+  }
+
+  applyGroups(inst) {
+    const self = this;
+    inst.groups.forEach(function (g) { g.count = 0; });
+    inst.nodes.forEach(function (n) {
+      let gi = -1;
+      for (let i = 0; i < inst.groups.length; i++) {
+        if (self.match(inst.groups[i].query, n)) { gi = i; break; }
+      }
+      n.gi = gi;
+      n.color = gi >= 0 ? inst.groups[gi].color : '#5C6473';
+      n.hidden = gi >= 0 && !inst.groups[gi].visible;
+      if (gi >= 0) inst.groups[gi].count++;
+    });
+    inst.needs = true;
+  }
+
+  // ------------------------------ instance ------------------------------
+  makeInst() {
+    const D = this.data;
+    const self = this;
+    const inst = {
+      key: 'g',
+      nodes: D.nodes.map(function (n) { return Object.assign({}, n, { x: n.x0, y: n.y0, vx: 0, vy: 0, fixed: false, fx: 0, fy: 0 }); }),
+      links: D.links,
+      cam: { x: 0, y: 0, s: 0.6 },
+      alpha: 1, alphaTarget: 0,
+      hover: -1, hoverStart: 0, dim: 0, sel: -1,
+      drag: -1, pan: null, moved: 0, down: { px: 0, py: 0 },
+      preview: -1, zooming: false, tween: null,
+      groups: D.folders.map(function (f, i) { return { query: 'path:' + f.name, color: self.PALETTE[i % self.PALETTE.length], visible: true }; }),
+      sliders: { node: 0.5, link: 0.35, text: 0.5, center: 0.5, repel: 0.5, spring: 0.5 },
+      open: { dsp: false, filters: true, groups: true, forces: false },
+      search: '', results: [],
+      active: null,
+      ss: null, ssDim: 0, ssHot: -1,
+      needs: true,
+    };
+    this.applyGroups(inst);
+    for (let i = 0; i < 220; i++) this.tick(inst);
+    inst.alpha = 0.02;
+    return inst;
+  }
+
+  radius(inst, n) {
+    return (2.3 + 6.8 * Math.sqrt(n.deg / this.data.maxDeg)) * (0.45 + inst.sliders.node * 1.1);
+  }
+
+  // ------------------------------ physics ------------------------------
+  tick(inst) {
+    const N = inst.nodes, L = inst.links, A = inst.alpha, S = inst.sliders;
+    const rep = 620 * (0.25 + S.repel * 1.7);
+    for (let i = 0; i < N.length; i++) {
+      const a = N[i];
+      for (let j = i + 1; j < N.length; j++) {
+        const b = N[j];
+        let dx = b.x - a.x, dy = b.y - a.y;
+        let d2 = dx * dx + dy * dy;
+        if (d2 > 480000) continue;
+        if (d2 < 36) { d2 = 36; dx = this.data.rand() - 0.5; dy = this.data.rand() - 0.5; }
+        const d = Math.sqrt(d2);
+        const f = (rep * A) / d2;
+        const ux = dx / d, uy = dy / d;
+        a.vx -= ux * f; a.vy -= uy * f;
+        b.vx += ux * f; b.vy += uy * f;
+      }
+    }
+    const ks = 0.06 * (0.25 + S.spring * 1.7), rest = 62;
+    for (let e = 0; e < L.length; e++) {
+      const a = N[L[e][0]], b = N[L[e][1]];
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const d = Math.max(1, Math.sqrt(dx * dx + dy * dy));
+      const f = ((d - rest) / d) * ks * A;
+      const fx = dx * f, fy = dy * f;
+      a.vx += fx * 0.5; a.vy += fy * 0.5;
+      b.vx -= fx * 0.5; b.vy -= fy * 0.5;
+    }
+    const gc = 0.006 * (0.15 + S.center * 1.7) * A;
+    for (let i = 0; i < N.length; i++) {
+      const n = N[i];
+      n.vx -= n.x * gc; n.vy -= n.y * gc;
+      n.vx *= 0.6; n.vy *= 0.6;
+      if (n.fixed) { n.x = n.fx; n.y = n.fy; n.vx = 0; n.vy = 0; }
+      else { n.x += n.vx; n.y += n.vy; }
+    }
+    inst.alpha = inst.alphaTarget + (inst.alpha - inst.alphaTarget) * 0.986;
+    inst.needs = true;
+  }
+
+  // ------------------------------ drawing ------------------------------
+  draw(inst) {
+    const c = inst.canvas;
+    if (!c || !inst.ctx) return;
+    const ctx = inst.ctx, dpr = inst.dpr;
+    const W = c.width / dpr, H = c.height / dpr;
+    const cam = inst.cam, s = cam.s;
+    const ox = W / 2 - cam.x * s, oy = H / 2 - cam.y * s;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = '#0c0d0f';
+    ctx.fillRect(0, 0, W, H);
+    const N = inst.nodes, L = inst.links;
+    const dimStrength = this.props.dimStrength == null ? 0.7 : +this.props.dimStrength;
+    const dim = inst.dim * dimStrength;
+    const ssDim = inst.ssDim;
+    const ss = inst.ss;
+    const hA = inst.hover, hB = inst.sel, hS = inst.ssHot;
+    const act = inst.active;
+    const lw = Math.max(0.45, (0.35 + inst.sliders.link * 1.7) * Math.sqrt(s));
+    // cold edges
+    ctx.beginPath();
+    for (let e = 0; e < L.length; e++) {
+      const i0 = L[e][0], i1 = L[e][1];
+      if (i0 === hA || i1 === hA || i0 === hB || i1 === hB) continue;
+      const a = N[i0], b = N[i1];
+      if (a.hidden || b.hidden) continue;
+      ctx.moveTo(a.x * s + ox, a.y * s + oy);
+      ctx.lineTo(b.x * s + ox, b.y * s + oy);
+    }
+    ctx.lineWidth = lw;
+    let coldA = 0.17 * (1 - dim * 1.1);
+    coldA = coldA * (1 - ssDim * 0.8);
+    ctx.strokeStyle = 'rgba(143,153,174,' + Math.max(0.03, coldA).toFixed(3) + ')';
+    ctx.stroke();
+    // edges between two smart-search matches
+    if (ss && ssDim > 0.02) {
+      ctx.beginPath();
+      for (let e = 0; e < L.length; e++) {
+        const i0 = L[e][0], i1 = L[e][1];
+        if (!ss.has(i0) || !ss.has(i1)) continue;
+        const a = N[i0], b = N[i1];
+        if (a.hidden || b.hidden) continue;
+        ctx.moveTo(a.x * s + ox, a.y * s + oy);
+        ctx.lineTo(b.x * s + ox, b.y * s + oy);
+      }
+      ctx.lineWidth = lw + 0.5 * ssDim;
+      ctx.strokeStyle = 'rgba(87,143,250,' + (0.35 * ssDim).toFixed(3) + ')';
+      ctx.stroke();
+    }
+    // hot edges (hover / selection)
+    if (hA >= 0 || hB >= 0) {
+      ctx.beginPath();
+      for (let e = 0; e < L.length; e++) {
+        const i0 = L[e][0], i1 = L[e][1];
+        if (i0 !== hA && i1 !== hA && i0 !== hB && i1 !== hB) continue;
+        const a = N[i0], b = N[i1];
+        if (a.hidden || b.hidden) continue;
+        ctx.moveTo(a.x * s + ox, a.y * s + oy);
+        ctx.lineTo(b.x * s + ox, b.y * s + oy);
+      }
+      ctx.lineWidth = lw + 0.9 * inst.dim;
+      ctx.strokeStyle = 'rgba(87,143,250,' + (0.2 + 0.6 * inst.dim).toFixed(3) + ')';
+      ctx.stroke();
+    }
+    // nodes
+    for (let i = 0; i < N.length; i++) {
+      const n = N[i];
+      if (n.hidden) continue;
+      const x = n.x * s + ox, y = n.y * s + oy;
+      if (x < -40 || x > W + 40 || y < -40 || y > H + 40) continue;
+      const r = Math.max(1.1, this.radius(inst, n) * s);
+      const inSet = act ? act.has(i) : true;
+      let alpha = inSet ? 1 : Math.max(0.12, 1 - dim);
+      if (ss) {
+        if (ss.has(i)) alpha = Math.max(alpha, 0.55 + 0.45 * ssDim);
+        else alpha = Math.min(alpha, Math.max(0.08, 1 - ssDim * 0.9));
+      }
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = n.color;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, 6.2832);
+      ctx.fill();
+      if (ss && ss.has(i) && ssDim > 0.02) {
+        ctx.globalAlpha = 1;
+        ctx.beginPath();
+        ctx.arc(x, y, r + 2.5, 0, 6.2832);
+        ctx.lineWidth = 1.3;
+        ctx.strokeStyle = 'rgba(87,143,250,' + (0.55 * ssDim).toFixed(3) + ')';
+        ctx.stroke();
+      }
+      if (i === hS && ssDim > 0.02) {
+        ctx.globalAlpha = 1;
+        ctx.beginPath();
+        ctx.arc(x, y, r + 4.5, 0, 6.2832);
+        ctx.lineWidth = 1.6;
+        ctx.strokeStyle = 'rgba(235,240,250,0.85)';
+        ctx.stroke();
+      }
+      if (i === hA || i === hB) {
+        ctx.globalAlpha = 1;
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = 'rgba(235,240,250,0.9)';
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, 6.2832);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(x, y, r + 3.5, 0, 6.2832);
+        ctx.lineWidth = 1.3;
+        ctx.strokeStyle = 'rgba(87,143,250,' + (0.25 + 0.35 * inst.dim).toFixed(3) + ')';
+        ctx.stroke();
+      }
+    }
+    ctx.globalAlpha = 1;
+    // labels
+    const tThresh = 1.55 - inst.sliders.text * 1.5;
+    ctx.font = '500 11.5px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    const ssLabels = ss && ss.size <= 60;
+    for (let i = 0; i < N.length; i++) {
+      const n = N[i];
+      if (n.hidden) continue;
+      const x = n.x * s + ox, y = n.y * s + oy;
+      if (x < -90 || x > W + 90 || y < -60 || y > H + 60) continue;
+      const eff = s * (0.5 + 1.05 * Math.sqrt(n.deg / this.data.maxDeg));
+      let la = Math.max(0, Math.min(1, (eff - tThresh) / 0.35));
+      const inSet = act ? act.has(i) : false;
+      if (act && !inSet) la *= Math.max(0, 1 - dim * 1.2);
+      if (inSet) la = Math.max(la, inst.dim * 0.95);
+      if (ss) {
+        if (ss.has(i)) { if (ssLabels) la = Math.max(la, ssDim * 0.9); }
+        else la *= Math.max(0, 1 - ssDim * 0.85);
+      }
+      if (i === hA || i === hB || i === hS) la = 1;
+      if (la <= 0.03) continue;
+      const r = Math.max(1.1, this.radius(inst, n) * s);
+      let t = n.title;
+      if (t.length > 26) t = t.slice(0, 25) + '…';
+      ctx.globalAlpha = la;
+      ctx.fillStyle = (i === hA || i === hB || i === hS) ? '#EBF0FA' : '#9AA4B6';
+      ctx.fillText(t, x, y + r + 13);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // ------------------------------ interaction ------------------------------
+  toLocal(inst, e) {
+    const rect = inst.canvas.getBoundingClientRect();
+    return {
+      px: (e.clientX - rect.left) * (inst.canvas.clientWidth / Math.max(1, rect.width)),
+      py: (e.clientY - rect.top) * (inst.canvas.clientHeight / Math.max(1, rect.height)),
+    };
+  }
+  toWorld(inst, px, py) {
+    const c = inst.canvas, cam = inst.cam;
+    return { x: (px - c.clientWidth / 2) / cam.s + cam.x, y: (py - c.clientHeight / 2) / cam.s + cam.y };
+  }
+  pick(inst, wx, wy) {
+    let best = -1, bd = 1e18;
+    const pad = Math.max(3, 7 / inst.cam.s);
+    for (let i = 0; i < inst.nodes.length; i++) {
+      const n = inst.nodes[i];
+      if (n.hidden) continue;
+      const dx = n.x - wx, dy = n.y - wy;
+      const d = dx * dx + dy * dy;
+      const r = this.radius(inst, n) + pad;
+      if (d < r * r && d < bd) { bd = d; best = i; }
+    }
+    return best;
+  }
+  rebuildActive(inst) {
+    if (inst.hover < 0 && inst.sel < 0) { inst.active = null; return; }
+    const set = new Set();
+    const D = this.data;
+    [inst.hover, inst.sel].forEach(function (i) {
+      if (i < 0) return;
+      set.add(i);
+      D.nodes[i].nb.forEach(function (j) { set.add(j); });
+    });
+    inst.active = set;
+  }
+  setHover(inst, h) {
+    if (inst.hover === h) return;
+    inst.hover = h;
+    inst.hoverStart = performance.now();
+    inst.zooming = false;
+    if (inst.preview >= 0) { inst.preview = -1; this.bump(); }
+    this.rebuildActive(inst);
+    inst.needs = true;
+  }
+  select(inst, i) {
+    inst.sel = i;
+    this.rebuildActive(inst);
+    inst.needs = true;
+    this.bump();
+  }
+  focusNode(inst, i) {
+    this.select(inst, i);
+    const n = inst.nodes[i];
+    this.startTween(inst, n.x, n.y, Math.max(1.6, inst.cam.s), false);
+  }
+  startTween(inst, x, y, s, thenPreview) {
+    inst.tween = { t0: performance.now(), dur: 620, fx: inst.cam.x, fy: inst.cam.y, fs: inst.cam.s, tx: x, ty: y, ts: s, thenPreview: !!thenPreview };
+  }
+
+  attach(inst) {
+    const c = inst.canvas;
+    const self = this;
+    c.addEventListener('pointerdown', function (e) {
+      const l = self.toLocal(inst, e);
+      const w = self.toWorld(inst, l.px, l.py);
+      const hit = self.pick(inst, w.x, w.y);
+      inst.moved = 0;
+      inst.down = { px: l.px, py: l.py };
+      inst.tween = null;
+      if (hit >= 0) {
+        inst.drag = hit;
+        const n = inst.nodes[hit];
+        n.fixed = true; n.fx = w.x; n.fy = w.y;
+        inst.alphaTarget = 0.3;
+        inst.alpha = Math.max(inst.alpha, 0.3);
+        c.style.cursor = 'grabbing';
+      } else {
+        inst.pan = { px: l.px, py: l.py, cx: inst.cam.x, cy: inst.cam.y };
+      }
+      if (inst.preview >= 0) { inst.preview = -1; self.bump(); }
+      try { c.setPointerCapture(e.pointerId); } catch (err) {}
+      e.preventDefault();
+    });
+    c.addEventListener('pointermove', function (e) {
+      const l = self.toLocal(inst, e);
+      inst.moved = Math.max(inst.moved, Math.abs(l.px - inst.down.px) + Math.abs(l.py - inst.down.py));
+      if (inst.drag >= 0) {
+        const w = self.toWorld(inst, l.px, l.py);
+        const n = inst.nodes[inst.drag];
+        n.fx = w.x; n.fy = w.y;
+        inst.needs = true;
+      } else if (inst.pan) {
+        inst.cam.x = inst.pan.cx - (l.px - inst.pan.px) / inst.cam.s;
+        inst.cam.y = inst.pan.cy - (l.py - inst.pan.py) / inst.cam.s;
+        inst.needs = true;
+      } else {
+        const w = self.toWorld(inst, l.px, l.py);
+        const hit = self.pick(inst, w.x, w.y);
+        self.setHover(inst, hit);
+        c.style.cursor = hit >= 0 ? 'grab' : 'default';
+      }
+    });
+    c.addEventListener('pointerup', function () {
+      if (inst.drag >= 0) {
+        const i = inst.drag;
+        inst.nodes[i].fixed = false;
+        inst.alphaTarget = 0;
+        inst.drag = -1;
+        c.style.cursor = 'grab';
+        if (inst.moved < 5) self.select(inst, i);
+      } else if (inst.pan) {
+        inst.pan = null;
+        if (inst.moved < 5 && inst.sel >= 0) self.select(inst, -1);
+      }
+    });
+    c.addEventListener('pointerleave', function () {
+      if (inst.drag < 0 && !inst.pan) self.setHover(inst, -1);
+    });
+    c.addEventListener('wheel', function (e) {
+      e.preventDefault();
+      const l = self.toLocal(inst, e);
+      const w = self.toWorld(inst, l.px, l.py);
+      const ns = Math.min(6, Math.max(0.12, inst.cam.s * Math.exp(-e.deltaY * 0.0014)));
+      inst.cam.x = w.x - (l.px - c.clientWidth / 2) / ns;
+      inst.cam.y = w.y - (l.py - c.clientHeight / 2) / ns;
+      inst.cam.s = ns;
+      inst.tween = null;
+      inst.needs = true;
+    }, { passive: false });
+  }
+
+  // ------------------------------ smart search ------------------------------
+  escapeRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+  computeSS() {
+    const inst = this.g;
+    const q = (this.ssQuery || '').trim().toLowerCase();
+    if (!q) {
+      inst.ss = null;
+      inst.ssHot = -1;
+      this.ssResults = [];
+      inst.needs = true;
+      return;
+    }
+    const tokens = q.split(/\s+/).filter(Boolean);
+    const scored = [];
+    const set = new Set();
+    for (let i = 0; i < inst.nodes.length; i++) {
+      const n = inst.nodes[i];
+      if (n.hidden) continue;
+      const t = n.title.toLowerCase(), sn = n.snippet.toLowerCase(), fo = n.folder.toLowerCase();
+      let score = 0;
+      for (let k = 0; k < tokens.length; k++) {
+        const tok = tokens[k];
+        if (t.indexOf(tok) >= 0) score += 3;
+        if (fo.indexOf(tok) >= 0) score += 1;
+        if (sn.indexOf(tok) >= 0) score += 1;
+      }
+      if (score > 0) {
+        set.add(i);
+        scored.push({ i: i, score: score + n.deg * 0.01 });
+      }
+    }
+    scored.sort(function (a, b) { return b.score - a.score; });
+    inst.ss = set;
+    this.ssResults = scored.slice(0, 8).map(function (x) { return x.i; });
+    this.ssActive = 0;
+    inst.needs = true;
+  }
+
+  ssParts(node) {
+    const q = (this.ssQuery || '').trim();
+    const tokens = q.toLowerCase().split(/\s+/).filter(Boolean);
+    if (!tokens.length) return [{ text: node.snippet, hit: false }];
+    const self = this;
+    const re = new RegExp('(' + tokens.map(function (t) { return self.escapeRe(t); }).join('|') + ')', 'ig');
+    let text = node.snippet;
+    const lower = text.toLowerCase();
+    let first = -1;
+    for (let k = 0; k < tokens.length; k++) {
+      const idx = lower.indexOf(tokens[k]);
+      if (idx >= 0 && (first < 0 || idx < first)) first = idx;
+    }
+    if (first > 50) text = '…' + text.slice(first - 30);
+    if (text.length > 170) text = text.slice(0, 168) + '…';
+    const parts = [];
+    let last = 0, m;
+    re.lastIndex = 0;
+    while ((m = re.exec(text)) !== null) {
+      if (m.index > last) parts.push({ text: text.slice(last, m.index), hit: false });
+      parts.push({ text: m[0], hit: true });
+      last = m.index + m[0].length;
+      if (parts.length > 30) break;
+    }
+    if (last < text.length) parts.push({ text: text.slice(last), hit: false });
+    return parts.length ? parts : [{ text: text, hit: false }];
+  }
+
+  openSS() {
+    this.ssOpen = true;
+    this.bump();
+    const self = this;
+    setTimeout(function () {
+      const el = self.refFor('g', 'ssInput').current;
+      if (el) el.focus();
+    }, 90);
+  }
+
+  closeSS() {
+    this.ssOpen = false;
+    this.ssQuery = '';
+    this.ssResults = [];
+    this.ssLoading = false;
+    if (this.g) { this.g.ss = null; this.g.ssHot = -1; this.g.needs = true; }
+    this.bump();
+  }
+
+  chooseSS(i) {
+    const inst = this.g;
+    this.closeSS();
+    this.focusNode(inst, i);
+  }
+
+  // ------------------------------ lifecycle ------------------------------
+  componentDidMount() {
+    this.data = this.buildData();
+    this.ssOpen = false;
+    this.ssQuery = '';
+    this.ssResults = [];
+    this.ssLoading = false;
+    this.ssActive = 0;
+    const c = this.refFor('g', 'canvas').current;
+    const inst = this.makeInst();
+    this.g = inst;
+    if (c) {
+      inst.canvas = c;
+      inst.ctx = c.getContext('2d');
+      inst.dpr = Math.min(2, window.devicePixelRatio || 1);
+      c.width = Math.max(2, c.clientWidth * inst.dpr);
+      c.height = Math.max(2, c.clientHeight * inst.dpr);
+      this.attach(inst);
+      const self = this;
+      this._ro = new ResizeObserver(function () {
+        c.width = Math.max(2, c.clientWidth * inst.dpr);
+        c.height = Math.max(2, c.clientHeight * inst.dpr);
+        inst.needs = true;
+      });
+      this._ro.observe(c);
+    }
+    const self = this;
+    this._onKey = function (e) {
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        if (self.ssOpen) self.closeSS(); else self.openSS();
+      } else if (e.key === 'Escape' && self.ssOpen) {
+        self.closeSS();
+      }
+    };
+    window.addEventListener('keydown', this._onKey);
+    this._raf = requestAnimationFrame(this.loop);
+    this.bump();
+  }
+
+  componentWillUnmount() {
+    cancelAnimationFrame(this._raf);
+    window.removeEventListener('keydown', this._onKey);
+    if (this._ro) this._ro.disconnect();
+    clearTimeout(this._ssTimer);
+  }
+
+  loop = (now) => {
+    const inst = this.g;
+    if (!inst) return;
+    if (inst.alpha > 0.012 || inst.drag >= 0 || inst.alphaTarget > 0) this.tick(inst);
+    const target = (inst.hover >= 0 || inst.sel >= 0) ? 1 : 0;
+    const nd = inst.dim + (target - inst.dim) * 0.16;
+    if (Math.abs(nd - target) > 0.004) { inst.dim = nd; inst.needs = true; }
+    else if (inst.dim !== target) { inst.dim = target; inst.needs = true; }
+    const ssTarget = (inst.ss && inst.ss.size > 0) ? 1 : 0;
+    const nsd = inst.ssDim + (ssTarget - inst.ssDim) * 0.14;
+    if (Math.abs(nsd - ssTarget) > 0.004) { inst.ssDim = nsd; inst.needs = true; }
+    else if (inst.ssDim !== ssTarget) { inst.ssDim = ssTarget; inst.needs = true; }
+    if (inst.tween) {
+      const tw = inst.tween;
+      let t = (now - tw.t0) / tw.dur;
+      if (t >= 1) t = 1;
+      const e = 1 - Math.pow(1 - t, 3);
+      inst.cam.x = tw.fx + (tw.tx - tw.fx) * e;
+      inst.cam.y = tw.fy + (tw.ty - tw.fy) * e;
+      inst.cam.s = tw.fs + (tw.ts - tw.fs) * e;
+      inst.needs = true;
+      if (t >= 1) {
+        inst.tween = null;
+        if (tw.thenPreview && inst.hover >= 0 && inst.preview < 0) { inst.preview = inst.hover; this.bump(); }
+      }
+    }
+    if (inst.hover >= 0 && inst.preview < 0 && inst.drag < 0 && !inst.pan && !inst.tween && !this.ssOpen) {
+      const delay = (this.props.previewDelay == null ? 3 : +this.props.previewDelay) * 1000;
+      if (now - inst.hoverStart > delay) {
+        if (inst.cam.s >= 1.05) { inst.preview = inst.hover; this.bump(); }
+        else if (!inst.zooming) {
+          inst.zooming = true;
+          const n = inst.nodes[inst.hover];
+          this.startTween(inst, n.x, n.y, 1.45, true);
+        }
+      }
+    }
+    if (inst.needs) { this.draw(inst); inst.needs = false; }
+    if (inst.preview >= 0) this.placePreview(inst);
+    this._raf = requestAnimationFrame(this.loop);
+  };
+
+  placePreview(inst) {
+    const el = this.refFor('g', 'preview').current;
+    if (!el || inst.preview < 0) return;
+    const n = inst.nodes[inst.preview];
+    const c = inst.canvas, cam = inst.cam;
+    const W = c.clientWidth, H = c.clientHeight;
+    const x = (n.x - cam.x) * cam.s + W / 2;
+    const y = (n.y - cam.y) * cam.s + H / 2;
+    const r = this.radius(inst, n) * cam.s;
+    let px = x + r + 18;
+    if (px + 310 > W - 10) px = x - r - 318;
+    let py = Math.max(10, Math.min(H - 210, y - 46));
+    el.style.transform = 'translate(' + px.toFixed(1) + 'px,' + py.toFixed(1) + 'px)';
+  }
+
+  // ------------------------------ view ------------------------------
+  refFor(k, name) {
+    if (!this._refs) this._refs = {};
+    const key = k + ':' + name;
+    if (!this._refs[key]) this._refs[key] = React.createRef();
+    return this._refs[key];
+  }
+
+  chev(open) {
+    return { display: 'flex', color: 'var(--nw-dim)', transition: 'transform 160ms', transform: open ? 'rotate(90deg)' : 'none' };
+  }
+
+  sliderHandler(inst, key, force) {
+    const self = this;
+    return function (e) {
+      inst.sliders[key] = +e.target.value;
+      if (force) inst.alpha = Math.max(inst.alpha, 0.55);
+      inst.needs = true;
+      self.bump();
+    };
+  }
+
+  renderVals() {
+    const inst = this.g;
+    const self = this;
+    const base = {
+      canvas: this.refFor('g', 'canvas'), preview: this.refFor('g', 'preview'), ssInput: this.refFor('g', 'ssInput'),
+      folders: (this.data ? this.data.folders : []).map(function (f) { return { name: f.name, count: f.n }; }),
+    };
+    if (!inst) {
+      return Object.assign(base, {
+        groups: [], results: [], hasResults: false, search: '',
+        hasInfo: false, noInfo: true, infoTitle: '', infoPath: '', infoLinks: 0, infoBacklinks: 0, infoDegree: 0, neighborCount: 0, neighbors: [],
+        hasPreview: false, pvTitle: '', pvPath: '', pvLinks: '', pvBacklinks: '', pvSnippet: '',
+        stats: '', sNode: 0.5, sLink: 0.35, sText: 0.5, sCenter: 0.5, sRepel: 0.5, sSpring: 0.5,
+        openDsp: false, openFilters: true, openGroups: true, openForces: false,
+        chevDsp: this.chev(false), chevFilters: this.chev(true), chevGroups: this.chev(true), chevForces: this.chev(false),
+        ssQuery: '', ssLoading: false, ssHint: true, ssResults: [], ssHasFoot: false, ssFoot: '',
+        ssBackdrop: { position: 'absolute', inset: 0, zIndex: 90, background: 'rgba(0,0,0,0.4)', opacity: 0, pointerEvents: 'none', transition: 'opacity 300ms cubic-bezier(0.65,0,0.35,1)' },
+        ssPanel: this.ssPanelStyle(false),
+        ssBadge: this.ssBadgeStyle(false),
+      });
+    }
+    const D = this.data;
+    const groups = inst.groups.map(function (g) {
+      return {
+        query: g.query, count: g.count || 0, visible: g.visible,
+        dotStyle: { display: 'block', flex: '1 1 auto', borderRadius: '50%', background: g.color },
+        onToggle: function () { g.visible = !g.visible; self.applyGroups(inst); if (self.ssQuery) self.computeSS(); self.bump(); },
+        onQuery: function (e) { g.query = e.target.value; self.applyGroups(inst); self.bump(); },
+        onColor: function () { const i = self.PALETTE.indexOf(g.color); g.color = self.PALETTE[(i + 1 + self.PALETTE.length) % self.PALETTE.length]; self.applyGroups(inst); self.bump(); },
+        onRemove: function () { inst.groups = inst.groups.filter(function (x) { return x !== g; }); self.applyGroups(inst); self.bump(); },
+      };
+    });
+    const results = inst.results.map(function (i) {
+      const n = inst.nodes[i];
+      return {
+        label: n.title,
+        dotStyle: { width: '8px', height: '8px', borderRadius: '50%', background: n.color, flex: 'none' },
+        onClick: function () { inst.search = ''; inst.results = []; self.focusNode(inst, i); },
+      };
+    });
+    const sel = inst.sel >= 0 ? inst.nodes[inst.sel] : null;
+    const neighbors = sel ? sel.nb.slice(0, 14).map(function (j) {
+      const n = inst.nodes[j];
+      return {
+        label: n.title,
+        dotStyle: { width: '8px', height: '8px', borderRadius: '50%', background: n.color, flex: 'none' },
+        onClick: function () { self.focusNode(inst, j); },
+      };
+    }) : [];
+    const pv = inst.preview >= 0 ? inst.nodes[inst.preview] : null;
+    const ssResults = (this.ssResults || []).map(function (i, idx) {
+      const n = inst.nodes[i];
+      const active = idx === self.ssActive;
+      return {
+        title: n.title, trail: n.folder,
+        dotStyle: { width: '8px', height: '8px', borderRadius: '50%', background: n.color, flex: 'none', alignSelf: 'center' },
+        style: { width: '100%', display: 'flex', flexDirection: 'column', gap: '3px', padding: '10px 12px', border: 'none', borderRadius: '9px', background: active ? 'var(--nw-accent-soft)' : 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' },
+        parts: self.ssParts(n).map(function (p) {
+          return { text: p.text, style: p.hit ? { background: 'rgba(87,143,250,0.2)', color: 'var(--nw-ink)', borderRadius: '3px', padding: '0 2px' } : {} };
+        }),
+        onClick: function () { self.chooseSS(i); },
+        onEnter: function () { inst.ssHot = i; self.ssActive = idx; inst.needs = true; self.bump(); },
+        onLeave: function () { if (inst.ssHot === i) { inst.ssHot = -1; inst.needs = true; } },
+      };
+    });
+    const matchCount = inst.ss ? inst.ss.size : 0;
+    return Object.assign(base, {
+      groups: groups,
+      onAddGroup: function () { inst.groups.push({ query: 'path:', color: self.PALETTE[inst.groups.length % self.PALETTE.length], visible: true }); self.applyGroups(inst); self.bump(); },
+      search: inst.search, hasResults: results.length > 0, results: results,
+      onSearch: function (e) {
+        inst.search = e.target.value;
+        const q = inst.search.trim().toLowerCase();
+        inst.results = q ? inst.nodes.filter(function (n) { return n.title.toLowerCase().indexOf(q) >= 0; }).slice(0, 10).map(function (n) { return n.i; }) : [];
+        self.bump();
+      },
+      hasInfo: !!sel, noInfo: !sel,
+      infoTitle: sel ? sel.title : '', infoPath: sel ? sel.path : '',
+      infoLinks: sel ? sel.outs : 0, infoBacklinks: sel ? sel.ins : 0, infoDegree: sel ? sel.deg : 0,
+      neighborCount: sel ? sel.nb.length : 0,
+      neighbors: neighbors,
+      onCloseInfo: function () { self.select(inst, -1); },
+      hasPreview: !!pv,
+      pvTitle: pv ? pv.title : '', pvPath: pv ? pv.path : '',
+      pvLinks: pv ? pv.outs + ' links' : '', pvBacklinks: pv ? pv.ins + ' backlinks' : '',
+      pvSnippet: pv ? pv.snippet : '',
+      stats: D.nodes.length + ' notes · ' + D.links.length + ' connections · ' + inst.groups.length + ' groups',
+      sNode: inst.sliders.node, sLink: inst.sliders.link, sText: inst.sliders.text,
+      sCenter: inst.sliders.center, sRepel: inst.sliders.repel, sSpring: inst.sliders.spring,
+      onNode: this.sliderHandler(inst, 'node', false), onLink: this.sliderHandler(inst, 'link', false), onText: this.sliderHandler(inst, 'text', false),
+      onCenter: this.sliderHandler(inst, 'center', true), onRepel: this.sliderHandler(inst, 'repel', true), onSpring: this.sliderHandler(inst, 'spring', true),
+      openDsp: inst.open.dsp, openFilters: inst.open.filters, openGroups: inst.open.groups, openForces: inst.open.forces,
+      onToggleDsp: function () { inst.open.dsp = !inst.open.dsp; self.bump(); },
+      onToggleFilters: function () { inst.open.filters = !inst.open.filters; self.bump(); },
+      onToggleGroups: function () { inst.open.groups = !inst.open.groups; self.bump(); },
+      onToggleForces: function () { inst.open.forces = !inst.open.forces; self.bump(); },
+      chevDsp: this.chev(inst.open.dsp), chevFilters: this.chev(inst.open.filters), chevGroups: this.chev(inst.open.groups), chevForces: this.chev(inst.open.forces),
+      // smart search
+      ssQuery: this.ssQuery || '',
+      ssLoading: !!this.ssLoading,
+      ssHint: !(this.ssQuery || '').trim(),
+      ssResults: ssResults,
+      ssHasFoot: !!(this.ssQuery || '').trim(),
+      ssFoot: matchCount + (matchCount === 1 ? ' note' : ' notes') + ' highlighted in the Knowledge Web · ↵ jump to result · esc to close',
+      ssBackdrop: { position: 'absolute', inset: 0, zIndex: 90, background: 'rgba(0,0,0,0.4)', opacity: this.ssOpen ? 1 : 0, pointerEvents: this.ssOpen ? 'auto' : 'none', transition: 'opacity 300ms cubic-bezier(0.65,0,0.35,1)' },
+      ssPanel: this.ssPanelStyle(this.ssOpen),
+      ssBadge: this.ssBadgeStyle(!!(this.ssQuery || '').trim()),
+      onOpenSS: function () { self.openSS(); },
+      onCloseSS: function () { self.closeSS(); },
+      onSSInput: function (e) {
+        self.ssQuery = e.target.value;
+        self.ssLoading = true;
+        clearTimeout(self._ssTimer);
+        self._ssTimer = setTimeout(function () { self.ssLoading = false; self.bump(); }, 350);
+        self.computeSS();
+        self.bump();
+      },
+      onSSKey: function (e) {
+        if (e.key === 'ArrowDown') { e.preventDefault(); self.ssActive = Math.min((self.ssResults || []).length - 1, self.ssActive + 1); self.syncSSHot(); self.bump(); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); self.ssActive = Math.max(0, self.ssActive - 1); self.syncSSHot(); self.bump(); }
+        else if (e.key === 'Enter') {
+          const list = self.ssResults || [];
+          if (list.length) self.chooseSS(list[Math.max(0, Math.min(self.ssActive, list.length - 1))]);
+        } else if (e.key === 'Escape') { self.closeSS(); }
+      },
+    });
+  }
+
+  syncSSHot() {
+    const list = this.ssResults || [];
+    if (this.g && list.length) {
+      this.g.ssHot = list[Math.max(0, Math.min(this.ssActive, list.length - 1))];
+      this.g.needs = true;
+    }
+  }
+
+  ssPanelStyle(open) {
+    return {
+      position: 'absolute', zIndex: 95, display: 'flex', flexDirection: 'column', overflow: 'hidden',
+      background: 'var(--nw-field)', border: '1px solid var(--nw-line-3)', boxShadow: '0 30px 70px rgba(0,0,0,0.5)',
+      left: open ? 'calc(50% - 320px)' : 'calc(50% - 220px)',
+      top: open ? '8px' : '10px',
+      width: open ? '640px' : '440px',
+      maxHeight: open ? '540px' : '34px',
+      borderRadius: open ? '14px' : '9px',
+      opacity: open ? 1 : 0,
+      pointerEvents: open ? 'auto' : 'none',
+      transition: 'left 300ms cubic-bezier(0.65,0,0.35,1), top 300ms cubic-bezier(0.65,0,0.35,1), width 300ms cubic-bezier(0.65,0,0.35,1), max-height 300ms cubic-bezier(0.65,0,0.35,1), border-radius 300ms cubic-bezier(0.65,0,0.35,1), opacity 220ms cubic-bezier(0.65,0,0.35,1)',
+    };
+  }
+
+  ssBadgeStyle(semantic) {
+    return {
+      flex: 'none', fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.02em', textTransform: 'uppercase',
+      color: semantic ? 'var(--nw-accent)' : 'var(--nw-dim)',
+      border: '1px solid ' + (semantic ? 'var(--nw-accent-border)' : 'var(--nw-line-3)'),
+      borderRadius: '5px', padding: '2px 6px',
+    };
+  }
+}
+</script>
+</body>
+</html>
