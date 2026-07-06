@@ -811,16 +811,24 @@ export function updateFile(
 }
 
 export function deleteFile(fileId: string): void {
+  // note_edges has no FK cascade (target_id may be a synthetic tag node), so clear
+  // edges touching this file explicitly or they dangle forever (nothing re-saves a
+  // deleted note; neighbors' inbound edges outlive it). deleteFileEdges is defined
+  // in the graph-edges section below; it's referenced at call time, not load time.
+  deleteFileEdges(fileId);
   stmtDeleteFile.run(fileId);
 }
 
 const stmtDeleteOwnedFile = db.prepare(
   "DELETE FROM files WHERE id = ? AND vault_id IN (SELECT id FROM vaults WHERE user_id = ?)",
 );
-/** Delete a file the user owns. FK CASCADE removes note_passages + dump_sources. Returns true if a row was deleted. */
+/** Delete a file the user owns. FK CASCADE removes note_passages + dump_sources;
+ *  note_edges is cleared explicitly (no FK — see deleteFileEdges). Returns true if a row was deleted. */
 export function deleteOwnedFile(userId: string, fileId: string): boolean {
   const info = stmtDeleteOwnedFile.run(fileId, userId);
-  return Number(info.changes) > 0;
+  const deleted = Number(info.changes) > 0;
+  if (deleted) deleteFileEdges(fileId);
+  return deleted;
 }
 
 /**
@@ -1344,10 +1352,24 @@ export function setNoteCommunities(communities: Map<string, number>): void {
 }
 
 const stmtDeleteFileEdges = db.prepare("DELETE FROM note_edges WHERE source_id = ?");
+const stmtDeleteEdgesTouchingFile = db.prepare(
+  "DELETE FROM note_edges WHERE source_id = ? OR target_id = ?",
+);
 const stmtInsertEdge = db.prepare(
   `INSERT INTO note_edges (id, vault_id, source_id, target_id, relation, confidence, confidence_score, updated_at)
    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 );
+
+/**
+ * Remove every edge that touches `fileId` — as source OR target. `note_edges`
+ * has no FK on source_id/target_id (target_id may be a synthetic 'tag:<name>'
+ * node), so deleting a note does NOT cascade its edges. Call this on delete so
+ * neither the note's own outgoing edges nor neighbors' `links_to` edges pointing
+ * at it are left dangling.
+ */
+export function deleteFileEdges(fileId: string): void {
+  stmtDeleteEdgesTouchingFile.run(fileId, fileId);
+}
 /** Replace every edge sourced FROM `fileId` (its structural + semantic outgoing edges). Transactional. */
 export function replaceFileEdges(vaultId: string, fileId: string, edges: PersistedEdge[]): void {
   db.exec("BEGIN");
@@ -1371,10 +1393,37 @@ export function getVaultEdges(vaultId: string): PersistedEdge[] {
   return stmtVaultEdges.all(vaultId) as unknown as PersistedEdge[];
 }
 
+// Drop edges whose source note, or non-tag target note, no longer exists. Lets
+// a rebuild converge after a note was deleted without bumping any surviving file's
+// updated_at (so the changed-files pass alone would never clear inbound edges).
+const stmtPruneDanglingVaultEdges = db.prepare(
+  `DELETE FROM note_edges
+   WHERE vault_id = ?
+     AND (NOT EXISTS (SELECT 1 FROM files sf WHERE sf.id = note_edges.source_id)
+          OR (target_id NOT LIKE 'tag:%'
+              AND NOT EXISTS (SELECT 1 FROM files tf WHERE tf.id = note_edges.target_id)))`,
+);
+/** Remove edges in `vaultId` that reference a note with no surviving `files` row. Returns the count removed. */
+export function pruneDanglingVaultEdges(vaultId: string): number {
+  return Number(stmtPruneDanglingVaultEdges.run(vaultId).changes);
+}
+
+// A vault is stale if a file is missing/behind its graph state, OR an edge
+// references a note (source, or a non-tag target) with no surviving `files` row.
+// The second arm self-heals dangling edges left by any delete path that bypasses
+// deleteFileEdges — deleting a note bumps no surviving file's updated_at, so the
+// first arm alone can't catch orphaned inbound `links_to` edges.
 const stmtStaleGraphVaults = db.prepare(
-  `SELECT DISTINCT f.vault_id AS vaultId FROM files f
-   LEFT JOIN note_graph_state g ON g.file_id = f.id
-   WHERE g.file_id IS NULL OR g.updated_at < f.updated_at
+  `SELECT vaultId FROM (
+     SELECT DISTINCT f.vault_id AS vaultId FROM files f
+     LEFT JOIN note_graph_state g ON g.file_id = f.id
+     WHERE g.file_id IS NULL OR g.updated_at < f.updated_at
+     UNION
+     SELECT DISTINCT e.vault_id AS vaultId FROM note_edges e
+     WHERE NOT EXISTS (SELECT 1 FROM files sf WHERE sf.id = e.source_id)
+        OR (e.target_id NOT LIKE 'tag:%'
+            AND NOT EXISTS (SELECT 1 FROM files tf WHERE tf.id = e.target_id))
+   )
    LIMIT ?`,
 );
 export function getStaleGraphVaultIds(limit = 500): string[] {

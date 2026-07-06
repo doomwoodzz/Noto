@@ -1,7 +1,7 @@
 // landing/server/graph/build.ts
 import {
   getFilesForVault, getNoteGraphState, upsertNoteGraphState, replaceFileEdges,
-  getVaultEdges, setNoteCommunities, getStaleGraphVaultIds, sha256Hex,
+  getVaultEdges, setNoteCommunities, getStaleGraphVaultIds, pruneDanglingVaultEdges, sha256Hex,
   type PublicFile,
 } from "../db.ts";
 import { buildMetadataCache } from "../../src/noto-core/metadata.ts";
@@ -59,6 +59,12 @@ async function rebuildVaultGraphInner(vaultId: string): Promise<RebuildResult> {
     const semantic = semanticByFile.get(file.id) ?? [];
     replaceFileEdges(vaultId, file.id, [...structural, ...semantic]);
   }
+
+  // Clear edges left dangling by a deletion (a neighbor's inbound links_to edge
+  // to a now-gone note). Deleting a note bumps no surviving file's updated_at, so
+  // the changed-files pass above never touches those — prune them here so a
+  // stale-flagged rebuild actually converges.
+  pruneDanglingVaultEdges(vaultId);
 
   const allEdges = getVaultEdges(vaultId);
   setNoteCommunities(assignCommunities(files.map((f) => f.id), allEdges));

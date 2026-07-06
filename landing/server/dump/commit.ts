@@ -24,6 +24,7 @@ import {
   MAX_FILES_PER_VAULT,
 } from "../db.ts";
 import { reembedNote } from "../search/embedNote.ts";
+import { rebuildVaultGraph } from "../graph/build.ts";
 import { normalizeTitle } from "../../src/noto-core/parser.ts";
 import { slugifyTitle } from "./slug.ts";
 import { assembleNoteBody, buildMocBody, mocMembers } from "./assemble.ts";
@@ -349,6 +350,14 @@ export async function commitJob(job: DumpJobRow): Promise<void> {
       console.warn("[dump] MOC build failed:", err);
     }
   }
+
+  // Rebuild the vault graph ONCE for the whole batch — not per item. rebuildVaultGraph
+  // scans the entire vault (metadata cache + all edges + clustering) every call and is
+  // content-hash-cached per note, so a single post-batch pass covers every note this
+  // job created/updated plus the MOC, at O(vaultSize) instead of O(N_items × vaultSize).
+  // The graph is only read after the job completes, so nothing needs it mid-loop.
+  // rebuildVaultGraph never throws (best-effort), so no guard is needed.
+  if (committed > 0) await rebuildVaultGraph(vaultId);
 
   const counts = mergeCounts(job, { committed, failed });
   setDumpJobCounts(job.id, counts);
