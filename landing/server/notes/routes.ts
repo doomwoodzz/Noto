@@ -42,6 +42,7 @@ import {
 import { encryptKey, keyvaultConfigured } from "../ai/keyvault.ts";
 import { requireScope } from "../auth/pat.ts";
 import { reembedNote } from "../search/embedNote.ts";
+import { rebuildVaultGraph } from "../graph/build.ts";
 import { getSection, replaceSection, listHeadings, appendUnderHeading } from "./sections.ts";
 import { isMemoryPath } from "./confinement.ts";
 
@@ -263,6 +264,7 @@ notesRouter.post(
     }
     const created = createFile(vault.id, parsed.data);
     await reembedNote(created.id, parsed.data.content);
+    await rebuildVaultGraph(vault.id);
     res.status(201).json({ file: created });
   },
 );
@@ -298,6 +300,7 @@ notesRouter.post("/notes", writeLimiter, jsonBody, async (req: Request, res: Res
   }
   const file = createFile(vault.id, parsed.data);
   await reembedNote(file.id, parsed.data.content);
+  await rebuildVaultGraph(vault.id);
   writeAudit({
     userId: uid,
     tokenId: req.apiUser?.tokenId ?? null,
@@ -331,7 +334,10 @@ notesRouter.patch("/files/:fileId", writeLimiter, jsonBody, async (req: Request,
     }
   }
   const updated = updateFile(existing.id, parsed.data);
-  if (parsed.data.content !== undefined) await reembedNote(existing.id, parsed.data.content);
+  if (parsed.data.content !== undefined) {
+    await reembedNote(existing.id, parsed.data.content);
+    await rebuildVaultGraph(existing.vault_id);
+  }
   res.json({ file: updated });
 });
 
@@ -425,6 +431,7 @@ notesRouter.patch("/files/:fileId/section", writeLimiter, jsonBody, async (req: 
   writeSnapshot(auditId, file.content);
   const updated = updateFile(file.id, { content: nextContent });
   await reembedNote(file.id, nextContent);
+  await rebuildVaultGraph(file.vault_id);
   res.json({ fileId: updated.id, updatedAt: updated.updatedAt });
 });
 
@@ -486,6 +493,7 @@ notesRouter.post("/files/:fileId/append", writeLimiter, jsonBody, async (req: Re
   writeSnapshot(auditId, file.content);
   const updated = updateFile(file.id, { content: nextContent });
   await reembedNote(file.id, nextContent);
+  await rebuildVaultGraph(file.vault_id);
   res.json({ fileId: updated.id, updatedAt: updated.updatedAt });
 });
 
