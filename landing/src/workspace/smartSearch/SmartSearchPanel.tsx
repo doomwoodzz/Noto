@@ -16,6 +16,8 @@ interface Props {
   anchorRef: RefObject<HTMLElement | null>;
   onClose: () => void;
   onOpenResult: (result: SmartResult) => void;
+  /** Reports the currently-highlighted result's file id (for graph spotlight). */
+  onHoverResult?: (fileId: string | null) => void;
 }
 
 const PREVIEW_BEFORE = 64;
@@ -30,7 +32,7 @@ interface Geom {
   expanded: { left: number; top: number; width: number };
 }
 
-export function SmartSearchPanel({ smart, anchorRef, onClose, onOpenResult }: Props) {
+export function SmartSearchPanel({ smart, anchorRef, onClose, onOpenResult, onHoverResult }: Props) {
   const { status, progress, query, setQuery, results, searching, source } = smart;
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -92,6 +94,12 @@ export function SmartSearchPanel({ smart, anchorRef, onClose, onOpenResult }: Pr
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
+
+  // Mirror the active result into the graph spotlight; clear when unmounting.
+  useEffect(() => {
+    onHoverResult?.(results[active]?.fileId ?? null);
+  }, [active, results, onHoverResult]);
+  useEffect(() => () => onHoverResult?.(null), [onHoverResult]);
 
   // Keep the keyboard-active row in view.
   useEffect(() => {
