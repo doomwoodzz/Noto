@@ -24,7 +24,8 @@
     "benchmark:agentic": "tsx scripts/benchmark-agentic-coding.mts && tsx scripts/render-token-savings.mts",
     "benchmark:output": "tsx scripts/benchmark-output-tokens.mts",
     "benchmark:output-savings": "tsx scripts/benchmark-output-savings.mts",
-    "benchmark:categories": "tsx scripts/benchmark-categories.mts"
+    "benchmark:categories": "tsx scripts/benchmark-categories.mts",
+    "benchmark:graph-edges": "tsx scripts/benchmark-graph-edges.mts"
   },
   "dependencies": {
     "@huggingface/transformers": "^3.8.1",
@@ -34,6 +35,8 @@
     "express": "^5.2.1",
     "express-rate-limit": "^8.5.2",
     "framer-motion": "^12.39.0",
+    "graphology": "^0.26.0",
+    "graphology-communities-louvain": "^2.0.2",
     "helmet": "^8.2.0",
     "lucide-react": "^1.16.0",
     "openai": "^6.44.0",
