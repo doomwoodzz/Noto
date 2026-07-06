@@ -66,5 +66,4 @@ export interface PersistedWorkspace {
   focused: PaneId;
   openFolders: Record<string, boolean>;
   contextOpen: boolean;
-  graphFilter: "all" | "linked" | "orphans";
 }

@@ -519,25 +519,6 @@ body.nw-tab-dragging, body.nw-tab-dragging * { cursor: grabbing !important; }
 .nw-home-card-edited { font-size: 12px; color: var(--nw-dim); }
 @media (max-width: 900px) { .nw-home-grid { grid-template-columns: repeat(2, 1fr); } .nw-home-actions { flex-wrap: wrap; } }
 
-/* ----------------------------- knowledge web -------------------------- */
-.nw-web { display: flex; flex-direction: column; height: 100%; }
-.nw-web-head { display: flex; align-items: flex-end; justify-content: space-between; padding: 30px 40px 18px; flex: none; gap: 16px; }
-.nw-web-title { font-size: 28px; font-weight: 700; color: var(--nw-ink); letter-spacing: -0.015em; margin: 0 0 5px; }
-.nw-web-sub { font-size: 13px; color: var(--nw-muted); }
-.nw-web-chips { display: flex; gap: 4px; padding: 4px; border-radius: 10px; background: var(--nw-card); border: 1px solid var(--nw-line-2); flex: none; }
-.nw-web-chip {
-  height: 30px; padding: 0 13px; border-radius: 7px; border: none; cursor: pointer;
-  font-size: 12.5px; font-weight: 500; background: transparent; color: var(--nw-muted); font-family: inherit;
-}
-.nw-web-chip.is-active { background: rgba(87, 143, 250, 0.18); color: var(--nw-accent-ink); }
-.nw-web-canvas-wrap { flex: 1; min-height: 0; padding: 0 24px 24px; }
-.nw-web-canvas {
-  height: 100%; border-radius: 14px; overflow: hidden;
-  background: radial-gradient(120% 120% at 50% 35%, #121620 0%, #0c0d10 70%);
-  border: 1px solid var(--nw-line);
-}
-html[data-theme="light"] .nw-web-canvas { background: radial-gradient(120% 120% at 50% 35%, #f3f5fa 0%, #e9edf4 70%); }
-
 /* ------------------------------ context ------------------------------- */
 .nw-context {
   width: 280px; flex: none; background: var(--nw-context); border-left: 1px solid var(--nw-line);
