@@ -19,6 +19,7 @@ import type {
   DumpJobRow, DumpItemRow, DumpSourceRow, ConnectorTokenRow,
   DumpStatus, DumpItemStatus, DumpCounts,
 } from "./dump/types.ts";
+import type { PersistedEdge } from "../src/noto-core/graphEdges.ts";
 
 mkdirSync(dirname(env.DATABASE_PATH), { recursive: true });
 
@@ -143,6 +144,31 @@ db.exec(`
     embedding    BLOB
   );
   CREATE INDEX IF NOT EXISTS idx_passages_file ON note_passages(file_id);
+
+  CREATE TABLE IF NOT EXISTS note_graph_state (
+    file_id       TEXT PRIMARY KEY REFERENCES files(id) ON DELETE CASCADE,
+    vault_id      TEXT NOT NULL REFERENCES vaults(id) ON DELETE CASCADE,
+    content_hash  TEXT NOT NULL,
+    well_linked   INTEGER NOT NULL,
+    community     INTEGER,
+    updated_at    INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_graph_state_vault ON note_graph_state(vault_id);
+
+  -- source_id/target_id have no FK: target_id may be a synthetic 'tag:<name>'
+  -- node that has no row in files (tagged_with edges point at tags, not notes).
+  CREATE TABLE IF NOT EXISTS note_edges (
+    id                TEXT PRIMARY KEY,
+    vault_id          TEXT NOT NULL REFERENCES vaults(id) ON DELETE CASCADE,
+    source_id         TEXT NOT NULL,
+    target_id         TEXT NOT NULL,
+    relation          TEXT NOT NULL,
+    confidence        TEXT NOT NULL,
+    confidence_score  REAL NOT NULL,
+    updated_at        INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_note_edges_vault ON note_edges(vault_id);
+  CREATE INDEX IF NOT EXISTS idx_note_edges_source ON note_edges(vault_id, source_id);
   CREATE INDEX IF NOT EXISTS idx_memories_scope ON memories(user_id, scope, status);
   CREATE UNIQUE INDEX IF NOT EXISTS idx_memories_dedup ON memories(user_id, scope, norm_text) WHERE status = 'active';
 
@@ -1219,6 +1245,97 @@ export function getFileIdsMissingPassages(limit = 1000): string[] {
 }
 export function getFileContent(fileId: string): { id: string; content: string } | undefined {
   return stmtFileContent.get(fileId) as { id: string; content: string } | undefined;
+}
+
+/* ----------------------------- graph edges ----------------------------- */
+
+export interface NoteGraphStateRow {
+  fileId: string;
+  vaultId: string;
+  contentHash: string;
+  wellLinked: boolean;
+  community: number | null;
+  updatedAt: number;
+}
+
+const stmtGetGraphState = db.prepare(
+  "SELECT file_id AS fileId, vault_id AS vaultId, content_hash AS contentHash, well_linked AS wellLinked, community, updated_at AS updatedAt FROM note_graph_state WHERE file_id = ?",
+);
+export function getNoteGraphState(fileId: string): NoteGraphStateRow | undefined {
+  const row = stmtGetGraphState.get(fileId) as (Omit<NoteGraphStateRow, "wellLinked"> & { wellLinked: number }) | undefined;
+  return row ? { ...row, wellLinked: Boolean(row.wellLinked) } : undefined;
+}
+
+const stmtUpsertGraphState = db.prepare(
+  `INSERT INTO note_graph_state (file_id, vault_id, content_hash, well_linked, community, updated_at)
+   VALUES (?, ?, ?, ?, NULL, ?)
+   ON CONFLICT(file_id) DO UPDATE SET
+     content_hash = excluded.content_hash,
+     well_linked  = excluded.well_linked,
+     updated_at   = excluded.updated_at`,
+);
+export function upsertNoteGraphState(input: { fileId: string; vaultId: string; contentHash: string; wellLinked: boolean }): void {
+  stmtUpsertGraphState.run(input.fileId, input.vaultId, input.contentHash, input.wellLinked ? 1 : 0, Date.now());
+}
+
+const stmtSetCommunity = db.prepare("UPDATE note_graph_state SET community = ? WHERE file_id = ?");
+export function setNoteCommunities(communities: Map<string, number>): void {
+  db.exec("BEGIN");
+  try {
+    for (const [fileId, community] of communities) stmtSetCommunity.run(community, fileId);
+    db.exec("COMMIT");
+  } catch (err) {
+    db.exec("ROLLBACK");
+    throw err;
+  }
+}
+
+const stmtDeleteFileEdges = db.prepare("DELETE FROM note_edges WHERE source_id = ?");
+const stmtInsertEdge = db.prepare(
+  `INSERT INTO note_edges (id, vault_id, source_id, target_id, relation, confidence, confidence_score, updated_at)
+   VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+);
+/** Replace every edge sourced FROM `fileId` (its structural + semantic outgoing edges). Transactional. */
+export function replaceFileEdges(vaultId: string, fileId: string, edges: PersistedEdge[]): void {
+  db.exec("BEGIN");
+  try {
+    stmtDeleteFileEdges.run(fileId);
+    const ts = Date.now();
+    for (const e of edges) {
+      stmtInsertEdge.run(e.id, vaultId, e.sourceId, e.targetId, e.relation, e.confidence, e.confidenceScore, ts);
+    }
+    db.exec("COMMIT");
+  } catch (err) {
+    db.exec("ROLLBACK");
+    throw err;
+  }
+}
+
+const stmtVaultEdges = db.prepare(
+  "SELECT id, source_id AS sourceId, target_id AS targetId, relation, confidence, confidence_score AS confidenceScore FROM note_edges WHERE vault_id = ?",
+);
+export function getVaultEdges(vaultId: string): PersistedEdge[] {
+  return stmtVaultEdges.all(vaultId) as unknown as PersistedEdge[];
+}
+
+const stmtStaleGraphVaults = db.prepare(
+  `SELECT DISTINCT f.vault_id AS vaultId FROM files f
+   LEFT JOIN note_graph_state g ON g.file_id = f.id
+   WHERE g.file_id IS NULL OR g.updated_at < f.updated_at
+   LIMIT ?`,
+);
+export function getStaleGraphVaultIds(limit = 500): string[] {
+  return (stmtStaleGraphVaults.all(limit) as Array<{ vaultId: string }>).map((r) => r.vaultId);
+}
+
+const stmtVaultPassageVectors = db.prepare(
+  `SELECT p.file_id AS fileId, p.embedding AS embedding
+   FROM note_passages p JOIN files f ON f.id = p.file_id
+   WHERE f.vault_id = ? AND p.embedding IS NOT NULL`,
+);
+export function getVaultPassageVectors(vaultId: string): { fileId: string; vec: Float32Array }[] {
+  const rows = stmtVaultPassageVectors.all(vaultId) as Array<{ fileId: string; embedding: Uint8Array }>;
+  return rows.map((r) => ({ fileId: r.fileId, vec: blobToFloats(r.embedding) }));
 }
 
 /* ----------------------------- AI response cache ----------------------------- */
