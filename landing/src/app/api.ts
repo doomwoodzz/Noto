@@ -18,11 +18,9 @@ import type {
 
 export interface PublicUser {
   id: string;
-  email: string;
   displayName: string | null;
   avatarUrl: string | null;
   theme: "light" | "dark" | string;
-  emailVerified: boolean;
 }
 
 export interface Vault {
@@ -129,7 +127,6 @@ async function uploadAudio(path: string, audio: Blob): Promise<{ transcript: str
 export const api = {
   /* auth */
   me: () => request<{ user: PublicUser | null }>("GET", "/api/auth/me"),
-  logout: () => request<void>("POST", "/api/auth/logout"),
   savePreferences: (theme: "light" | "dark") =>
     request<{ ok: true }>("PATCH", "/api/auth/preferences", { theme }),
 

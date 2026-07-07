@@ -316,7 +316,6 @@ export function NotoWindow({
             account={controller.demo ? undefined : controller.account ?? null}
             theme={controller.theme}
             onToggleTheme={controller.onToggleTheme}
-            onLogout={controller.onLogout}
             onOpenConnect={mcpClient ? () => setMcpOpen(true) : undefined}
             onOpenDump={dumpClient ? () => setDumpOpen(true) : undefined}
             onOpenActivity={activityClient ? () => openActivity() : undefined}
