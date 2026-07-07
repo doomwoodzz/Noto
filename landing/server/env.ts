@@ -135,6 +135,13 @@ if (!sessionSecret) {
 export const env = {
   ...raw,
   isProd,
+  /**
+   * Cookies carry the Secure attribute only when the app is actually served
+   * over HTTPS. The packaged local app runs NODE_ENV=production over plain
+   * http://127.0.0.1 (Safari rejects Secure cookies there; Chrome/Firefox
+   * exempt loopback), so isProd alone is the wrong signal.
+   */
+  secureCookies: isProd && raw.APP_ORIGIN.startsWith("https:"),
   SESSION_SECRET: sessionSecret,
   openaiConfigured: Boolean(raw.OPENAI_API_KEY),
   githubConfigured: Boolean(

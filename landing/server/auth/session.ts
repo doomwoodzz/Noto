@@ -49,7 +49,7 @@ export function createSession(req: Request, res: Response, userId: string): void
   });
   res.cookie(env.SESSION_COOKIE_NAME, token, {
     httpOnly: true,
-    secure: env.isProd,
+    secure: env.secureCookies,
     sameSite: "lax",
     path: "/",
     maxAge: TTL_MS,

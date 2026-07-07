@@ -75,7 +75,7 @@ export function startGithubInstall(req: Request, res: Response): void {
   const state = b64url(crypto.randomBytes(16));
   res.cookie(STATE_COOKIE, signState({ state, userId: user.id }), {
     httpOnly: true,
-    secure: env.isProd,
+    secure: env.secureCookies,
     sameSite: "lax",
     path: "/",
     maxAge: COOKIE_TTL_MS,
