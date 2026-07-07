@@ -28,16 +28,12 @@ db.exec("PRAGMA foreign_keys = ON;");
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
-    id              TEXT PRIMARY KEY,
-    email           TEXT NOT NULL UNIQUE,
-    password_hash   TEXT,                       -- null for OAuth-only accounts
-    google_sub      TEXT UNIQUE,                -- Google subject id, if linked
-    display_name    TEXT,
-    avatar_url      TEXT,
-    theme           TEXT NOT NULL DEFAULT 'light',
-    email_verified  INTEGER NOT NULL DEFAULT 0,
-    created_at      INTEGER NOT NULL,
-    updated_at      INTEGER NOT NULL
+    id           TEXT PRIMARY KEY,
+    display_name TEXT,
+    avatar_url   TEXT,
+    theme        TEXT NOT NULL DEFAULT 'light',
+    created_at   INTEGER NOT NULL,
+    updated_at   INTEGER NOT NULL
   );
 
   CREATE TABLE IF NOT EXISTS sessions (
@@ -213,6 +209,87 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS ai_response_cache_feature
     ON ai_response_cache(feature);
 `);
+
+// Additive migration: collapse multi-tenant accounts into a single local owner.
+// Older DBs had password_hash/google_sub/email columns (removed — login no longer
+// exists). Any existing user rows (e.g. dev guest accounts) are merged onto one
+// surviving id first so their vaults/tokens/etc. are preserved, then the table is
+// rebuilt without the auth-only columns.
+{
+  const cols = db.prepare("PRAGMA table_info(users)").all() as Array<{ name: string }>;
+  if (cols.some((c) => c.name === "password_hash")) {
+    // vaults/sessions/pat_tokens/audit_log/memories/dump_jobs/dump_sources/
+    // connector_tokens all declare `REFERENCES users(id)`, so with FK enforcement
+    // on (the boot pragma above), `DROP TABLE users` below would fail with
+    // "FOREIGN KEY constraint failed" even inside a transaction — SQLite only
+    // honors `PRAGMA foreign_keys` when toggled outside any transaction, so it
+    // must be flipped off before BEGIN and restored after, in a `finally` so a
+    // thrown error can't leave the connection permanently unenforced.
+    db.exec("PRAGMA foreign_keys = OFF");
+    db.exec("BEGIN");
+    try {
+      const existing = db
+        .prepare(
+          "SELECT id, display_name, avatar_url, theme, created_at, updated_at FROM users ORDER BY created_at ASC",
+        )
+        .all() as Array<{
+        id: string;
+        display_name: string | null;
+        avatar_url: string | null;
+        theme: string;
+        created_at: number;
+        updated_at: number;
+      }>;
+
+      db.exec(`
+        CREATE TABLE users_new (
+          id           TEXT PRIMARY KEY,
+          display_name TEXT,
+          avatar_url   TEXT,
+          theme        TEXT NOT NULL DEFAULT 'light',
+          created_at   INTEGER NOT NULL,
+          updated_at   INTEGER NOT NULL
+        )
+      `);
+
+      if (existing.length > 0) {
+        const owner = existing[0];
+        db.prepare(
+          "INSERT INTO users_new (id, display_name, avatar_url, theme, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+        ).run(owner.id, owner.display_name, owner.avatar_url, owner.theme, owner.created_at, owner.updated_at);
+
+        // Re-point every other pre-existing user's rows onto the surviving owner id.
+        for (const row of existing.slice(1)) {
+          db.prepare("UPDATE vaults SET user_id = ? WHERE user_id = ?").run(owner.id, row.id);
+          db.prepare("UPDATE pat_tokens SET user_id = ? WHERE user_id = ?").run(owner.id, row.id);
+          db.prepare("UPDATE audit_log SET user_id = ? WHERE user_id = ?").run(owner.id, row.id);
+          db.prepare("UPDATE memories SET user_id = ? WHERE user_id = ?").run(owner.id, row.id);
+          db.prepare("UPDATE dump_jobs SET user_id = ? WHERE user_id = ?").run(owner.id, row.id);
+          // connector_tokens has UNIQUE (user_id, provider); dump_sources has PK
+          // (user_id, vault_id, source_key). If the merged-away user and the
+          // surviving owner both already have a row for the same key, a plain
+          // UPDATE would violate the constraint. OR IGNORE keeps the owner's
+          // existing row and silently drops the update for the colliding row,
+          // so the leftover (still user_id = row.id) duplicate is deleted below.
+          db.prepare("UPDATE OR IGNORE dump_sources SET user_id = ? WHERE user_id = ?").run(owner.id, row.id);
+          db.prepare("DELETE FROM dump_sources WHERE user_id = ?").run(row.id);
+          db.prepare("UPDATE OR IGNORE connector_tokens SET user_id = ? WHERE user_id = ?").run(owner.id, row.id);
+          db.prepare("DELETE FROM connector_tokens WHERE user_id = ?").run(row.id);
+          db.prepare("DELETE FROM sessions WHERE user_id = ?").run(row.id);
+        }
+      }
+
+      db.exec("DROP TABLE users");
+      db.exec("ALTER TABLE users_new RENAME TO users");
+      db.exec("COMMIT");
+    } catch (err) {
+      db.exec("ROLLBACK");
+      throw err;
+    } finally {
+      db.exec("PRAGMA foreign_keys = ON");
+    }
+  }
+}
 
 // Additive migration: older databases predate the `pinned` column. Add it once
 // if missing (CREATE TABLE IF NOT EXISTS above never alters an existing table).
@@ -425,13 +502,9 @@ db.exec(`
 
 export interface User {
   id: string;
-  email: string;
-  password_hash: string | null;
-  google_sub: string | null;
   display_name: string | null;
   avatar_url: string | null;
   theme: string;
-  email_verified: number;
   created_at: number;
   updated_at: number;
 }
@@ -445,24 +518,20 @@ export interface SessionRow {
   ip: string | null;
 }
 
-/** A user shape that is safe to send to the browser (no secrets). */
+/** A user shape that is safe to send to the browser (no secrets — there are none). */
 export interface PublicUser {
   id: string;
-  email: string;
   displayName: string | null;
   avatarUrl: string | null;
   theme: string;
-  emailVerified: boolean;
 }
 
 export function toPublicUser(u: User): PublicUser {
   return {
     id: u.id,
-    email: u.email,
     displayName: u.display_name,
     avatarUrl: u.avatar_url,
     theme: u.theme,
-    emailVerified: Boolean(u.email_verified),
   };
 }
 
@@ -478,67 +547,33 @@ export function ftsQuery(raw: string): string {
 
 /* ----------------------------- Users ----------------------------- */
 
-const stmtUserByEmail = db.prepare("SELECT * FROM users WHERE email = ?");
 const stmtUserById = db.prepare("SELECT * FROM users WHERE id = ?");
-const stmtUserByGoogle = db.prepare("SELECT * FROM users WHERE google_sub = ?");
+const stmtFirstUser = db.prepare("SELECT * FROM users LIMIT 1");
+const stmtInsertOwner = db.prepare(
+  "INSERT INTO users (id, display_name, avatar_url, theme, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+);
 
-export function getUserByEmail(email: string): User | undefined {
-  return stmtUserByEmail.get(email.toLowerCase()) as User | undefined;
-}
 export function getUserById(id: string): User | undefined {
   return stmtUserById.get(id) as User | undefined;
 }
-export function getUserByGoogleSub(sub: string): User | undefined {
-  return stmtUserByGoogle.get(sub) as User | undefined;
-}
 
-const stmtInsertUser = db.prepare(`
-  INSERT INTO users
-    (id, email, password_hash, google_sub, display_name, avatar_url, theme, email_verified, created_at, updated_at)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-`);
-
-export function createUser(input: {
-  email: string;
-  passwordHash?: string | null;
-  googleSub?: string | null;
-  displayName?: string | null;
-  avatarUrl?: string | null;
-  theme?: string;
-  emailVerified?: boolean;
-}): User {
+/**
+ * Return the single local-owner user, creating it on first boot if absent.
+ * There is exactly one user row for the lifetime of a Noto install — see the
+ * `users` migration above and `server/auth/localSession.ts`.
+ */
+export function ensureLocalOwner(): User {
+  const existing = stmtFirstUser.get() as User | undefined;
+  if (existing) return existing;
   const id = newId();
   const ts = now();
-  stmtInsertUser.run(
-    id,
-    input.email.toLowerCase(),
-    input.passwordHash ?? null,
-    input.googleSub ?? null,
-    input.displayName ?? null,
-    input.avatarUrl ?? null,
-    input.theme ?? "light",
-    input.emailVerified ? 1 : 0,
-    ts,
-    ts,
-  );
+  stmtInsertOwner.run(id, "Local Owner", null, "light", ts, ts);
   return getUserById(id)!;
 }
 
 const stmtSetTheme = db.prepare("UPDATE users SET theme = ?, updated_at = ? WHERE id = ?");
 export function setUserTheme(id: string, theme: string): void {
   stmtSetTheme.run(theme, now(), id);
-}
-
-const stmtLinkGoogle = db.prepare(
-  "UPDATE users SET google_sub = ?, avatar_url = COALESCE(avatar_url, ?), display_name = COALESCE(display_name, ?), email_verified = 1, updated_at = ? WHERE id = ?",
-);
-export function linkGoogleToUser(
-  id: string,
-  sub: string,
-  avatarUrl: string | null,
-  displayName: string | null,
-): void {
-  stmtLinkGoogle.run(sub, avatarUrl, displayName, now(), id);
 }
 
 /* ---------------------------- Sessions --------------------------- */
