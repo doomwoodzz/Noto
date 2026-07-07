@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, type PublicUser } from "./api";
 import { NotoWorkspace } from "./NotoWorkspace";
-import { AppLoading } from "./AppStatus";
+import { AppLoading, AppError } from "./AppStatus";
 import type { Theme } from "../landing/useTheme";
 
 const ONBOARDED_KEY = "noto-onboarded";
@@ -18,6 +18,7 @@ const FIRST_RUN_DEST = "/get-started";
 export function AppRoot() {
   const [user, setUser] = useState<PublicUser | null>(null);
   const [ready, setReady] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [theme, setTheme] = useState<Theme>("light");
 
   useEffect(() => {
@@ -41,7 +42,11 @@ export function AppRoot() {
         setUser(user);
         setReady(true);
       })
-      .catch(() => {});
+      .catch(() => {
+        if (!cancelled) {
+          setError("Can't reach the local Noto server. Make sure it's running, then reload.");
+        }
+      });
     return () => {
       cancelled = true;
     };
@@ -62,6 +67,10 @@ export function AppRoot() {
     setTheme(next);
     applyTheme(next);
     api.savePreferences(next).catch(() => {});
+  }
+
+  if (error) {
+    return <AppError message={error} />;
   }
 
   if (!ready || !user) {
