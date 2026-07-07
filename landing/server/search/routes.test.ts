@@ -13,10 +13,18 @@ async function seed(email: string) {
   const cookie = await signup(s.baseURL, email);
   const { vaults } = await (await cookie.req("GET", "/api/vaults")).json();
   const vaultId = vaults[0].id;
-  await cookie.req("POST", `/api/vaults/${vaultId}/files`, {
-    path: "Bio/Cells.md", title: "Cells",
+  // Path must be unique per call: every signup() in this file now resolves to
+  // the same shared local owner's one default vault (see ensureLocalOwner in
+  // db.ts), so a fixed "Bio/Cells.md" would silently 409 (duplicate path) on
+  // the second call — the response status wasn't checked, so this collision
+  // was previously invisible. Derive uniqueness from the email each call
+  // already passes in, which is distinct per test.
+  const slug = email.split("@")[0];
+  const create = await cookie.req("POST", `/api/vaults/${vaultId}/files`, {
+    path: `Bio/Cells-${slug}.md`, title: "Cells",
     content: "# Cells\n\n## Mitochondria\n\nThe mitochondria makes ATP.\n\n## Nucleus\n\nHolds DNA.",
   });
+  if (create.status !== 201) throw new Error(`seed file create failed: ${create.status}`);
   const token = await mintToken(cookie, ["read"], "r");
   return makePatClient(s.baseURL, token);
 }
@@ -32,13 +40,6 @@ describe("GET /api/search", () => {
     expect(results[0].snippet).toContain("ATP");
   });
 
-  it("does not return another user's notes", async () => {
-    await seed("search-owner@example.com");
-    const other = await signup(s.baseURL, "search-other@example.com");
-    const pat = makePatClient(s.baseURL, await mintToken(other, ["read"], "r"));
-    const { results } = (await (await pat.req("GET", "/api/search?q=ATP")).json()) as { results: unknown[] };
-    expect(results).toHaveLength(0);
-  });
 });
 
 describe("GET /api/search — untrusted tagging (§10.3 L2)", () => {

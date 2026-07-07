@@ -16,7 +16,7 @@ vi.mock("../graph/build.ts", () => ({
 import { commitJob } from "./commit.ts";
 import { __setEnrichComplete, __resetEnrichComplete } from "./enrich.ts";
 import {
-  createUser, createVault, createDumpJob, getOwnedDumpJob, setDumpJobStatus, insertDumpItem,
+  ensureLocalOwner, createVault, createDumpJob, getOwnedDumpJob, setDumpJobStatus, insertDumpItem,
 } from "../db.ts";
 import type { ShapedNote } from "./types.ts";
 
@@ -32,7 +32,7 @@ function shaped(title: string): ShapedNote {
 describe("dump commit rebuilds the vault graph once per batch", () => {
   it("calls rebuildVaultGraph exactly once for a multi-item job (not once per item)", async () => {
     rebuildSpy.mockClear();
-    const u = createUser({ email: `cg-${crypto.randomUUID()}@t.local` });
+    const u = ensureLocalOwner();
     const v = createVault(u.id, { name: "V" });
     const job = createDumpJob({ userId: u.id, vaultId: v.id, sourceType: "raw", sourceRef: {}, sourceSlug: "src" });
     setDumpJobStatus(job.id, "committing");

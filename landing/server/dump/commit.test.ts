@@ -4,7 +4,7 @@ import { drainOnce } from "./jobs.ts";
 import { commitJob } from "./commit.ts";
 import { __setEnrichComplete, __resetEnrichComplete } from "./enrich.ts";
 import {
-  db, createUser, createVault, createFile, getOwnedFile,
+  db, ensureLocalOwner, createVault, createFile, getOwnedFile,
   createDumpJob, getOwnedDumpJob, setDumpJobStatus, insertDumpItem,
 } from "../db.ts";
 import type { ShapedNote } from "./types.ts";
@@ -36,7 +36,17 @@ async function poll(client: Client, jobId: string) {
     manifest?: { itemId: string; title: string; notePath: string; status: string; dedupOf?: string }[];
   };
 }
-async function filesUnder(uid: string, prefix: string) {
+async function filesUnder(uid: string, prefix: string, vaultId?: string) {
+  // vaultId narrows to one vault: with a single shared local owner (see
+  // ensureLocalOwner in db.ts), two tests in this file's raw-text dumps both
+  // slug to the constant "Pasted Notes" path prefix, so a user-only scope
+  // would also see the other test's vault. Optional (not needed by the first,
+  // order-independent test) to keep that call site unchanged.
+  if (vaultId) {
+    return db.prepare(
+      "SELECT id, path, title, content FROM files WHERE vault_id=? AND path LIKE ? ORDER BY path",
+    ).all(vaultId, prefix + "%") as { id: string; path: string; title: string; content: string }[];
+  }
   return db.prepare(
     "SELECT f.id, f.path, f.title, f.content FROM files f JOIN vaults v ON v.id=f.vault_id WHERE v.user_id=? AND f.path LIKE ? ORDER BY f.path",
   ).all(uid, prefix + "%") as { id: string; path: string; title: string; content: string }[];
@@ -46,9 +56,10 @@ describe("dump commit (raw, end-to-end)", () => {
   it("creates atomic notes under Dump/<slug>/, resolves a [[link]], builds a MOC, embeds + audits", async () => {
     const srv = await startTestServer();
     try {
-      const email = `c-${crypto.randomUUID()}@t.local`;
-      const client = await signup(srv.baseURL, email);
-      const uid = (db.prepare("SELECT id FROM users WHERE email=?").get(email.toLowerCase()) as { id: string }).id;
+      const client = await signup(srv.baseURL, "c@t.local");
+      // There is one local owner by design (see db.ts ensureLocalOwner) — no
+      // per-account email lookup anymore, so resolve it directly.
+      const uid = ensureLocalOwner().id;
 
       const text = bigDoc([
         { title: "Alpha Service", body: `Depends on the Beta Service. ${FILLER}` },
@@ -92,15 +103,21 @@ describe("dump commit (raw, end-to-end)", () => {
   it("raw re-dump of identical content is skipped (duplicate) — no new notes", async () => {
     const srv = await startTestServer();
     try {
-      const email = `r-${crypto.randomUUID()}@t.local`;
-      const client = await signup(srv.baseURL, email);
-      const uid = (db.prepare("SELECT id FROM users WHERE email=?").get(email.toLowerCase()) as { id: string }).id;
+      const client = await signup(srv.baseURL, "r@t.local");
+      const uid = ensureLocalOwner().id;
+      // Raw-text dumps always slug to the constant "Pasted Notes" (no filename
+      // to derive from — see sourceSlugFor in dump/routes.ts), so two raw dumps
+      // for the same owner land under the identical Dump/<slug>/ folder. With
+      // one shared local owner, that now includes the earlier test in this file
+      // — so this test needs its own vault to keep its before/after file counts
+      // meaningful.
+      const { vault } = (await (await client.req("POST", "/api/vaults", { name: "Redump Test" })).json()) as { vault: { id: string } };
       const text = bigDoc([
         { title: "Uno", body: `First section. ${FILLER}` },
         { title: "Dos", body: `Second section. ${FILLER}` },
       ]);
 
-      const c1 = await client.req("POST", "/api/dump", { source: { type: "raw", text } });
+      const c1 = await client.req("POST", "/api/dump", { source: { type: "raw", text }, vaultId: vault.id });
       const { jobId: job1 } = (await c1.json()) as { jobId: string };
       await drainOnce();
       const r1 = await poll(client, job1);
@@ -108,12 +125,12 @@ describe("dump commit (raw, end-to-end)", () => {
       await client.req("POST", `/api/dump/jobs/${job1}/commit`, { selectedItemIds: r1.manifest!.map((m) => m.itemId) });
       await drainOnce();
       const slug = (db.prepare("SELECT source_slug FROM dump_jobs WHERE id=?").get(job1) as { source_slug: string }).source_slug;
-      const before = await filesUnder(uid, `Dump/${slug}/`);
+      const before = await filesUnder(uid, `Dump/${slug}/`, vault.id);
       expect(before.filter((f) => !f.path.endsWith(" — Index.md")).length).toBe(2);
 
       // Second dump, IDENTICAL content → both notes classify as duplicate (same
       // source_key + same content_hash). This is what verifies the content_hash fix.
-      const c2 = await client.req("POST", "/api/dump", { source: { type: "raw", text } });
+      const c2 = await client.req("POST", "/api/dump", { source: { type: "raw", text }, vaultId: vault.id });
       const { jobId: job2 } = (await c2.json()) as { jobId: string };
       await drainOnce();
       const r2 = await poll(client, job2);
@@ -125,7 +142,7 @@ describe("dump commit (raw, end-to-end)", () => {
       expect(done2.status).toBe("done");
       expect(done2.counts.committed ?? 0).toBe(0);
 
-      const after = await filesUnder(uid, `Dump/${slug}/`);
+      const after = await filesUnder(uid, `Dump/${slug}/`, vault.id);
       expect(after.filter((f) => !f.path.endsWith(" — Index.md")).length).toBe(2); // no new notes
     } finally {
       srv.close();
@@ -135,7 +152,7 @@ describe("dump commit (raw, end-to-end)", () => {
   it("commitUpdate overwrites an existing note in place with a snapshot + dump:update audit", async () => {
     // Focused test of the update path. Raw shaping can't produce 'update' (content-hash
     // keys), so we craft an update-status dump_item directly and call commitJob.
-    const u = createUser({ email: `upd-${crypto.randomUUID()}@t.local` });
+    const u = ensureLocalOwner();
     const v = createVault(u.id, { name: "V" });
     const old = createFile(v.id, { path: "Dump/src/Existing.md", title: "Existing", content: "# Existing\n\nOLD BODY" });
     const job = createDumpJob({ userId: u.id, vaultId: v.id, sourceType: "raw", sourceRef: {}, sourceSlug: "src" });

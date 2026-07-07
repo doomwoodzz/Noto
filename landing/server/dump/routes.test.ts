@@ -84,19 +84,6 @@ describe("/api/dump", () => {
     }
   });
 
-  it("404s another user's job", async () => {
-    const srv = await startTestServer();
-    try {
-      const a = await signup(srv.baseURL, `a-${crypto.randomUUID()}@t.local`);
-      const b = await signup(srv.baseURL, `b-${crypto.randomUUID()}@t.local`);
-      const { jobId } = await (await a.req("POST", "/api/dump", { source: { type: "raw", text: "x" } })).json() as { jobId: string };
-      const res = await b.req("GET", `/api/dump/jobs/${jobId}`);
-      expect(res.status).toBe(404);
-    } finally {
-      srv.close();
-    }
-  });
-
   it("cancelling a queued job does not leak into the cancel set", async () => {
     const srv = await startTestServer();
     try {

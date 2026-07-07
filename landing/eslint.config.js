@@ -18,5 +18,12 @@ export default defineConfig([
     languageOptions: {
       globals: globals.browser,
     },
+    rules: {
+      // Allow an intentionally-unused parameter kept only for call-site
+      // compatibility (e.g. signup(baseURL, _email) — every client resolves
+      // to the single local owner now; see auth/localSession.ts) by
+      // underscore-prefixing it instead of rewriting dozens of call sites.
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+    },
   },
 ])

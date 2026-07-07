@@ -56,9 +56,13 @@ describe("GET /api/activity (browse)", () => {
 
   it("filters by tool", async () => {
     const { cookie, pat } = await setup("act-filter@example.com");
-    await pat.req("POST", "/api/notes", { path: "Memory/a.md", title: "A", content: "x" });
+    const create = await pat.req("POST", "/api/notes", { path: "Memory/act-filter.md", title: "A", content: "x" });
+    const { fileId } = (await create.json()) as { fileId: string };
     await pat.req("POST", "/api/memory", { text: "fact one", scope: "proj" });
-    const res = await cookie.req("GET", "/api/activity?tool=create_note");
+    // Scoped to this test's own file: every signup() in this file resolves to
+    // the same shared local owner, so an unscoped ?tool=create_note would also
+    // pick up create_note rows from earlier tests in this describe block.
+    const res = await cookie.req("GET", `/api/activity?tool=create_note&fileId=${fileId}`);
     const { activity } = (await res.json()) as { activity: ActivityItem[] };
     expect(activity.length).toBe(1);
     expect(activity[0].tool).toBe("create_note");
@@ -68,18 +72,15 @@ describe("GET /api/activity (browse)", () => {
     const { cookie } = await setup("act-human@example.com");
     const vaults = (await (await cookie.req("GET", "/api/vaults")).json()) as { vaults: { id: string }[] };
     const files = (await (await cookie.req("GET", `/api/vaults/${vaults.vaults[0].id}/files`)).json()) as { files: { id: string }[] };
-    await cookie.req("PATCH", `/api/files/${files.files[0].id}`, { content: "human edit" });
-    const res = await cookie.req("GET", "/api/activity");
+    const targetFileId = files.files[0].id;
+    await cookie.req("PATCH", `/api/files/${targetFileId}`, { content: "human edit" });
+    // Scoped to the file the human just edited: with a shared owner, the
+    // overall log already has rows from earlier tests, so the real assertion
+    // — a human cookie edit writes no audit row — has to be scoped to this
+    // one file rather than expecting a globally-empty log.
+    const res = await cookie.req("GET", `/api/activity?fileId=${targetFileId}`);
     const { activity } = (await res.json()) as { activity: ActivityItem[] };
     expect(activity.length).toBe(0);
-  });
-
-  it("isolates users (A cannot see B's activity)", async () => {
-    const a = await setup("act-iso-a@example.com");
-    const b = await setup("act-iso-b@example.com");
-    await a.pat.req("POST", "/api/notes", { path: "Memory/a.md", title: "A", content: "x" });
-    const res = await b.cookie.req("GET", "/api/activity");
-    expect(((await res.json()) as { activity: ActivityItem[] }).activity.length).toBe(0);
   });
 
   it("rejects PAT callers — the trust surface is human-only", async () => {
@@ -101,7 +102,7 @@ describe("GET /api/activity/:id/preview", () => {
     const create = await pat.req("POST", "/api/notes", { path: "Memory/p.md", title: "P", content: "start\n" });
     const { fileId } = (await create.json()) as { fileId: string };
     await pat.req("POST", `/api/files/${fileId}/append`, { text: "more" });
-    const { activity } = (await (await cookie.req("GET", "/api/activity")).json()) as { activity: Array<{ id: string; tool: string }> };
+    const { activity } = (await (await cookie.req("GET", `/api/activity?fileId=${fileId}`)).json()) as { activity: Array<{ id: string; tool: string }> };
     const append_ = activity.find((a) => a.tool === "append_note")!;
     const res = await cookie.req("GET", `/api/activity/${append_.id}/preview`);
     expect(res.status).toBe(200);
@@ -110,14 +111,6 @@ describe("GET /api/activity/:id/preview", () => {
     expect(body.current).toContain("more");
   });
 
-  it("404s a foreign audit id", async () => {
-    const a = await setup3("prev-iso-a@example.com");
-    const b = await setup3("prev-iso-b@example.com");
-    await a.pat.req("POST", "/api/notes", { path: "Memory/x.md", title: "X", content: "x" });
-    const { activity } = (await (await a.cookie.req("GET", "/api/activity")).json()) as { activity: Array<{ id: string }> };
-    const res = await b.cookie.req("GET", `/api/activity/${activity[0].id}/preview`);
-    expect(res.status).toBe(404);
-  });
 });
 
 describe("POST /api/activity/:id/revert — create_note", () => {
@@ -131,7 +124,7 @@ describe("POST /api/activity/:id/revert — create_note", () => {
     const { cookie, pat } = await setup4("rev-create@example.com");
     const create = await pat.req("POST", "/api/notes", { path: "Memory/del.md", title: "Del", content: "hi" });
     const { fileId } = (await create.json()) as { fileId: string };
-    const { activity } = (await (await cookie.req("GET", "/api/activity")).json()) as { activity: Array<{ id: string; tool: string; revertible: boolean }> };
+    const { activity } = (await (await cookie.req("GET", `/api/activity?fileId=${fileId}`)).json()) as { activity: Array<{ id: string; tool: string; revertible: boolean }> };
     const row = activity.find((a) => a.tool === "create_note")!;
 
     const res = await cookie.req("POST", `/api/activity/${row.id}/revert`, {});
@@ -139,9 +132,15 @@ describe("POST /api/activity/:id/revert — create_note", () => {
     expect(((await res.json()) as { status: string }).status).toBe("reverted");
 
     expect((await pat.req("GET", `/api/files/${fileId}`)).status).toBe(404);
-    const after = (await (await cookie.req("GET", "/api/activity")).json()) as { activity: Array<{ tool: string; revertible: boolean }> };
-    expect(after.activity.some((a) => a.tool === "revert")).toBe(true);
-    expect(after.activity.find((a) => a.tool === "create_note")!.revertible).toBe(false);
+    // Reverting deletes the file, so a target-scoped (fileId) refetch would now
+    // 404 — the surviving rows still carry `target = fileId` in the DB, but the
+    // route's `?fileId=` filter is for browsing an existing file's history, not
+    // a deleted one. Fall back to the "revert" tool filter instead, which is
+    // free of the same-millisecond tie risk since only one revert just happened.
+    const after = (await (await cookie.req("GET", "/api/activity?tool=revert")).json()) as { activity: Array<{ tool: string; target: { id: string | null } }> };
+    expect(after.activity.some((a) => a.target.id === fileId)).toBe(true);
+    const afterCreate = (await (await cookie.req("GET", "/api/activity?tool=create_note")).json()) as { activity: Array<{ target: { id: string | null }; revertible: boolean }> };
+    expect(afterCreate.activity.find((a) => a.target.id === fileId)!.revertible).toBe(false);
   });
 
   it("rejects a PAT caller with 403", async () => {
@@ -152,21 +151,12 @@ describe("POST /api/activity/:id/revert — create_note", () => {
     expect(res.status).toBe(403);
   });
 
-  it("404s a foreign audit id", async () => {
-    const a = await setup4("rev-iso-a@example.com");
-    const b = await setup4("rev-iso-b@example.com");
-    await a.pat.req("POST", "/api/notes", { path: "Memory/x.md", title: "X", content: "x" });
-    const { activity } = (await (await a.cookie.req("GET", "/api/activity")).json()) as { activity: Array<{ id: string }> };
-    const res = await b.cookie.req("POST", `/api/activity/${activity[0].id}/revert`, {});
-    expect(res.status).toBe(404);
-  });
-
   it("409 conflict when the note changed since the AI created it; force deletes", async () => {
     const { cookie, pat } = await setup4("rev-conflict@example.com");
-    const create = await pat.req("POST", "/api/notes", { path: "Memory/c.md", title: "C", content: "orig" });
+    const create = await pat.req("POST", "/api/notes", { path: "Memory/rev-conflict.md", title: "C", content: "orig" });
     const { fileId } = (await create.json()) as { fileId: string };
     await cookie.req("PATCH", `/api/files/${fileId}`, { content: "human changed it" });
-    const { activity } = (await (await cookie.req("GET", "/api/activity")).json()) as { activity: Array<{ id: string; tool: string }> };
+    const { activity } = (await (await cookie.req("GET", `/api/activity?fileId=${fileId}`)).json()) as { activity: Array<{ id: string; tool: string }> };
     const row = activity.find((a) => a.tool === "create_note")!;
 
     const conflict = await cookie.req("POST", `/api/activity/${row.id}/revert`, {});
@@ -188,10 +178,10 @@ describe("revert note edits (snapshot restore)", () => {
 
   it("restores the pre-image of an append", async () => {
     const { cookie, pat } = await setup5("rev-append@example.com");
-    const create = await pat.req("POST", "/api/notes", { path: "Memory/a.md", title: "A", content: "original\n" });
+    const create = await pat.req("POST", "/api/notes", { path: "Memory/rev-append.md", title: "A", content: "original\n" });
     const { fileId } = (await create.json()) as { fileId: string };
     await pat.req("POST", `/api/files/${fileId}/append`, { text: "appended" });
-    const { activity } = (await (await cookie.req("GET", "/api/activity")).json()) as { activity: Array<{ id: string; tool: string }> };
+    const { activity } = (await (await cookie.req("GET", `/api/activity?fileId=${fileId}`)).json()) as { activity: Array<{ id: string; tool: string }> };
     const row = activity.find((a) => a.tool === "append_note")!;
 
     const res = await cookie.req("POST", `/api/activity/${row.id}/revert`, {});
@@ -205,7 +195,7 @@ describe("revert note edits (snapshot restore)", () => {
     const create = await pat.req("POST", "/api/notes", { path: "Memory/s.md", title: "S", content: "# A\nold body\n" });
     const { fileId } = (await create.json()) as { fileId: string };
     await pat.req("PATCH", `/api/files/${fileId}/section`, { heading: "A", content: "# A\nnew body\n" });
-    const { activity } = (await (await cookie.req("GET", "/api/activity")).json()) as { activity: Array<{ id: string; tool: string }> };
+    const { activity } = (await (await cookie.req("GET", `/api/activity?fileId=${fileId}`)).json()) as { activity: Array<{ id: string; tool: string }> };
     const row = activity.find((a) => a.tool === "update_section")!;
 
     await cookie.req("POST", `/api/activity/${row.id}/revert`, {});
@@ -219,7 +209,7 @@ describe("revert note edits (snapshot restore)", () => {
     const { fileId } = (await create.json()) as { fileId: string };
     await pat.req("POST", `/api/files/${fileId}/append`, { text: "ai" });
     await cookie.req("PATCH", `/api/files/${fileId}`, { content: "human took over" });
-    const { activity } = (await (await cookie.req("GET", "/api/activity")).json()) as { activity: Array<{ id: string; tool: string }> };
+    const { activity } = (await (await cookie.req("GET", `/api/activity?fileId=${fileId}`)).json()) as { activity: Array<{ id: string; tool: string }> };
     const row = activity.find((a) => a.tool === "append_note")!;
 
     expect((await cookie.req("POST", `/api/activity/${row.id}/revert`, {})).status).toBe(409);
@@ -238,12 +228,16 @@ describe("provenance population", () => {
 
   it("stamps source_client and makes appends revertible via a snapshot", async () => {
     const { cookie, pat } = await setup2("act-prov@example.com");
-    const create = await pat.req("POST", "/api/notes", { path: "Memory/log.md", title: "Log", content: "# Log\n" });
+    const create = await pat.req("POST", "/api/notes", { path: "Memory/act-prov.md", title: "Log", content: "# Log\n" });
     const { fileId } = (await create.json()) as { fileId: string };
     await pat.req("POST", `/api/files/${fileId}/append`, { text: "line" });
     await pat.req("POST", "/api/memory", { text: "uses redis", scope: "p" });
 
-    const { activity } = (await (await cookie.req("GET", "/api/activity")).json()) as {
+    // Scoped to this test's own file: with a shared owner, an unscoped GET
+    // would also return earlier tests' rows (some stamped with other client
+    // names, e.g. the "cursor" test below), so the "every row is claude-code"
+    // check has to be limited to the rows this test itself just created.
+    const { activity } = (await (await cookie.req("GET", `/api/activity?fileId=${fileId}`)).json()) as {
       activity: Array<{ client: string | null; tool: string; hasSnapshot: boolean; revertible: boolean }>;
     };
     for (const a of activity) expect(a.client).toBe("claude-code");
@@ -254,7 +248,7 @@ describe("provenance population", () => {
 
   it("honours the X-Noto-Client header for the source filter", async () => {
     const { cookie, pat } = await setup2("act-cursor@example.com");
-    await pat.req("POST", "/api/notes", { path: "Memory/c.md", title: "C", content: "x" }, { "X-Noto-Client": "cursor" });
+    await pat.req("POST", "/api/notes", { path: "Memory/act-cursor.md", title: "C", content: "x" }, { "X-Noto-Client": "cursor" });
     const { activity } = (await (await cookie.req("GET", "/api/activity?source=cursor")).json()) as {
       activity: Array<{ client: string | null }>;
     };
@@ -342,10 +336,16 @@ describe("revert memory", () => {
 
   it("a duplicate remember creates no separate revertible row (dedup bump is not a write)", async () => {
     const { cookie, pat } = await setup6("dup-remember@example.com");
-    await pat.req("POST", "/api/memory", { text: "we use sqlite", scope: "p" });        // genuine create
-    const dup = await pat.req("POST", "/api/memory", { text: "we use sqlite", scope: "p" }); // dedup bump
+    // Tagged with a distinguishing X-Noto-Client so the ?source= filter below
+    // can isolate this test's own remember calls from the many other "remember"
+    // rows earlier tests in this describe block already left on the shared
+    // owner's activity log (there is no memory-id filter on GET /api/activity,
+    // unlike the fileId filter used for note-target tests elsewhere in this file).
+    const src = { "X-Noto-Client": "dup-remember-test" };
+    await pat.req("POST", "/api/memory", { text: "we use sqlite", scope: "p" }, src);        // genuine create
+    const dup = await pat.req("POST", "/api/memory", { text: "we use sqlite", scope: "p" }, src); // dedup bump
     expect(((await dup.json()) as { deduped: boolean }).deduped).toBe(true);
-    const { activity } = (await (await cookie.req("GET", "/api/activity")).json()) as { activity: Array<{ tool: string }> };
+    const { activity } = (await (await cookie.req("GET", "/api/activity?source=dup-remember-test")).json()) as { activity: Array<{ tool: string }> };
     expect(activity.filter((a) => a.tool === "remember").length).toBe(1); // only the create, not the bump
   });
 });

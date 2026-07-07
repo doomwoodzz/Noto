@@ -1,13 +1,13 @@
 // landing/server/graph/similarity.test.ts
 import { describe, it, expect, afterEach } from "vitest";
-import { createUser, createVault, createFile, replaceNotePassages } from "../db.ts";
+import { ensureLocalOwner, createVault, createFile, replaceNotePassages } from "../db.ts";
 import { setEmbedder, realEmbedder, type Embedder } from "../search/embedder.ts";
 import { computeSemanticEdges, meanPool } from "./similarity.ts";
 
 afterEach(() => setEmbedder(realEmbedder));
 
 function freshVault(): string {
-  const u = createUser({ email: `sim-${crypto.randomUUID()}@t.local` });
+  const u = ensureLocalOwner();
   return createVault(u.id, { name: "V" }).id;
 }
 

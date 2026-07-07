@@ -1,13 +1,13 @@
 // landing/server/graph/build.test.ts
 import { describe, it, expect, afterEach } from "vitest";
-import { createUser, createVault, createFile, updateFile, getVaultEdges, getNoteGraphState, sha256Hex } from "../db.ts";
+import { ensureLocalOwner, createVault, createFile, updateFile, getVaultEdges, getNoteGraphState, sha256Hex } from "../db.ts";
 import { setEmbedder, realEmbedder } from "../search/embedder.ts";
 import { rebuildVaultGraph } from "./build.ts";
 
 afterEach(() => setEmbedder(realEmbedder));
 
 function freshVault(): string {
-  const u = createUser({ email: `build-${crypto.randomUUID()}@t.local` });
+  const u = ensureLocalOwner();
   return createVault(u.id, { name: "V" }).id;
 }
 

@@ -26,6 +26,10 @@ describe("PAT auth plumbing", () => {
 describe("PAT token management", () => {
   it("mints, lists, and revokes a PAT via the cookie API", async () => {
     const cookie = await signup(s.baseURL, "tokens@example.com");
+    // With one shared local owner, an earlier test in this file ("a read PAT
+    // reaches...") already minted its own token for the same owner — so the
+    // list length is relative to that baseline, not an absolute 1.
+    const before = ((await (await cookie.req("GET", "/api/tokens")).json()) as { tokens: unknown[] }).tokens.length;
 
     const mint = await cookie.req("POST", "/api/tokens", { name: "laptop", scopes: ["read", "write"] });
     expect(mint.status).toBe(201);
@@ -33,17 +37,19 @@ describe("PAT token management", () => {
     expect(token.startsWith("noto_pat_")).toBe(true);
 
     const list = await (await cookie.req("GET", "/api/tokens")).json();
-    expect(list.tokens).toHaveLength(1);
-    expect(list.tokens[0]).not.toHaveProperty("token"); // plaintext never returned again
-    expect(list.tokens[0].scopes).toEqual(["read", "write"]);
+    expect(list.tokens).toHaveLength(before + 1);
+    const mine = list.tokens.find((t: { id: string }) => t.id === id);
+    expect(mine).not.toHaveProperty("token"); // plaintext never returned again
+    expect(mine.scopes).toEqual(["read", "write"]);
 
     expect((await cookie.req("DELETE", `/api/tokens/${id}`)).status).toBe(204);
-    expect((await (await cookie.req("GET", "/api/tokens")).json()).tokens).toHaveLength(0);
+    expect((await (await cookie.req("GET", "/api/tokens")).json()).tokens).toHaveLength(before);
   });
 
-  it("rejects unauthenticated token minting", async () => {
+  it("mints a token for the auto-provisioned local session", async () => {
     const anon = makeCookieClient(s.baseURL);
-    await anon.req("GET", "/api/health");
-    expect((await anon.req("POST", "/api/tokens", { name: "x", scopes: ["read"] })).status).toBe(401);
+    await anon.req("GET", "/api/health"); // primes the session cookie (ensureLocalSession)
+    const res = await anon.req("POST", "/api/tokens", { name: "x", scopes: ["read"] });
+    expect(res.status).toBe(201);
   });
 });

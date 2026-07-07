@@ -10,8 +10,14 @@ async function seed(email: string) {
   const cookie = await signup(s.baseURL, email);
   const { vaults } = await (await cookie.req("GET", "/api/vaults")).json();
   const vaultId = vaults[0].id;
+  // Path must be unique per call: every signup() in this file now resolves to
+  // the same shared local owner's one default vault (see ensureLocalOwner in
+  // db.ts), so a fixed "Notes/Cells.md" would 409 (duplicate path) on every
+  // call after the first. Derive uniqueness from the email each call already
+  // passes in, which is distinct per test.
+  const slug = email.split("@")[0];
   const created = await cookie.req("POST", `/api/vaults/${vaultId}/files`, {
-    path: "Notes/Cells.md",
+    path: `Notes/Cells-${slug}.md`,
     title: "Cells",
     content: "# Cells\n\nIntro.\n\n## Mitochondria\n\nMakes ATP.\n\n## Nucleus\n\nHolds DNA.",
   });
@@ -32,11 +38,12 @@ describe("GET /api/files/:fileId", () => {
     expect(body.file.content).toContain("Mitochondria");
   });
 
-  it("404s for another user's note and 401s when unauthenticated", async () => {
+  // The cross-user half of this test ("another user's note 404s") is gone by
+  // design: there is exactly one local owner, so a second signup() resolves
+  // to the same account and CAN read this note. The bad-bearer-token half is
+  // unrelated PAT auth plumbing and is unaffected — kept verbatim.
+  it("401s for a garbage bearer token", async () => {
     const { file } = await seed("single-owner@example.com");
-    const other = await signup(s.baseURL, "single-other@example.com");
-    const otherToken = await mintToken(other, ["read"]);
-    expect((await makePatClient(s.baseURL, otherToken).req("GET", `/api/files/${file.id}`)).status).toBe(404);
     expect((await makePatClient(s.baseURL, "noto_pat_bad").req("GET", `/api/files/${file.id}`)).status).toBe(401);
   });
 });

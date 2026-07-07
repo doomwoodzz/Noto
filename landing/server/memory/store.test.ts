@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { createUser, rememberMemory, recallMemories, listMemories } from "../db.ts";
+import { ensureLocalOwner, rememberMemory, recallMemories, listMemories } from "../db.ts";
 
-function freshUser(email: string) {
-  return createUser({ email, passwordHash: "x" }).id;
+// One local owner by design (see ensureLocalOwner in db.ts). `email` is kept
+// as a no-op parameter so every call site below stays unchanged — none of
+// these tests compares two users, they just want a userId to scope memories.
+function freshUser(_email: string) {
+  return ensureLocalOwner().id;
 }
 
 describe("memory store", () => {
@@ -32,14 +35,6 @@ describe("memory store", () => {
     expect(hits.map((h) => h.text)).toEqual(["DB is SQLite"]);
   });
 
-  it("reads union global; a project query also surfaces global prefs", () => {
-    const uid = freshUser("mem-d@example.com");
-    rememberMemory({ userId: uid, text: "Always write conventional commits", type: "preference", scope: "global", sourceClient: "claude-code" });
-    rememberMemory({ userId: uid, text: "This service owns billing", type: "fact", scope: "proj/q", sourceClient: "claude-code" });
-    const hits = recallMemories(uid, ["proj/q"], "commits", undefined, 6);
-    expect(hits.map((h) => h.text)).toContain("Always write conventional commits");
-  });
-
   it("supersede whose text matches another active memory dedups instead of throwing", () => {
     const uid = freshUser("mem-supersede-dup@example.com");
     const keep = rememberMemory({ userId: uid, text: "Use pnpm", type: "preference", scope: "proj/k", sourceClient: "claude-code" });
@@ -48,5 +43,18 @@ describe("memory store", () => {
     expect(res.deduped).toBe(true);
     expect(res.memory.id).toBe(keep.memory.id);
     expect(listMemories(uid, "proj/k", undefined, 50).map((m) => m.text)).toEqual(["Use pnpm"]);
+  });
+
+  // Kept last deliberately: every freshUser() in this file now resolves to the
+  // same single local owner, and listMemories() always unions in 'global'-scope
+  // memories with no text-relevance filter (unlike recallMemories). Writing a
+  // global memory here would otherwise leak into any listMemories() call in a
+  // later test (e.g. the proj/k exact-match check above).
+  it("reads union global; a project query also surfaces global prefs", () => {
+    const uid = freshUser("mem-d@example.com");
+    rememberMemory({ userId: uid, text: "Always write conventional commits", type: "preference", scope: "global", sourceClient: "claude-code" });
+    rememberMemory({ userId: uid, text: "This service owns billing", type: "fact", scope: "proj/q", sourceClient: "claude-code" });
+    const hits = recallMemories(uid, ["proj/q"], "commits", undefined, 6);
+    expect(hits.map((h) => h.text)).toContain("Always write conventional commits");
   });
 });

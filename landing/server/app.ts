@@ -156,7 +156,6 @@ export function createApp(): Express {
   /* ----------------------------- error handler --------------------------- */
   // Never leak stack traces or internal messages to clients. The 4-arg
   // signature is required for Express to treat this as an error handler.
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
     console.error("Unhandled error:", err);
     if (!res.headersSent) res.status(500).json({ error: "Internal server error" });

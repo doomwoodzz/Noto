@@ -16,12 +16,14 @@ import {
   insertDumpItem, listDumpItems, updateDumpItem,
   getDumpSource, upsertDumpSource,
   saveConnectorToken, getConnectorToken, listConnectors, deleteConnector,
-  createUser, createVault, createFile, getOwnedFile, deleteOwnedFile,
+  ensureLocalOwner, createVault, createFile, getOwnedFile, deleteOwnedFile,
 } from "../db.ts";
 
 describe("dump accessors", () => {
+  // One local owner by design; each call gives it a fresh, independent vault
+  // so per-test data stays isolated (no test here compares two users).
   function freshUserVault() {
-    const u = createUser({ email: `dump-${crypto.randomUUID()}@t.local` });
+    const u = ensureLocalOwner();
     const v = createVault(u.id, { name: "V" });
     return { userId: u.id, vaultId: v.id };
   }
@@ -83,7 +85,7 @@ describe("dump accessors", () => {
   });
 
   it("deletes a file by owner (cascades passages/sources)", () => {
-    const u = createUser({ email: `del-${crypto.randomUUID()}@t.local` });
+    const u = ensureLocalOwner();
     const v = createVault(u.id, { name: "V" });
     const f = createFile(v.id, { path: "Dump/x/a.md", title: "A", content: "# A" });
     expect(deleteOwnedFile(u.id, f.id)).toBe(true);

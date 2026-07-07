@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { startTestServer, signup } from "../test-helpers.ts";
 import { enqueueDump, drainOnce } from "./jobs.ts";
-import { getOwnedDumpJob, createUser, createVault } from "../db.ts";
+import { getOwnedDumpJob, ensureLocalOwner, createVault } from "../db.ts";
 import { __setEnrichComplete, __resetEnrichComplete } from "./enrich.ts";
 
 describe("shapeJob (raw provider integration)", () => {
@@ -60,7 +60,7 @@ describe("shapeJob (raw provider integration)", () => {
   });
 
   it("marks a job failed when the shaper throws (unavailable provider)", async () => {
-    const u = createUser({ email: `fail-${crypto.randomUUID()}@t.local` });
+    const u = ensureLocalOwner();
     const v = createVault(u.id, { name: "V" });
     const job = enqueueDump({ userId: u.id, vaultId: v.id, sourceType: "github", sourceRef: { type: "github", repo: "o/r" }, sourceSlug: "o-r" });
     // Drain until this job leaves the queue (claimableDumpJobs is LIMIT-bounded, so a

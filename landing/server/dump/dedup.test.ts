@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { classifyItem, contentHash } from "./dedup.ts";
-import { upsertDumpSource, createUser, createVault, createFile } from "../db.ts";
+import { upsertDumpSource, ensureLocalOwner, createVault, createFile } from "../db.ts";
 
 describe("contentHash", () => {
   it("is stable and sensitive to content", () => {
@@ -15,7 +15,7 @@ describe("classifyItem", () => {
   // upsertDumpSource needs a real backing file. freshUser returns the vault id so the
   // test can create genuine files; the assertions on status/dedupOf are unchanged.
   function freshUser() {
-    const u = createUser({ email: `dd-${crypto.randomUUID()}@t.local` });
+    const u = ensureLocalOwner();
     const v = createVault(u.id, { name: "V" });
     return { userId: u.id, vaultId: v.id };
   }
@@ -44,17 +44,8 @@ describe("classifyItem", () => {
     expect(classifyItem(userId, vaultId, "raw:k-upd", contentHash("new"))).toEqual({ status: "update", dedupOf: fileId });
   });
 
-  it("scopes by user (another user's source is invisible)", () => {
-    const a = freshUser();
-    const b = freshUser();
-    const fileId = makeFile(a.vaultId, "Dump/shared.md");
-    const h = contentHash("z");
-    upsertDumpSource({ userId: a.userId, vaultId: a.vaultId, sourceKey: "raw:shared", fileId, contentHash: h, jobId: "j1" });
-    expect(classifyItem(b.userId, b.vaultId, "raw:shared", h)).toEqual({ status: "new" });
-  });
-
   it("scopes by vault (same source in a second vault is 'new', not a cross-vault match)", () => {
-    const u = createUser({ email: `dd-${crypto.randomUUID()}@t.local` });
+    const u = ensureLocalOwner();
     const vaultA = createVault(u.id, { name: "A" }).id;
     const vaultB = createVault(u.id, { name: "B" }).id;
     const fileA = createFile(vaultA, { path: "Dump/x.md", title: "x", content: "x" }).id;
