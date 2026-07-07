@@ -54,7 +54,12 @@ export function NotoWorkspace({ user, theme, onToggleTheme, onLogout }: Props) {
   };
 
   return (
+    // Key by vault id so switching vaults remounts the workspace: each vault
+    // restores its own saved tab session (or resets to the default when it has
+    // none), and the per-vault persist effect can't clobber another vault's
+    // snapshot with the outgoing vault's tabs.
     <NotoWindow
+      key={v.vault?.id ?? "default"}
       controller={controller}
       persistKey={v.vault?.id ?? "default"}
       aiClient={realAIClient}

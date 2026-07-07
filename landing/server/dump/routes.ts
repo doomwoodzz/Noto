@@ -53,7 +53,13 @@ dumpRouter.post("/", dumpLimiter, jsonBody, (req: Request, res: Response) => {
   if (!parsed.success) { res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid source" }); return; }
   ensureDefaultVault(uid);
   const vaults = getVaultsForUser(uid);
-  const vaultId = parsed.data.vaultId && getOwnedVault(uid, parsed.data.vaultId) ? parsed.data.vaultId : vaults[0]?.id;
+  // Target the vault the user is actually in. The app sends the active vault on
+  // every request via the x-noto-vault header (the same channel the AI routes
+  // use); an explicit body vaultId still wins when present. Both candidate ids
+  // are ownership-checked, so a spoofed header can't reach another user's vault.
+  // Only then fall back to the user's first vault.
+  const requested = parsed.data.vaultId ?? req.get("x-noto-vault") ?? undefined;
+  const vaultId = requested && getOwnedVault(uid, requested) ? requested : vaults[0]?.id;
   if (!vaultId) { res.status(500).json({ error: "No vault" }); return; }
   const job = enqueueDump({ userId: uid, vaultId, sourceType: parsed.data.source.type, sourceRef: parsed.data.source, sourceSlug: sourceSlugFor(parsed.data.source) });
   res.status(201).json({ jobId: job.id });

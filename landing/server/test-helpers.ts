@@ -31,8 +31,8 @@ export function makeCookieClient(baseURL: string) {
       if (eq > 0) cookies.set(pair.slice(0, eq).trim(), pair.slice(eq + 1).trim());
     }
   }
-  async function req(method: string, path: string, body?: unknown): Promise<Response> {
-    const headers: Record<string, string> = { Origin: ORIGIN };
+  async function req(method: string, path: string, body?: unknown, extra?: Record<string, string>): Promise<Response> {
+    const headers: Record<string, string> = { Origin: ORIGIN, ...extra };
     if (body !== undefined) headers["Content-Type"] = "application/json";
     if (method !== "GET" && method !== "HEAD") headers["X-CSRF-Token"] = cookies.get("noto_csrf") ?? "";
     if (cookies.size > 0) headers["Cookie"] = cookieHeader();

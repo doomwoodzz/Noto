@@ -24,7 +24,7 @@ export function McpSettings({ client, onClose }: { client: McpClient; onClose: (
 
   return (
     <>
-      <div className="nw-menu-scrim" onClick={onClose} />
+      <div className="nw-menu-scrim nw-mcp-scrim" onClick={onClose} />
       <div className="nw-mcp-panel" role="dialog" aria-modal="true" aria-labelledby="mcp-dialog-title">
         <header className="nw-mcp-head">
           <h2 id="mcp-dialog-title">Connect AI tools</h2>

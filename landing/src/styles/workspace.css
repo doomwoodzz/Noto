@@ -253,7 +253,6 @@ html[data-theme="light"] {
 }
 .nw-vault-text { min-width: 0; }
 .nw-vault-name { font-size: 14px; font-weight: 600; color: var(--nw-ink); line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.nw-vault-sub { font-size: 11px; color: var(--nw-dim); }
 .nw-newnote {
   width: 100%; display: flex; align-items: center; justify-content: center; gap: 7px;
   height: 36px; border-radius: 9px; cursor: pointer; border: none;
@@ -709,11 +708,18 @@ html[data-theme="light"] .nw-ai { box-shadow: 0 30px 60px rgba(15, 22, 35, 0.22)
 @keyframes notoPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
 /* ----------------------------- MCP Settings panel -------------------- */
+/* Blurred backdrop when the Connect dialog opens (scoped to this modal so the
+   plain menu scrim stays clear). */
+.nw-mcp-scrim { z-index: 69; background: rgba(8, 10, 16, .42);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  animation: nwScrimIn .16s ease; }
+@keyframes nwScrimIn { from { opacity: 0; } to { opacity: 1; } }
 .nw-mcp-panel { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-  width: min(640px, 92vw); max-height: 84vh; overflow: auto; z-index: 70;
-  background: var(--nw-field); color: var(--nw-ink); border: 1px solid var(--nw-line-3); border-radius: 12px; padding: 20px;
+  width: min(500px, 92vw); max-height: 84vh; overflow: auto; z-index: 70;
+  background: var(--nw-field); color: var(--nw-ink); border: 1px solid var(--nw-line-3); border-radius: 12px; padding: 16px 18px;
   box-shadow: 0 20px 60px rgba(0,0,0,.35); }
-.nw-mcp-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.nw-mcp-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.nw-mcp-head h2 { margin: 0; font-size: 1.15rem; }
 .nw-mcp-x { background: none; border: 0; font-size: 22px; cursor: pointer; color: var(--nw-muted); }
 .nw-mcp-x:hover { background: rgba(127, 140, 170, 0.12); color: var(--nw-ink); border-radius: 6px; }
 .nw-mcp-sec { margin-top: 18px; }
@@ -734,12 +740,14 @@ html[data-theme="light"] .nw-ai { box-shadow: 0 30px 60px rgba(15, 22, 35, 0.22)
 .nw-mcp-tab { background: none; border: 1px solid var(--nw-line-3); color: inherit; border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 12px; }
 .nw-mcp-tab-on { background: rgba(127, 140, 170, 0.16); }
 
-.nw-mcp-tools { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
-.nw-mcp-tool { border: 1px solid var(--nw-line-3); border-radius: 10px; padding: 11px 12px; }
+.nw-mcp-tools { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.nw-mcp-tool { border: 1px solid var(--nw-line-3); border-radius: 10px; padding: 9px 11px; }
 .nw-mcp-tool-on { border-color: var(--nw-accent-border); }
-.nw-mcp-tool-head { display: flex; align-items: center; gap: 12px; }
-.nw-mcp-tool-logo { width: 40px; height: 40px; flex: none; display: flex; align-items: center; justify-content: center;
-  background: rgba(127, 127, 127, .12); border-radius: 8px; color: var(--nw-ink); }
+.nw-mcp-tool-head { display: flex; align-items: center; gap: 11px; }
+.nw-mcp-tool-logo { width: 34px; height: 34px; flex: none; display: flex; align-items: center; justify-content: center;
+  background: #fff; border: 1px solid rgba(0, 0, 0, .08); border-radius: 8px; overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .06); }
+.nw-mcp-logo-img { width: 26px; height: 26px; object-fit: contain; display: block; }
 .nw-mcp-tool-meta { flex: 1; min-width: 0; }
 .nw-mcp-tool-name { font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 8px; }
 .nw-mcp-tool-desc { font-size: 12px; color: var(--nw-muted); }
@@ -753,9 +761,9 @@ html[data-theme="light"] .nw-ai { box-shadow: 0 30px 60px rgba(15, 22, 35, 0.22)
 .nw-mcp-copied { color: var(--nw-accent-ink); }
 .nw-mcp-tool-foot { display: flex; justify-content: space-between; gap: 8px; margin-top: 9px; }
 .nw-mcp-textbtn { background: none; border: 0; color: var(--nw-accent-ink); font-size: 12px; cursor: pointer; padding: 0; }
-.nw-mcp-adv { margin-top: 18px; border-top: 1px solid var(--nw-line-3); padding-top: 12px; }
+.nw-mcp-adv { margin-top: 14px; border-top: 1px solid var(--nw-line-3); padding-top: 10px; }
 .nw-mcp-adv summary { font-size: 13px; color: var(--nw-muted); cursor: pointer; }
-.nw-mcp-foot { font-size: 12px; color: var(--nw-muted); margin-top: 12px; }
+.nw-mcp-foot { font-size: 12px; color: var(--nw-muted); margin-top: 10px; }
 
 /* ----------------------------- AI Activity ----------------------------- */
 .nw-act-panel {

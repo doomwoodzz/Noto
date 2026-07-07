@@ -75,7 +75,6 @@ export function Sidebar(props: Props) {
             <div className="nw-vault-badge">{(vaultName[0] || "N").toUpperCase()}</div>
             <div className="nw-vault-text">
               <div className="nw-vault-name">{vaultName}</div>
-              <div className="nw-vault-sub">Local Markdown Vault</div>
             </div>
           </div>
         )}

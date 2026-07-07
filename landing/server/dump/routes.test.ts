@@ -36,6 +36,40 @@ describe("/api/dump", () => {
     }
   });
 
+  it("routes the dump to the vault in the x-noto-vault header, not just the first vault", async () => {
+    const srv = await startTestServer();
+    try {
+      const client = await signup(srv.baseURL, `hv-${crypto.randomUUID()}@t.local`);
+      const me = (await (await client.req("GET", "/api/auth/me")).json()) as { user: { id: string } };
+
+      // Seed the default vault (GET /api/vaults ensures it), then add a second.
+      // The list is ordered oldest-first, so the default stays vaults[0] — the
+      // vault the old bug always fell back to. We then dump "into" the second
+      // vault, which is what the app signals via the x-noto-vault header.
+      await client.req("GET", "/api/vaults");
+      const created = (await (await client.req("POST", "/api/vaults", { name: "Second" })).json()) as { vault: { id: string } };
+      const secondId = created.vault.id;
+      const { vaults } = (await (await client.req("GET", "/api/vaults")).json()) as { vaults: { id: string }[] };
+      expect(vaults.length).toBe(2);
+      // Guard: the old bug fell back to vaults[0], which must differ from the target.
+      expect(vaults[0].id).not.toBe(secondId);
+
+      const res = await client.req(
+        "POST",
+        "/api/dump",
+        { source: { type: "raw", text: "# A\n\nbody" } },
+        { "x-noto-vault": secondId },
+      );
+      expect(res.status).toBe(201);
+      const { jobId } = (await res.json()) as { jobId: string };
+
+      const { getOwnedDumpJob } = await import("../db.ts");
+      expect(getOwnedDumpJob(me.user.id, jobId)?.vault_id).toBe(secondId);
+    } finally {
+      srv.close();
+    }
+  });
+
   it("rejects PAT auth (cookie-only)", async () => {
     const srv = await startTestServer();
     try {
