@@ -215,16 +215,17 @@ db.exec(`
 // exists). Any existing user rows (e.g. dev guest accounts) are merged onto one
 // surviving id first so their vaults/tokens/etc. are preserved, then the table is
 // rebuilt without the auth-only columns.
+//
+// The rebuild runs with foreign keys off: vaults/sessions/pat_tokens/audit_log/
+// memories/dump_jobs/dump_sources/connector_tokens all declare
+// `REFERENCES users(id)`, so with FK enforcement on (the boot pragma above),
+// `DROP TABLE users` would fail with "FOREIGN KEY constraint failed" even inside
+// a transaction. SQLite only honors `PRAGMA foreign_keys` when toggled outside
+// any transaction, so it is flipped off before BEGIN and restored after, in a
+// `finally` so a thrown error can't leave the connection permanently unenforced.
 {
   const cols = db.prepare("PRAGMA table_info(users)").all() as Array<{ name: string }>;
   if (cols.some((c) => c.name === "password_hash")) {
-    // vaults/sessions/pat_tokens/audit_log/memories/dump_jobs/dump_sources/
-    // connector_tokens all declare `REFERENCES users(id)`, so with FK enforcement
-    // on (the boot pragma above), `DROP TABLE users` below would fail with
-    // "FOREIGN KEY constraint failed" even inside a transaction — SQLite only
-    // honors `PRAGMA foreign_keys` when toggled outside any transaction, so it
-    // must be flipped off before BEGIN and restored after, in a `finally` so a
-    // thrown error can't leave the connection permanently unenforced.
     db.exec("PRAGMA foreign_keys = OFF");
     db.exec("BEGIN");
     try {
@@ -548,6 +549,9 @@ export function ftsQuery(raw: string): string {
 /* ----------------------------- Users ----------------------------- */
 
 const stmtUserById = db.prepare("SELECT * FROM users WHERE id = ?");
+// Bare `LIMIT 1` with no ORDER BY: safe only under the single-row invariant
+// documented on ensureLocalOwner below — with at most one row, there is
+// nothing to order.
 const stmtFirstUser = db.prepare("SELECT * FROM users LIMIT 1");
 const stmtInsertOwner = db.prepare(
   "INSERT INTO users (id, display_name, avatar_url, theme, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
@@ -559,8 +563,13 @@ export function getUserById(id: string): User | undefined {
 
 /**
  * Return the single local-owner user, creating it on first boot if absent.
- * There is exactly one user row for the lifetime of a Noto install — see the
- * `users` migration above and `server/auth/localSession.ts`.
+ *
+ * Invariant, not schema-enforced: nothing in the schema (no CHECK, trigger, or
+ * sentinel id) caps `users` at one row. It holds only because this function is
+ * the sole `INSERT INTO users` call site and it always checks-then-inserts, so
+ * at most one row ever exists. If you add another insert path (seed script,
+ * migration), you break this. See the `users` merge migration above and
+ * `server/auth/localSession.ts`.
  */
 export function ensureLocalOwner(): User {
   const existing = stmtFirstUser.get() as User | undefined;
