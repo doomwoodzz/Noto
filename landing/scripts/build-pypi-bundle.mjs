@@ -27,7 +27,7 @@
 import { execFileSync } from "node:child_process";
 import { cpSync, mkdirSync, rmSync, writeFileSync, readFileSync, copyFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+import { dirname, join, sep } from "node:path";
 
 const LANDING_DIR = dirname(dirname(fileURLToPath(import.meta.url)));
 const VENDOR_DIR = join(LANDING_DIR, "..", "packaging", "pypi", "noto_app", "_vendor");
@@ -65,10 +65,16 @@ function main() {
   rmSync(distAppDir, { recursive: true, force: true });
 
   // 2. Server source, run via tsx at runtime — same as `npm start` today.
-  // Excludes tests and the gitignored local database directory.
+  // Excludes tests (*.test.ts and the shared test-helpers.ts scaffolding) and
+  // the gitignored local database directory. The data/ exclusion is a
+  // path-boundary match (the directory itself or entries under it), so a
+  // hypothetical future server/dataFoo.ts isn't silently swallowed.
   cpSync(join(LANDING_DIR, "server"), join(VENDOR_DIR, "server"), {
     recursive: true,
-    filter: (src) => !src.endsWith(".test.ts") && !src.includes(join("server", "data")),
+    filter: (src) =>
+      !src.endsWith(".test.ts") &&
+      !src.endsWith("test-helpers.ts") &&
+      !(src === join(LANDING_DIR, "server", "data") || src.includes(join("server", "data") + sep)),
   });
 
   // 2b. src/noto-core: the server imports this shared module tree via relative
@@ -129,6 +135,10 @@ function main() {
 
   // 4. Fresh lockfile matching the pruned package.json (npm ci requires one in sync).
   run("npm", ["install", "--package-lock-only", "--no-audit", "--no-fund"], VENDOR_DIR);
+
+  // The top-of-run rmSync deletes the tracked _vendor/.gitkeep placeholder —
+  // recreate it so builds don't leave git-status noise.
+  writeFileSync(join(VENDOR_DIR, ".gitkeep"), "");
 
   console.log(`Vendored bundle written to ${VENDOR_DIR}`);
 }
