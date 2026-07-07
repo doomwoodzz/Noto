@@ -9,10 +9,8 @@
 
 # Dependencies / build
 node_modules/
+# runtime data if the server is ever launched with the repo root as cwd
 /server/
-.build/
-.swiftpm/
-DerivedData/
 dist/
 
 # Secrets & local data (belt-and-braces; landing/.gitignore covers landing/)
