@@ -15,6 +15,10 @@ import { createSession, getCurrentUser } from "./session.ts";
 export function ensureLocalSession(req: Request, res: Response, next: NextFunction): void {
   if (!req.apiUser && !getCurrentUser(req)) {
     const owner = ensureLocalOwner();
+    // No per-client dedup: a client that never sends its cookie back (curl
+    // scripts, PAT-less probes) mints one session row per request. Growth is
+    // bounded by SESSION_TTL_DAYS plus the boot-time deleteExpiredSessions()
+    // sweep in db.ts.
     createSession(req, res, owner.id);
   }
   next();
