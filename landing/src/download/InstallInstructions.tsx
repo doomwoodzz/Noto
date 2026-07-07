@@ -37,7 +37,12 @@ export function InstallInstructions() {
             <div className="cs-timer-label">
               <span className="cs-timer-label-bar" /> Requires Python 3.9+
             </div>
-            <button className="cs-install-cmd" onClick={copyCommand} type="button">
+            <button
+              className="cs-install-cmd"
+              onClick={copyCommand}
+              type="button"
+              aria-label="Copy install command"
+            >
               <Terminal size={15} strokeWidth={1.7} />
               <code>{PIP_INSTALL_COMMAND}</code>
               {copied ? <Check size={14} strokeWidth={2.4} /> : <Copy size={14} strokeWidth={1.7} />}
