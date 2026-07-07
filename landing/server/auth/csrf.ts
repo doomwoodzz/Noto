@@ -27,7 +27,7 @@ export function ensureCsrfCookie(req: Request, res: Response): string {
     token = crypto.randomBytes(32).toString("base64url");
     res.cookie(CSRF_COOKIE, token, {
       httpOnly: false, // must be readable by our own JS to echo back
-      secure: env.isProd,
+      secure: env.secureCookies,
       sameSite: "lax",
       path: "/",
       maxAge: 24 * 60 * 60 * 1000,

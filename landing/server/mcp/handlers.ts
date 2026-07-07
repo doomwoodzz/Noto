@@ -11,6 +11,8 @@ export function makeHandlers(client: NotoBridgeClient, ctx: { scope: string }) {
     async search_notes(a: { query: string; scope?: string; tag?: string; limit?: number }) {
       try {
         const { results } = await client.searchNotes({ query: a.query, scope: a.scope ?? ctx.scope, tag: a.tag, limit: a.limit });
+        // Belt-and-suspenders: /api/search already tags results, but re-tag here so a
+        // future non-loopback (direct in-process) client is still covered. Idempotent.
         return ok({ results: markUntrustedResults(results) });
       } catch (e) { return fail(e); }
     },

@@ -1,12 +1,5 @@
 import { describe, it, expect } from "vitest";
 import { db } from "../db.ts";
-import {
-  createDumpJob, getOwnedDumpJob, setDumpJobStatus, setDumpJobCounts,
-  insertDumpItem, listDumpItems, updateDumpItem,
-  getDumpSource, upsertDumpSource,
-  saveConnectorToken, getConnectorToken, listConnectors, deleteConnector,
-  createUser, createVault, createFile, deleteOwnedFile, getOwnedFile,
-} from "../db.ts";
 
 describe("dump migrations", () => {
   it("creates the four dump tables", () => {
@@ -18,9 +11,19 @@ describe("dump migrations", () => {
   });
 });
 
+import {
+  createDumpJob, getOwnedDumpJob, setDumpJobStatus, setDumpJobCounts,
+  insertDumpItem, listDumpItems, updateDumpItem,
+  getDumpSource, upsertDumpSource,
+  saveConnectorToken, getConnectorToken, listConnectors, deleteConnector,
+  ensureLocalOwner, createVault, createFile, getOwnedFile, deleteOwnedFile,
+} from "../db.ts";
+
 describe("dump accessors", () => {
+  // One local owner by design; each call gives it a fresh, independent vault
+  // so per-test data stays isolated (no test here compares two users).
   function freshUserVault() {
-    const u = createUser({ email: `dump-${crypto.randomUUID()}@t.local` });
+    const u = ensureLocalOwner();
     const v = createVault(u.id, { name: "V" });
     return { userId: u.id, vaultId: v.id };
   }
@@ -53,23 +56,14 @@ describe("dump accessors", () => {
     expect(items[0].redaction_count).toBe(1);
   });
 
-  it("upserts + reads a dump_source by (user, key)", () => {
+  it("upserts + reads a dump_source by (user, vault, key)", () => {
     const { userId, vaultId } = freshUserVault();
-    // dump_sources.file_id has a real FK to files(id) (foreign_keys=ON), so use a real file.
-    const file = createFile(vaultId, { path: "Dump/p/x.md", title: "X", content: "body" });
-    upsertDumpSource({ userId, sourceKey: "raw:k", fileId: file.id, contentHash: "h1", jobId: "j1" });
-    expect(getDumpSource(userId, "raw:k")?.content_hash).toBe("h1");
-    upsertDumpSource({ userId, sourceKey: "raw:k", fileId: file.id, contentHash: "h2", jobId: "j2" });
-    expect(getDumpSource(userId, "raw:k")?.content_hash).toBe("h2");
-  });
-
-  it("deletes a file by owner (cascades passages/sources)", () => {
-    const u = createUser({ email: `del-${crypto.randomUUID()}@t.local` });
-    const v = createVault(u.id, { name: "V" });
-    const f = createFile(v.id, { path: "Dump/x/a.md", title: "A", content: "# A" });
-    expect(deleteOwnedFile(u.id, f.id)).toBe(true);
-    expect(getOwnedFile(u.id, f.id)).toBeUndefined();
-    expect(deleteOwnedFile(u.id, f.id)).toBe(false);
+    // dump_sources.file_id has a FK to files(id) (foreign_keys = ON), so reference a real file.
+    const f1 = createFile(vaultId, { path: "n/a.md", title: "A", content: "x" });
+    upsertDumpSource({ userId, vaultId, sourceKey: "raw:k", fileId: f1.id, contentHash: "h1", jobId: "j1" });
+    expect(getDumpSource(userId, vaultId, "raw:k")?.content_hash).toBe("h1");
+    upsertDumpSource({ userId, vaultId, sourceKey: "raw:k", fileId: f1.id, contentHash: "h2", jobId: "j2" });
+    expect(getDumpSource(userId, vaultId, "raw:k")?.content_hash).toBe("h2");
   });
 
   it("saves + reads + deletes a connector token", () => {
@@ -79,5 +73,23 @@ describe("dump accessors", () => {
     expect(listConnectors(userId).map((c) => c.provider)).toContain("github");
     deleteConnector(userId, "github");
     expect(getConnectorToken(userId, "github")).toBeUndefined();
+  });
+
+  it("round-trips a Uint8Array cipher through the connector BLOB column", () => {
+    const { userId } = freshUserVault();
+    const cipher = new Uint8Array([1, 2, 3, 250, 0, 255]);
+    saveConnectorToken({ userId, provider: "notion", externalAccount: "ws", accessTokenCipher: cipher });
+    const row = getConnectorToken(userId, "notion");
+    expect(row?.access_token_cipher).toBeInstanceOf(Uint8Array);
+    expect(Array.from(row!.access_token_cipher!)).toEqual([1, 2, 3, 250, 0, 255]);
+  });
+
+  it("deletes a file by owner (cascades passages/sources)", () => {
+    const u = ensureLocalOwner();
+    const v = createVault(u.id, { name: "V" });
+    const f = createFile(v.id, { path: "Dump/x/a.md", title: "A", content: "# A" });
+    expect(deleteOwnedFile(u.id, f.id)).toBe(true);
+    expect(getOwnedFile(u.id, f.id)).toBeUndefined();
+    expect(deleteOwnedFile(u.id, f.id)).toBe(false);
   });
 });

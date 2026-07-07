@@ -102,7 +102,7 @@ export function Nav({ theme, setTheme }: NavProps) {
                 : <Sun size={15} strokeWidth={1.7} />}
             </button>
             <span className="l-nav-actions">
-              <a className="l-btn l-btn-ghost" href="/get-started.html?mode=signin">Sign in</a>
+              <a className="l-btn l-btn-ghost" href="/download.html">Get started</a>
               <a className="l-btn l-btn-outline" href="#help">Help</a>
               <a className="l-btn l-btn-primary" href="/download.html">
                 <Download size={14} strokeWidth={1.7} />
@@ -128,7 +128,7 @@ export function Nav({ theme, setTheme }: NavProps) {
           {NAV_LINKS.map((l) => (
             <a key={l.href} href={l.href}>{l.label}</a>
           ))}
-          <a href="/get-started.html?mode=signin">Sign in</a>
+          <a href="/download.html">Get started</a>
           <a className="l-btn l-btn-primary l-nav-mobile-cta" href="/download.html">
             <Download size={14} strokeWidth={1.7} />
             Download for macOS

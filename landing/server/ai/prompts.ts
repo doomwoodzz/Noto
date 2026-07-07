@@ -6,7 +6,6 @@
  * system prompts keep the model on-task (a notes assistant) and refuse
  * unrelated requests, which also bounds abuse of the endpoint.
  */
-
 import { isUntrustedNote, fenceUntrusted } from "./untrusted.ts";
 
 /** Shared persona + guardrail used by every text feature. */

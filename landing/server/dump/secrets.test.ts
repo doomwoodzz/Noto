@@ -34,6 +34,27 @@ describe("redactSecrets", () => {
     expect(count).toBe(1);
   });
 
+  it("redacts opaque secrets named api_key / access_token / clientSecret (not just bare keywords)", () => {
+    for (const line of [
+      `api_key = "Zk9Qw3eRt7yUi1oP2aSdFgHjKlMnBvCx"`,
+      `access_token: "aBcD1234eFgH5678iJkL9012mNoP3456"`,
+      `clientSecret="Q1w2E3r4T5y6U7i8O9p0A1s2D3f4G5h6"`,
+      `PRIVATE_KEY = "kJhGfDsApOiUyTrEwQ0918273645Mnbv"`,
+    ]) {
+      const { body, count } = redactSecrets(line);
+      expect(count).toBe(1);
+      expect(body).toContain("‹redacted:high-entropy›");
+    }
+  });
+
+  it("redacts a hex/base32 token whose entropy sits just under the 4.0 gate", () => {
+    // 40 hex chars → entropy ~3.97 (< 4.0), but it is an opaque credential value.
+    const hex = "abcdef0123456789abcdef0123456789abcdef01";
+    const { body, count } = redactSecrets(`token = "${hex}"`);
+    expect(count).toBe(1);
+    expect(body).not.toContain(hex);
+  });
+
   it("leaves ordinary prose untouched and returns count 0", () => {
     const prose = "The quick brown fox writes notes about photosynthesis and mitochondria.";
     const { body, count } = redactSecrets(prose);
@@ -53,4 +74,15 @@ describe("redactSecrets", () => {
     const { count } = redactSecrets(`AKIAIOSFODNN7EXAMPLE and ${tok}`);
     expect(count).toBe(2);
   });
+
+  it("does not catastrophically backtrack on many unterminated BEGIN markers (ReDoS guard)", () => {
+    // ~1.4 MB of repeated BEGIN with no END. With an unbounded lazy quantifier this
+    // takes ~30s+ (test would time out); the bounded pattern runs in single-digit ms.
+    const evil = "-----BEGIN PRIVATE KEY-----\n".repeat(50000);
+    const { body, count } = redactSecrets(evil);
+    expect(count).toBe(0);        // no complete key block → nothing redacted
+    expect(body).toBe(evil);      // body unchanged
+  }, 8000); // Bounded pattern runs ~1.3s in isolation (~2-3s under full-suite CPU
+  // contention); a real super-linear regression on this 1.4MB input is ~28s+, so an
+  // 8s ceiling catches any >3x blowup while absorbing parallel-run scheduler jitter.
 });

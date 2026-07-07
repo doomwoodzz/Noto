@@ -16,7 +16,7 @@ export interface VaultController {
   files: VaultFile[];
   saveStatus: SaveStatus;
   /** Account chip shown in the sidebar footer (null in the demo). */
-  account?: { email: string | null } | null;
+  account?: { label: string } | null;
   /** Demo mode disables persistence and account/theme controls. */
   demo?: boolean;
   theme?: "light" | "dark";
@@ -37,7 +37,6 @@ export interface VaultController {
 
   /** Account actions (real app only). */
   onToggleTheme?(): void;
-  onLogout?(): void;
 
   /** Multi-vault surface (real app only; demo omits it → single static badge). */
   vaults?: VaultSummary[];
@@ -66,5 +65,4 @@ export interface PersistedWorkspace {
   focused: PaneId;
   openFolders: Record<string, boolean>;
   contextOpen: boolean;
-  graphFilter: "all" | "linked" | "orphans";
 }

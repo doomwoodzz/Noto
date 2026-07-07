@@ -29,7 +29,6 @@ export function VaultSwitcher({ vaults, activeVaultId, onSelect, onCreate }: Pro
         <VaultBadge icon={active.icon} color={active.color} name={active.name} />
         <span className="nw-vault-text">
           <span className="nw-vault-name">{active.name}</span>
-          <span className="nw-vault-sub">{vaults.length === 1 ? "Local Markdown Vault" : `${vaults.length} vaults`}</span>
         </span>
         <Icon name="chevron" size={15} stroke={2} />
       </button>

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { startTestServer, signup, makeCookieClient } from "../test-helpers.ts";
+import { startTestServer, signup } from "../test-helpers.ts";
 
 describe("notion oauth gating", () => {
   it("503s the install route when the connector is unconfigured", async () => {
@@ -18,6 +18,7 @@ describe("notion oauth gating", () => {
     const srv = await startTestServer();
     try {
       // Bare cookie client with no session (never signed up).
+      const { makeCookieClient } = await import("../test-helpers.ts");
       const client = makeCookieClient(srv.baseURL);
       const res = await client.req("GET", "/api/auth/notion/install");
       // Unconfigured short-circuits to 503 before the auth check; assert it is NOT a redirect/200.

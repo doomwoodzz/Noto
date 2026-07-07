@@ -60,12 +60,9 @@ function makeClient() {
   return { req, cookies };
 }
 
-async function signup(email: string) {
+async function signup(_email: string) {
   const client = makeClient();
-  // Prime the CSRF cookie (any GET to /api issues it), then sign up.
-  await client.req("GET", "/api/health");
-  const res = await client.req("POST", "/api/auth/signup", { email, password: "password123" });
-  expect(res.status).toBe(201);
+  await client.req("GET", "/api/auth/me");
   return client;
 }
 
@@ -112,33 +109,20 @@ describe("notes API", () => {
     expect(edited.content).toBe("# Edited");
   });
 
-  it("isolates data between users (B cannot read or edit A's notes)", async () => {
-    const a = await signup("owner@example.com");
-    const { vaults: aVaults } = await (await a.req("GET", "/api/vaults")).json();
-    const aVaultId = aVaults[0].id;
-    const { files: aFiles } = await (await a.req("GET", `/api/vaults/${aVaultId}/files`)).json();
-    const aFileId = aFiles[0].id;
-
-    const b = await signup("intruder@example.com");
-    // B's own vault is separate.
-    const { vaults: bVaults } = await (await b.req("GET", "/api/vaults")).json();
-    expect(bVaults[0].id).not.toBe(aVaultId);
-
-    // B cannot list A's vault files, nor patch/delete A's file → 404 (not 403).
-    expect((await b.req("GET", `/api/vaults/${aVaultId}/files`)).status).toBe(404);
-    expect((await b.req("PATCH", `/api/files/${aFileId}`, { content: "hacked" })).status).toBe(404);
-    expect((await b.req("DELETE", `/api/files/${aFileId}`)).status).toBe(404);
-
-    // A's note is untouched.
-    const { files: still } = await (await a.req("GET", `/api/vaults/${aVaultId}/files`)).json();
-    expect(still[0].content).not.toBe("hacked");
+  it("auto-provisions a fresh anonymous client instead of rejecting it", async () => {
+    const anon = makeClient();
+    // The very first hit to any /api route mints a session cookie in the
+    // response (ensureLocalSession), but — like CSRF priming before it — that
+    // cookie isn't visible on the *same* request's req.cookies, so a truly
+    // cold call still 401s once. Once the client absorbs and resends it
+    // (exactly what every browser and this cookie-jar client does), the
+    // client is auto-provisioned and every subsequent call succeeds — there
+    // is no more permanent, unrecoverable "you must sign in" wall.
+    expect((await anon.req("GET", "/api/vaults")).status).toBe(401);
+    expect((await anon.req("GET", "/api/vaults")).status).toBe(200);
   });
 
-  it("rejects unauthenticated access and path traversal", async () => {
-    const anon = makeClient();
-    await anon.req("GET", "/api/health");
-    expect((await anon.req("GET", "/api/vaults")).status).toBe(401);
-
+  it("rejects path traversal in a new file's path", async () => {
     const a = await signup("validate@example.com");
     const { vaults } = await (await a.req("GET", "/api/vaults")).json();
     const vaultId = vaults[0].id;
@@ -172,23 +156,6 @@ describe("notes API", () => {
     expect(res.status).toBe(400);
   });
 
-  it("requires authentication", async () => {
-    const anon = makeClient();
-    await anon.req("GET", "/api/health");
-    const res = await anon.req("POST", "/api/vaults", { name: "Nope" });
-    expect(res.status).toBe(401);
-  });
-
-  it("rejects creating beyond the per-user vault cap", async () => {
-    const a = await signup("mv-cap@example.com");
-    for (let i = 0; i < MAX_VAULTS_PER_USER; i++) {
-      const res = await a.req("POST", "/api/vaults", { name: `Vault ${i}` });
-      expect(res.status).toBe(201);
-    }
-    const over = await a.req("POST", "/api/vaults", { name: "One too many" });
-    expect(over.status).toBe(409);
-  });
-
   it("sets and reads per-vault AI config without echoing the key", async () => {
     const a = await signup("mv-ai@example.com");
     const { vault } = (await (await a.req("POST", "/api/vaults", { name: "AI Vault" })).json()) as { vault: { id: string } };
@@ -212,11 +179,19 @@ describe("notes API", () => {
     expect(after.configured).toBe(true);
   });
 
-  it("404s AI config for a vault the caller does not own", async () => {
-    const a = await signup("mv-own-a@example.com");
-    const b = await signup("mv-own-b@example.com");
-    const { vault } = (await (await a.req("POST", "/api/vaults", { name: "Private" })).json()) as { vault: { id: string } };
-    const res = await b.req("GET", `/api/vaults/${vault.id}/ai`);
-    expect(res.status).toBe(404);
+  // Kept last deliberately: every signup() in this file now resolves to the
+  // same single local owner (that's the point of the local-first model), so
+  // this test fills the *shared* owner's vault budget the rest of the way to
+  // MAX_VAULTS_PER_USER. Any test needing a fresh POST /api/vaults to succeed
+  // must run before this one.
+  it("rejects creating beyond the per-user vault cap", async () => {
+    const a = await signup("mv-cap@example.com");
+    const startCount = ((await (await a.req("GET", "/api/vaults")).json()) as { vaults: unknown[] }).vaults.length;
+    for (let i = startCount; i < MAX_VAULTS_PER_USER; i++) {
+      const res = await a.req("POST", "/api/vaults", { name: `Vault ${i}` });
+      expect(res.status).toBe(201);
+    }
+    const over = await a.req("POST", "/api/vaults", { name: "One too many" });
+    expect(over.status).toBe(409);
   });
 });

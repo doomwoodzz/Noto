@@ -127,8 +127,6 @@ html[data-theme="dark"] .ob-root::before {
   transition: color 140ms var(--ob-ease);
 }
 .ob-skip:hover { color: var(--page-ink); }
-.ob-skip-guest { margin-top: 18px; }
-.ob-skip-guest:disabled { opacity: 0.55; cursor: default; }
 
 .ob-stage {
   position: relative;
@@ -233,19 +231,6 @@ html[data-theme="dark"] .ob-title em { color: #7FA8FF; }
 }
 html[data-theme="dark"] .ob-btn-blue:disabled { background: #2A2D32; color: #5C6473; }
 
-/* high-contrast inverse button (matches landing's dark primary) */
-.ob-btn-ink { background: var(--page-ink); color: var(--page-bg); }
-.ob-btn-ink:hover { background: var(--page-ink-soft); }
-.ob-btn-ink:disabled { opacity: 0.7; cursor: default; }
-
-.ob-btn-outline {
-  background: var(--page-bg-soft);
-  color: var(--page-ink);
-  border-color: var(--page-line-strong);
-}
-.ob-btn-outline:hover { border-color: var(--page-blue); }
-html[data-theme="dark"] .ob-btn-outline:hover { background: #16181D; }
-
 .ob-btn-quiet {
   background: transparent;
   color: var(--page-ink-soft);
@@ -253,159 +238,6 @@ html[data-theme="dark"] .ob-btn-outline:hover { background: #16181D; }
   font-weight: 500;
 }
 .ob-btn-quiet:hover { color: var(--page-blue-deep); }
-
-.ob-btn-sm { height: 46px; border-radius: 9999px; font-size: 14px; }
-.ob-google-g { width: 18px; height: 18px; flex-shrink: 0; }
-
-/* error banner from the server */
-.ob-error {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 11px 14px;
-  border-radius: 12px;
-  background: rgba(199, 57, 47, 0.10);
-  border: 1px solid rgba(199, 57, 47, 0.28);
-  color: #C7392F;
-  font: 500 13px/1.4 var(--font-sans);
-  text-align: left;
-}
-html[data-theme="dark"] .ob-error { color: #FF8A80; background: rgba(255,90,80,0.10); border-color: rgba(255,90,80,0.28); }
-
-/* ============================================================
-   Divider
-   ============================================================ */
-.ob-or {
-  display: flex; align-items: center; gap: 14px;
-  margin: 4px 0;
-  color: var(--page-muted-soft);
-  font: 500 12px/1 var(--font-sans);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-.ob-or::before, .ob-or::after { content: ""; flex: 1; height: 1px; background: var(--page-line); }
-
-/* ============================================================
-   Inputs
-   ============================================================ */
-.ob-field {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  height: 52px;
-  padding: 0 16px;
-  background: var(--page-bg-soft);
-  border: 1px solid var(--page-line-strong);
-  border-radius: 14px;
-  transition: border-color 160ms var(--ob-ease), box-shadow 160ms var(--ob-ease);
-}
-html[data-theme="dark"] .ob-field { background: #121316; }
-.ob-field:focus-within {
-  border-color: rgba(87, 143, 250, 0.7);
-  box-shadow: 0 0 0 4px rgba(87, 143, 250, 0.12);
-}
-.ob-field > svg { color: var(--page-muted-soft); flex-shrink: 0; }
-.ob-field input {
-  flex: 1;
-  min-width: 0;
-  background: transparent;
-  border: none;
-  outline: none;
-  color: var(--page-ink);
-  font: 500 15px/1 var(--font-sans);
-}
-.ob-field input::placeholder { color: var(--page-muted-soft); font-weight: 400; }
-.ob-field-btn {
-  background: transparent; border: none; cursor: pointer;
-  color: var(--page-muted);
-  display: inline-flex; padding: 4px; border-radius: 8px;
-  transition: color 140ms var(--ob-ease), background 140ms var(--ob-ease);
-}
-.ob-field-btn:hover { color: var(--page-ink); background: rgba(127,127,127,0.10); }
-
-.ob-emailform {
-  display: flex; flex-direction: column; gap: 12px;
-  margin-top: 12px;
-  opacity: 0; transform: translateY(-6px);
-  transition: opacity 340ms var(--ob-ease), transform 340ms var(--ob-ease);
-}
-.ob-emailform.is-in { opacity: 1; transform: none; }
-
-.ob-hint-row {
-  display: flex; align-items: center; gap: 7px;
-  font: 400 13px/1.5 var(--font-sans);
-  color: var(--page-muted);
-  text-align: left;
-}
-.ob-hint-row svg { color: var(--page-blue); flex-shrink: 0; }
-
-.ob-field-error {
-  font: 400 12.5px/1.4 var(--font-sans);
-  color: #C7392F;
-  text-align: left;
-  padding-left: 4px;
-}
-html[data-theme="dark"] .ob-field-error { color: #FF8A80; }
-
-/* ============================================================
-   Checkbox
-   ============================================================ */
-.ob-check {
-  display: flex; align-items: flex-start; gap: 12px;
-  text-align: left; padding: 6px 2px 2px;
-  cursor: pointer; user-select: none;
-  position: relative;
-}
-.ob-check-box {
-  width: 22px; height: 22px;
-  border-radius: 7px;
-  border: 1.5px solid var(--page-line-strong);
-  background: var(--page-bg-soft);
-  flex-shrink: 0;
-  display: inline-flex; align-items: center; justify-content: center;
-  color: transparent;
-  transition: background 160ms var(--ob-ease), border-color 160ms var(--ob-ease), color 160ms var(--ob-ease);
-  margin-top: 1px;
-}
-html[data-theme="dark"] .ob-check-box { background: #121316; }
-.ob-check input { position: absolute; opacity: 0; pointer-events: none; }
-.ob-check input:checked + .ob-check-box {
-  background: var(--page-blue);
-  border-color: var(--page-blue);
-  color: #fff;
-}
-.ob-check input:focus-visible + .ob-check-box { box-shadow: 0 0 0 4px rgba(87,143,250,0.28); }
-.ob-check-label { font: 400 13.5px/1.5 var(--font-sans); color: var(--page-muted); }
-.ob-check-label a {
-  color: var(--page-ink); font-weight: 500;
-  text-decoration: none; border-bottom: 1px solid var(--page-line-strong);
-}
-.ob-check-label a:hover { color: var(--page-blue-deep); border-color: var(--page-blue); }
-
-.ob-foot {
-  margin-top: 6px;
-  font: 400 13.5px/1.5 var(--font-sans);
-  color: var(--page-muted);
-}
-.ob-foot button {
-  background: none; border: none; cursor: pointer;
-  font: 600 13.5px/1.5 var(--font-sans);
-  color: var(--page-blue-deep);
-  padding: 0; white-space: nowrap;
-}
-.ob-foot button:hover { color: var(--page-blue); }
-
-.ob-back {
-  display: inline-flex; align-items: center; gap: 7px;
-  background: none; border: none; cursor: pointer;
-  font: 500 13.5px/1 var(--font-sans);
-  color: var(--page-muted);
-  padding: 8px 0; margin-bottom: 4px;
-  align-self: flex-start;
-  transition: color 140ms var(--ob-ease);
-}
-.ob-back:hover { color: var(--page-ink); }
 
 /* ============================================================
    Theme picker

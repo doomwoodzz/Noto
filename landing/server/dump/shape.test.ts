@@ -1,7 +1,18 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { startTestServer, signup } from "../test-helpers.ts";
+import { enqueueDump, drainOnce } from "./jobs.ts";
+import { getOwnedDumpJob, ensureLocalOwner, createVault } from "../db.ts";
+import { __setEnrichComplete, __resetEnrichComplete } from "./enrich.ts";
 
 describe("shapeJob (raw provider integration)", () => {
+  beforeAll(() => {
+    // Offline, deterministic enrichment: empty JSON → enrichNote falls back to the
+    // heading title with no summary/tags/links. Keeps these tests network-free even
+    // when a local .env sets OPENAI_API_KEY.
+    __setEnrichComplete(async () => ({ text: "{}", inputTokens: 0, outputTokens: 0 }));
+  });
+  afterAll(() => __resetEnrichComplete());
+
   it("shapes a raw dump: redacts secrets, splits sections, reaches awaiting_review", async () => {
     const srv = await startTestServer();
     try {
@@ -14,7 +25,6 @@ describe("shapeJob (raw provider integration)", () => {
       expect(create.status).toBe(201);
       const { jobId } = (await create.json()) as { jobId: string };
 
-      const { drainOnce } = await import("../dump/jobs.ts");
       await drainOnce();
 
       const poll = await client.req("GET", `/api/dump/jobs/${jobId}`);
@@ -47,5 +57,19 @@ describe("shapeJob (raw provider integration)", () => {
     } finally {
       srv.close();
     }
+  });
+
+  it("marks a job failed when the shaper throws (unavailable provider)", async () => {
+    const u = ensureLocalOwner();
+    const v = createVault(u.id, { name: "V" });
+    const job = enqueueDump({ userId: u.id, vaultId: v.id, sourceType: "github", sourceRef: { type: "github", repo: "o/r" }, sourceSlug: "o-r" });
+    // Drain until this job leaves the queue (claimableDumpJobs is LIMIT-bounded, so a
+    // single drain may not reach it if other queued jobs exist).
+    for (let i = 0; i < 5 && getOwnedDumpJob(u.id, job.id)!.status === "queued"; i++) {
+      await drainOnce();
+    }
+    const row = getOwnedDumpJob(u.id, job.id)!;
+    expect(row.status).toBe("failed");
+    expect(row.error).toBeTruthy();
   });
 });

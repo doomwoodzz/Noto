@@ -1,0 +1,8 @@
+noto_app/_vendor/*
+!noto_app/_vendor/.gitkeep
+dist/
+build/
+*.egg-info/
+__pycache__/
+*.pyc
+.venv/

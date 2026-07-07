@@ -19,10 +19,9 @@ interface Props {
   onOpenGraph: () => void;
   onOpenNote: (id: string) => void;
   onToggleFolder: (name: string) => void;
-  account?: { email: string | null } | null;
+  account?: { label: string } | null;
   theme?: "light" | "dark";
   onToggleTheme?: () => void;
-  onLogout?: () => void;
   onOpenConnect?: () => void;
   onOpenDump?: () => void;
   onOpenActivity?: () => void;
@@ -41,7 +40,7 @@ export function Sidebar(props: Props) {
     vaultName, files, pinned, recent, folderOrder, openFolders,
     currentNoteId, activeKind, filtering,
     onNewNote, onOpenHome, onOpenGraph, onOpenNote, onToggleFolder,
-    account, theme, onToggleTheme, onLogout, onOpenConnect, onOpenDump, onOpenActivity,
+    account, theme, onToggleTheme, onOpenConnect, onOpenDump, onOpenActivity,
     vaults, activeVaultId, onSelectVault, onCreateVault,
   } = props;
 
@@ -75,7 +74,6 @@ export function Sidebar(props: Props) {
             <div className="nw-vault-badge">{(vaultName[0] || "N").toUpperCase()}</div>
             <div className="nw-vault-text">
               <div className="nw-vault-name">{vaultName}</div>
-              <div className="nw-vault-sub">Local Markdown Vault</div>
             </div>
           </div>
         )}
@@ -129,7 +127,7 @@ export function Sidebar(props: Props) {
       </div>
 
       {account !== undefined && (
-        <AccountFooter account={account} theme={theme} onToggleTheme={onToggleTheme} onLogout={onLogout} onOpenConnect={onOpenConnect} onOpenDump={onOpenDump} />
+        <AccountFooter account={account} theme={theme} onToggleTheme={onToggleTheme} onOpenConnect={onOpenConnect} onOpenDump={onOpenDump} />
       )}
     </aside>
   );
@@ -159,23 +157,22 @@ function Section({ icon, label, children }: { icon?: IconName; label: string; ch
 }
 
 function AccountFooter({
-  account, theme, onToggleTheme, onLogout, onOpenConnect, onOpenDump,
+  account, theme, onToggleTheme, onOpenConnect, onOpenDump,
 }: {
-  account: { email: string | null } | null;
+  account: { label: string } | null;
   theme?: "light" | "dark";
   onToggleTheme?: () => void;
-  onLogout?: () => void;
   onOpenConnect?: () => void;
   onOpenDump?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   if (!account) return null;
-  const email = account.email ?? "Account";
+  const label = account.label;
   return (
     <div className="nw-account">
       <button className="nw-account-btn" onClick={() => setOpen((o) => !o)}>
-        <div className="nw-account-avatar">{(email[0] || "U").toUpperCase()}</div>
-        <span className="nw-account-email" title={email}>{email}</span>
+        <div className="nw-account-avatar">{(label[0] || "N").toUpperCase()}</div>
+        <span className="nw-account-email" title={label}>{label}</span>
         <Icon name="more" size={16} stroke={1.7} />
       </button>
       {open && (
@@ -217,18 +214,6 @@ function AccountFooter({
               <span>Settings</span>
               <span className="nw-menu-soon">Soon</span>
             </button>
-            {onLogout && (
-              <button
-                className="nw-menu-item"
-                onClick={() => {
-                  setOpen(false);
-                  onLogout();
-                }}
-              >
-                <Icon name="logout" size={14} stroke={1.7} />
-                <span>Log out</span>
-              </button>
-            )}
           </div>
         </>
       )}

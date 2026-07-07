@@ -34,14 +34,6 @@ describe("/api/memory", () => {
     expect((await ro.req("GET", "/api/memory?q=x")).status).toBe(200);
   });
 
-  it("isolates memory between users (same scope, different owner)", async () => {
-    const a = await memToken("route-iso-a@example.com");
-    await a.pat.req("POST", "/api/memory", { text: "A secret", scope: "global" }, { "X-Noto-Client": "claude-code" });
-    const b = await memToken("route-iso-b@example.com");
-    const { memories } = (await (await b.pat.req("GET", "/api/memory?q=secret&scope=global")).json()) as { memories: unknown[] };
-    expect(memories).toHaveLength(0);
-  });
-
   it("returns 401 for unauthenticated recall (no token)", async () => {
     const res = await fetch(s.baseURL + "/api/memory?q=x", { headers: { Origin: "http://localhost:5173" } });
     expect(res.status).toBe(401);

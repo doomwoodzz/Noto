@@ -11,12 +11,17 @@ export const SECRET_PATTERNS: { label: string; re: RegExp }[] = [
   { label: "google-api-key",   re: /\bAIza[0-9A-Za-z_-]{35}\b/g },
   { label: "openai-key",       re: /\bsk-(?:proj-)?[A-Za-z0-9_-]{20,}\b/g },
   { label: "jwt",              re: /\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b/g },
-  { label: "private-key",      re: /-----BEGIN (?:RSA |EC |OPENSSH |DSA |PGP )?PRIVATE KEY-----[\s\S]*?-----END (?:RSA |EC |OPENSSH |DSA |PGP )?PRIVATE KEY-----/g },
+  { label: "private-key",      re: /-----BEGIN (?:RSA |EC |OPENSSH |DSA |PGP )?PRIVATE KEY-----[\s\S]{0,8000}?-----END (?:RSA |EC |OPENSSH |DSA |PGP )?PRIVATE KEY-----/g },
 ];
 
-// Generic high-entropy assignment: key|secret|token|password = "<value>".
+// Generic secret assignment: a variable whose name ENDS in a credential word —
+// key, secret, token, password, passwd, pwd, credential(s), auth — assigned a
+// quoted value. A bare `\b(?:key|…)\b` misses the common real-world names
+// (`api_key`, `access_token`, `clientSecret`, `refreshToken`, `private_key`)
+// because `_` is a word char and camelCase has no internal `\b`; the leading
+// `(?<![\w-])[\w-]{0,40}?` consumes any such prefix up to the credential word.
 const ASSIGNMENT_RE =
-  /\b(?:key|secret|token|password)\b\s*[:=]\s*["'`]([^"'`\n]{20,})["'`]/gi;
+  /(?<![\w-])[\w-]{0,40}?(?:key|secret|token|password|passwd|pwd|credentials?|auth)\s*[:=]\s*["'`]([^"'`\n]{20,})["'`]/gi;
 
 const ENTROPY_MIN = 4.0;
 const ENTROPY_MIN_LEN = 20;
@@ -57,10 +62,17 @@ export function redactSecrets(body: string): { body: string; count: number } {
     });
   }
 
-  // Entropy pass: redact only the assignment VALUE, keep the key name.
+  // Value pass: redact only the assignment VALUE, keep the key name.
   out = out.replace(ASSIGNMENT_RE, (match, value: string) => {
     if (value.includes("‹redacted:")) return match; // already handled above
-    if (value.length < ENTROPY_MIN_LEN || shannonEntropy(value) < ENTROPY_MIN) return match;
+    if (value.length < ENTROPY_MIN_LEN) return match;
+    // An opaque token (no internal whitespace) assigned to a credential-named
+    // variable is a secret regardless of entropy — this catches hex/base32 keys
+    // whose entropy sits just under the 4.0 gate (e.g. a 40-char SHA-style token).
+    // A value WITH whitespace still needs high entropy so a prose sentence like
+    // `password = "please change this later"` is left untouched.
+    const opaque = !/\s/.test(value);
+    if (!opaque && shannonEntropy(value) < ENTROPY_MIN) return match;
     count += 1;
     const quote = match[match.length - 1];
     const prefix = match.slice(0, match.indexOf(value));

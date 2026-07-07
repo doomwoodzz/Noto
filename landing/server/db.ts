@@ -15,10 +15,7 @@ import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import crypto from "node:crypto";
 import { env } from "./env.ts";
-import type {
-  DumpJobRow, DumpItemRow, DumpSourceRow, ConnectorTokenRow,
-  DumpStatus, DumpItemStatus, DumpCounts,
-} from "./dump/types.ts";
+import type { DumpJobRow, DumpItemRow, DumpSourceRow, ConnectorTokenRow, DumpStatus, DumpItemStatus, DumpCounts } from "./dump/types.ts";
 import type { PersistedEdge } from "../src/noto-core/graphEdges.ts";
 
 mkdirSync(dirname(env.DATABASE_PATH), { recursive: true });
@@ -31,16 +28,12 @@ db.exec("PRAGMA foreign_keys = ON;");
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
-    id              TEXT PRIMARY KEY,
-    email           TEXT NOT NULL UNIQUE,
-    password_hash   TEXT,                       -- null for OAuth-only accounts
-    google_sub      TEXT UNIQUE,                -- Google subject id, if linked
-    display_name    TEXT,
-    avatar_url      TEXT,
-    theme           TEXT NOT NULL DEFAULT 'light',
-    email_verified  INTEGER NOT NULL DEFAULT 0,
-    created_at      INTEGER NOT NULL,
-    updated_at      INTEGER NOT NULL
+    id           TEXT PRIMARY KEY,
+    display_name TEXT,
+    avatar_url   TEXT,
+    theme        TEXT NOT NULL DEFAULT 'light',
+    created_at   INTEGER NOT NULL,
+    updated_at   INTEGER NOT NULL
   );
 
   CREATE TABLE IF NOT EXISTS sessions (
@@ -215,62 +208,89 @@ db.exec(`
     ON ai_response_cache(note_hash);
   CREATE INDEX IF NOT EXISTS ai_response_cache_feature
     ON ai_response_cache(feature);
-
-  CREATE TABLE IF NOT EXISTS dump_jobs (
-    id          TEXT PRIMARY KEY,
-    user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    vault_id    TEXT NOT NULL REFERENCES vaults(id) ON DELETE CASCADE,
-    source_type TEXT NOT NULL,
-    source_ref  TEXT NOT NULL,
-    source_slug TEXT NOT NULL,
-    status      TEXT NOT NULL,
-    counts      TEXT NOT NULL DEFAULT '{}',
-    error       TEXT,
-    created_at  INTEGER NOT NULL,
-    updated_at  INTEGER NOT NULL
-  );
-  CREATE INDEX IF NOT EXISTS idx_dump_jobs_user ON dump_jobs(user_id, created_at);
-
-  CREATE TABLE IF NOT EXISTS dump_items (
-    id              TEXT PRIMARY KEY,
-    job_id          TEXT NOT NULL REFERENCES dump_jobs(id) ON DELETE CASCADE,
-    source_key      TEXT NOT NULL,
-    status          TEXT NOT NULL,
-    redaction_count INTEGER NOT NULL DEFAULT 0,
-    shaped          TEXT,
-    file_id         TEXT,
-    dedup_of        TEXT,
-    error           TEXT
-  );
-  CREATE INDEX IF NOT EXISTS idx_dump_items_job ON dump_items(job_id);
-
-  CREATE TABLE IF NOT EXISTS dump_sources (
-    user_id      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    source_key   TEXT NOT NULL,
-    file_id      TEXT NOT NULL REFERENCES files(id) ON DELETE CASCADE,
-    content_hash TEXT NOT NULL,
-    job_id       TEXT,
-    created_at   INTEGER NOT NULL,
-    PRIMARY KEY (user_id, source_key)
-  );
-  CREATE INDEX IF NOT EXISTS idx_dump_sources_file ON dump_sources(file_id);
-
-  CREATE TABLE IF NOT EXISTS connector_tokens (
-    id                   TEXT PRIMARY KEY,
-    user_id              TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    provider             TEXT NOT NULL,
-    external_account     TEXT,
-    installation_id      TEXT,
-    access_token_cipher  BLOB,
-    refresh_token_cipher BLOB,
-    expires_at           INTEGER,
-    scopes               TEXT,
-    created_at           INTEGER NOT NULL,
-    updated_at           INTEGER NOT NULL,
-    UNIQUE (user_id, provider)
-  );
-  CREATE INDEX IF NOT EXISTS idx_connector_tokens_user ON connector_tokens(user_id);
 `);
+
+// Additive migration: collapse multi-tenant accounts into a single local owner.
+// Older DBs had password_hash/google_sub/email columns (removed — login no longer
+// exists). Any existing user rows (e.g. dev guest accounts) are merged onto one
+// surviving id first so their vaults/tokens/etc. are preserved, then the table is
+// rebuilt without the auth-only columns.
+//
+// The rebuild runs with foreign keys off: vaults/sessions/pat_tokens/audit_log/
+// memories/dump_jobs/dump_sources/connector_tokens all declare
+// `REFERENCES users(id)`, so with FK enforcement on (the boot pragma above),
+// `DROP TABLE users` would fail with "FOREIGN KEY constraint failed" even inside
+// a transaction. SQLite only honors `PRAGMA foreign_keys` when toggled outside
+// any transaction, so it is flipped off before BEGIN and restored after, in a
+// `finally` so a thrown error can't leave the connection permanently unenforced.
+{
+  const cols = db.prepare("PRAGMA table_info(users)").all() as Array<{ name: string }>;
+  if (cols.some((c) => c.name === "password_hash")) {
+    db.exec("PRAGMA foreign_keys = OFF");
+    db.exec("BEGIN");
+    try {
+      const existing = db
+        .prepare(
+          "SELECT id, display_name, avatar_url, theme, created_at, updated_at FROM users ORDER BY created_at ASC",
+        )
+        .all() as Array<{
+        id: string;
+        display_name: string | null;
+        avatar_url: string | null;
+        theme: string;
+        created_at: number;
+        updated_at: number;
+      }>;
+
+      db.exec(`
+        CREATE TABLE users_new (
+          id           TEXT PRIMARY KEY,
+          display_name TEXT,
+          avatar_url   TEXT,
+          theme        TEXT NOT NULL DEFAULT 'light',
+          created_at   INTEGER NOT NULL,
+          updated_at   INTEGER NOT NULL
+        )
+      `);
+
+      if (existing.length > 0) {
+        const owner = existing[0];
+        db.prepare(
+          "INSERT INTO users_new (id, display_name, avatar_url, theme, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+        ).run(owner.id, owner.display_name, owner.avatar_url, owner.theme, owner.created_at, owner.updated_at);
+
+        // Re-point every other pre-existing user's rows onto the surviving owner id.
+        for (const row of existing.slice(1)) {
+          db.prepare("UPDATE vaults SET user_id = ? WHERE user_id = ?").run(owner.id, row.id);
+          db.prepare("UPDATE pat_tokens SET user_id = ? WHERE user_id = ?").run(owner.id, row.id);
+          db.prepare("UPDATE audit_log SET user_id = ? WHERE user_id = ?").run(owner.id, row.id);
+          db.prepare("UPDATE memories SET user_id = ? WHERE user_id = ?").run(owner.id, row.id);
+          db.prepare("UPDATE dump_jobs SET user_id = ? WHERE user_id = ?").run(owner.id, row.id);
+          // connector_tokens has UNIQUE (user_id, provider); dump_sources has PK
+          // (user_id, vault_id, source_key). If the merged-away user and the
+          // surviving owner both already have a row for the same key, a plain
+          // UPDATE would violate the constraint. OR IGNORE keeps the owner's
+          // existing row and silently drops the update for the colliding row,
+          // so the leftover (still user_id = row.id) duplicate is deleted below.
+          db.prepare("UPDATE OR IGNORE dump_sources SET user_id = ? WHERE user_id = ?").run(owner.id, row.id);
+          db.prepare("DELETE FROM dump_sources WHERE user_id = ?").run(row.id);
+          db.prepare("UPDATE OR IGNORE connector_tokens SET user_id = ? WHERE user_id = ?").run(owner.id, row.id);
+          db.prepare("DELETE FROM connector_tokens WHERE user_id = ?").run(row.id);
+          db.prepare("DELETE FROM sessions WHERE user_id = ?").run(row.id);
+        }
+      }
+
+      db.exec("DROP TABLE users");
+      db.exec("ALTER TABLE users_new RENAME TO users");
+      db.exec("COMMIT");
+    } catch (err) {
+      db.exec("ROLLBACK");
+      throw err;
+    } finally {
+      db.exec("PRAGMA foreign_keys = ON");
+    }
+  }
+}
 
 // Additive migration: older databases predate the `pinned` column. Add it once
 // if missing (CREATE TABLE IF NOT EXISTS above never alters an existing table).
@@ -369,6 +389,108 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_pat_hash ON pat_tokens(token_hash);
 `);
 
+// Dump feature tables (jobs/items/sources + connector OAuth tokens).
+db.exec(`
+  CREATE TABLE IF NOT EXISTS dump_jobs (
+    id          TEXT PRIMARY KEY,
+    user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    vault_id    TEXT NOT NULL REFERENCES vaults(id) ON DELETE CASCADE,
+    source_type TEXT NOT NULL,
+    source_ref  TEXT NOT NULL,
+    source_slug TEXT NOT NULL,
+    status      TEXT NOT NULL,
+    counts      TEXT NOT NULL DEFAULT '{}',
+    error       TEXT,
+    created_at  INTEGER NOT NULL,
+    updated_at  INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_dump_jobs_user ON dump_jobs(user_id, created_at);
+
+  CREATE TABLE IF NOT EXISTS dump_items (
+    id              TEXT PRIMARY KEY,
+    job_id          TEXT NOT NULL REFERENCES dump_jobs(id) ON DELETE CASCADE,
+    source_key      TEXT NOT NULL,
+    status          TEXT NOT NULL,
+    redaction_count INTEGER NOT NULL DEFAULT 0,
+    shaped          TEXT,
+    file_id         TEXT,
+    dedup_of        TEXT,
+    error           TEXT
+  );
+  CREATE INDEX IF NOT EXISTS idx_dump_items_job ON dump_items(job_id);
+
+  CREATE TABLE IF NOT EXISTS dump_sources (
+    user_id      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    vault_id     TEXT NOT NULL REFERENCES vaults(id) ON DELETE CASCADE,
+    source_key   TEXT NOT NULL,
+    file_id      TEXT NOT NULL REFERENCES files(id) ON DELETE CASCADE,
+    content_hash TEXT NOT NULL,
+    job_id       TEXT,
+    created_at   INTEGER NOT NULL,
+    PRIMARY KEY (user_id, vault_id, source_key)
+  );
+  CREATE INDEX IF NOT EXISTS idx_dump_sources_file ON dump_sources(file_id);
+
+  CREATE TABLE IF NOT EXISTS connector_tokens (
+    id                   TEXT PRIMARY KEY,
+    user_id              TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    provider             TEXT NOT NULL,
+    external_account     TEXT,
+    installation_id      TEXT,
+    access_token_cipher  BLOB,
+    refresh_token_cipher BLOB,
+    expires_at           INTEGER,
+    scopes               TEXT,
+    created_at           INTEGER NOT NULL,
+    updated_at           INTEGER NOT NULL,
+    UNIQUE (user_id, provider)
+  );
+  CREATE INDEX IF NOT EXISTS idx_connector_tokens_user ON connector_tokens(user_id);
+`);
+
+// Additive migration: vault-scope dump_sources. The original schema keyed re-dump
+// idempotency on (user_id, source_key) only — vault-independent — so re-dumping the
+// same source into a DIFFERENT vault matched the first vault's row and overwrote the
+// wrong vault's note (or silently skipped the import). SQLite can't widen a PRIMARY
+// KEY in place, so rebuild with (user_id, vault_id, source_key). vault_id is
+// backfilled from each source's own file (accurate), falling back to the user's
+// first vault; rows whose file and user are both gone are dropped (OR IGNORE).
+{
+  const cols = db.prepare("PRAGMA table_info(dump_sources)").all() as Array<{ name: string }>;
+  if (cols.length > 0 && !cols.some((c) => c.name === "vault_id")) {
+    db.exec("BEGIN");
+    try {
+      db.exec(`
+        CREATE TABLE dump_sources_new (
+          user_id      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          vault_id     TEXT NOT NULL REFERENCES vaults(id) ON DELETE CASCADE,
+          source_key   TEXT NOT NULL,
+          file_id      TEXT NOT NULL REFERENCES files(id) ON DELETE CASCADE,
+          content_hash TEXT NOT NULL,
+          job_id       TEXT,
+          created_at   INTEGER NOT NULL,
+          PRIMARY KEY (user_id, vault_id, source_key)
+        )
+      `);
+      db.exec(`
+        INSERT OR IGNORE INTO dump_sources_new (user_id, vault_id, source_key, file_id, content_hash, job_id, created_at)
+        SELECT ds.user_id,
+               COALESCE((SELECT f.vault_id FROM files f WHERE f.id = ds.file_id),
+                        (SELECT v.id FROM vaults v WHERE v.user_id = ds.user_id ORDER BY v.created_at LIMIT 1)),
+               ds.source_key, ds.file_id, ds.content_hash, ds.job_id, ds.created_at
+        FROM dump_sources ds
+      `);
+      db.exec("DROP TABLE dump_sources");
+      db.exec("ALTER TABLE dump_sources_new RENAME TO dump_sources");
+      db.exec("CREATE INDEX IF NOT EXISTS idx_dump_sources_file ON dump_sources(file_id)");
+      db.exec("COMMIT");
+    } catch (err) {
+      db.exec("ROLLBACK");
+      throw err;
+    }
+  }
+}
+
 // O(n) scan on boot; fine for the MAX_FILES_PER_VAULT * MAX_VAULTS_PER_USER ceiling.
 // Backfill files_fts for any notes created before the FTS table existed.
 {
@@ -381,13 +503,9 @@ db.exec(`
 
 export interface User {
   id: string;
-  email: string;
-  password_hash: string | null;
-  google_sub: string | null;
   display_name: string | null;
   avatar_url: string | null;
   theme: string;
-  email_verified: number;
   created_at: number;
   updated_at: number;
 }
@@ -401,24 +519,20 @@ export interface SessionRow {
   ip: string | null;
 }
 
-/** A user shape that is safe to send to the browser (no secrets). */
+/** A user shape that is safe to send to the browser (no secrets — there are none). */
 export interface PublicUser {
   id: string;
-  email: string;
   displayName: string | null;
   avatarUrl: string | null;
   theme: string;
-  emailVerified: boolean;
 }
 
 export function toPublicUser(u: User): PublicUser {
   return {
     id: u.id,
-    email: u.email,
     displayName: u.display_name,
     avatarUrl: u.avatar_url,
     theme: u.theme,
-    emailVerified: Boolean(u.email_verified),
   };
 }
 
@@ -434,67 +548,41 @@ export function ftsQuery(raw: string): string {
 
 /* ----------------------------- Users ----------------------------- */
 
-const stmtUserByEmail = db.prepare("SELECT * FROM users WHERE email = ?");
 const stmtUserById = db.prepare("SELECT * FROM users WHERE id = ?");
-const stmtUserByGoogle = db.prepare("SELECT * FROM users WHERE google_sub = ?");
+// Bare `LIMIT 1` with no ORDER BY: safe only under the single-row invariant
+// documented on ensureLocalOwner below — with at most one row, there is
+// nothing to order.
+const stmtFirstUser = db.prepare("SELECT * FROM users LIMIT 1");
+const stmtInsertOwner = db.prepare(
+  "INSERT INTO users (id, display_name, avatar_url, theme, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+);
 
-export function getUserByEmail(email: string): User | undefined {
-  return stmtUserByEmail.get(email.toLowerCase()) as User | undefined;
-}
 export function getUserById(id: string): User | undefined {
   return stmtUserById.get(id) as User | undefined;
 }
-export function getUserByGoogleSub(sub: string): User | undefined {
-  return stmtUserByGoogle.get(sub) as User | undefined;
-}
 
-const stmtInsertUser = db.prepare(`
-  INSERT INTO users
-    (id, email, password_hash, google_sub, display_name, avatar_url, theme, email_verified, created_at, updated_at)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-`);
-
-export function createUser(input: {
-  email: string;
-  passwordHash?: string | null;
-  googleSub?: string | null;
-  displayName?: string | null;
-  avatarUrl?: string | null;
-  theme?: string;
-  emailVerified?: boolean;
-}): User {
+/**
+ * Return the single local-owner user, creating it on first boot if absent.
+ *
+ * Invariant, not schema-enforced: nothing in the schema (no CHECK, trigger, or
+ * sentinel id) caps `users` at one row. It holds only because this function is
+ * the sole `INSERT INTO users` call site and it always checks-then-inserts, so
+ * at most one row ever exists. If you add another insert path (seed script,
+ * migration), you break this. See the `users` merge migration above and
+ * `server/auth/localSession.ts`.
+ */
+export function ensureLocalOwner(): User {
+  const existing = stmtFirstUser.get() as User | undefined;
+  if (existing) return existing;
   const id = newId();
   const ts = now();
-  stmtInsertUser.run(
-    id,
-    input.email.toLowerCase(),
-    input.passwordHash ?? null,
-    input.googleSub ?? null,
-    input.displayName ?? null,
-    input.avatarUrl ?? null,
-    input.theme ?? "light",
-    input.emailVerified ? 1 : 0,
-    ts,
-    ts,
-  );
+  stmtInsertOwner.run(id, "Local Owner", null, "light", ts, ts);
   return getUserById(id)!;
 }
 
 const stmtSetTheme = db.prepare("UPDATE users SET theme = ?, updated_at = ? WHERE id = ?");
 export function setUserTheme(id: string, theme: string): void {
   stmtSetTheme.run(theme, now(), id);
-}
-
-const stmtLinkGoogle = db.prepare(
-  "UPDATE users SET google_sub = ?, avatar_url = COALESCE(avatar_url, ?), display_name = COALESCE(display_name, ?), email_verified = 1, updated_at = ? WHERE id = ?",
-);
-export function linkGoogleToUser(
-  id: string,
-  sub: string,
-  avatarUrl: string | null,
-  displayName: string | null,
-): void {
-  stmtLinkGoogle.run(sub, avatarUrl, displayName, now(), id);
 }
 
 /* ---------------------------- Sessions --------------------------- */
@@ -773,6 +861,18 @@ export function deleteFile(fileId: string): void {
   // in the graph-edges section below; it's referenced at call time, not load time.
   deleteFileEdges(fileId);
   stmtDeleteFile.run(fileId);
+}
+
+const stmtDeleteOwnedFile = db.prepare(
+  "DELETE FROM files WHERE id = ? AND vault_id IN (SELECT id FROM vaults WHERE user_id = ?)",
+);
+/** Delete a file the user owns. FK CASCADE removes note_passages + dump_sources;
+ *  note_edges is cleared explicitly (no FK — see deleteFileEdges). Returns true if a row was deleted. */
+export function deleteOwnedFile(userId: string, fileId: string): boolean {
+  const info = stmtDeleteOwnedFile.run(fileId, userId);
+  const deleted = Number(info.changes) > 0;
+  if (deleted) deleteFileEdges(fileId);
+  return deleted;
 }
 
 /**
@@ -1436,7 +1536,6 @@ export function deleteAiCacheRow(id: number): void {
 }
 
 /* ----------------------------- dump jobs ------------------------------- */
-
 const stmtInsertDumpJob = db.prepare(
   "INSERT INTO dump_jobs (id, user_id, vault_id, source_type, source_ref, source_slug, status, counts, error, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
 );
@@ -1444,63 +1543,38 @@ const stmtOwnedDumpJob = db.prepare("SELECT * FROM dump_jobs WHERE id = ? AND us
 const stmtSetDumpJobStatus = db.prepare("UPDATE dump_jobs SET status = ?, updated_at = ? WHERE id = ?");
 const stmtSetDumpJobStatusErr = db.prepare("UPDATE dump_jobs SET status = ?, error = ?, updated_at = ? WHERE id = ?");
 const stmtSetDumpJobCounts = db.prepare("UPDATE dump_jobs SET counts = ?, updated_at = ? WHERE id = ?");
-const stmtClaimableJobs = db.prepare(
-  "SELECT * FROM dump_jobs WHERE status IN ('queued','committing') ORDER BY created_at ASC LIMIT ?",
-);
+const stmtClaimableJobs = db.prepare("SELECT * FROM dump_jobs WHERE status IN ('queued','committing') ORDER BY created_at ASC LIMIT ?");
 
-export function createDumpJob(input: {
-  userId: string;
-  vaultId: string;
-  sourceType: "raw" | "github" | "notion";
-  sourceRef: unknown;
-  sourceSlug: string;
-}): DumpJobRow {
-  const id = newId();
-  const ts = now();
-  stmtInsertDumpJob.run(
-    id, input.userId, input.vaultId, input.sourceType,
-    JSON.stringify(input.sourceRef), input.sourceSlug, "queued", "{}", null, ts, ts,
-  );
+export function createDumpJob(input: { userId: string; vaultId: string; sourceType: "raw"|"github"|"notion"; sourceRef: unknown; sourceSlug: string }): DumpJobRow {
+  const id = crypto.randomUUID();
+  const ts = Date.now();
+  stmtInsertDumpJob.run(id, input.userId, input.vaultId, input.sourceType, JSON.stringify(input.sourceRef), input.sourceSlug, "queued", "{}", null, ts, ts);
   return stmtOwnedDumpJob.get(id, input.userId) as unknown as DumpJobRow;
 }
 export function getOwnedDumpJob(userId: string, jobId: string): DumpJobRow | undefined {
   return stmtOwnedDumpJob.get(jobId, userId) as DumpJobRow | undefined;
 }
 export function setDumpJobStatus(jobId: string, status: DumpStatus, error?: string | null): void {
-  if (error !== undefined) stmtSetDumpJobStatusErr.run(status, error, now(), jobId);
-  else stmtSetDumpJobStatus.run(status, now(), jobId);
+  if (error !== undefined) stmtSetDumpJobStatusErr.run(status, error, Date.now(), jobId);
+  else stmtSetDumpJobStatus.run(status, Date.now(), jobId);
 }
 export function setDumpJobCounts(jobId: string, counts: DumpCounts): void {
-  stmtSetDumpJobCounts.run(JSON.stringify(counts), now(), jobId);
+  stmtSetDumpJobCounts.run(JSON.stringify(counts), Date.now(), jobId);
 }
 export function claimableDumpJobs(limit = 5): DumpJobRow[] {
   return stmtClaimableJobs.all(limit) as unknown as DumpJobRow[];
 }
 
 /* ----------------------------- dump items ------------------------------ */
-
 const stmtInsertDumpItem = db.prepare(
   "INSERT INTO dump_items (id, job_id, source_key, status, redaction_count, shaped, file_id, dedup_of, error) VALUES (?,?,?,?,?,?,?,?,?)",
 );
 const stmtItemsByJob = db.prepare("SELECT * FROM dump_items WHERE job_id = ? ORDER BY rowid ASC");
 const stmtItemById = db.prepare("SELECT * FROM dump_items WHERE id = ?");
-const stmtUpdateDumpItem = db.prepare(
-  "UPDATE dump_items SET status=?, shaped=?, file_id=?, dedup_of=?, error=?, redaction_count=? WHERE id=?",
-);
 
-export function insertDumpItem(input: {
-  jobId: string;
-  sourceKey: string;
-  status: DumpItemStatus;
-  shaped?: string | null;
-  dedupOf?: string | null;
-  redactionCount?: number;
-}): DumpItemRow {
-  const id = newId();
-  stmtInsertDumpItem.run(
-    id, input.jobId, input.sourceKey, input.status,
-    input.redactionCount ?? 0, input.shaped ?? null, null, input.dedupOf ?? null, null,
-  );
+export function insertDumpItem(input: { jobId: string; sourceKey: string; status: DumpItemStatus; shaped?: string|null; dedupOf?: string|null; redactionCount?: number }): DumpItemRow {
+  const id = crypto.randomUUID();
+  stmtInsertDumpItem.run(id, input.jobId, input.sourceKey, input.status, input.redactionCount ?? 0, input.shaped ?? null, null, input.dedupOf ?? null, null);
   return stmtItemById.get(id) as unknown as DumpItemRow;
 }
 export function listDumpItems(jobId: string): DumpItemRow[] {
@@ -1509,13 +1583,9 @@ export function listDumpItems(jobId: string): DumpItemRow[] {
 export function getDumpItem(itemId: string): DumpItemRow | undefined {
   return stmtItemById.get(itemId) as DumpItemRow | undefined;
 }
-export function updateDumpItem(
-  itemId: string,
-  patch: Partial<Pick<DumpItemRow, "status" | "shaped" | "file_id" | "dedup_of" | "error" | "redaction_count">>,
-): void {
-  const cur = stmtItemById.get(itemId) as DumpItemRow | undefined;
-  if (!cur) return;
-  stmtUpdateDumpItem.run(
+export function updateDumpItem(itemId: string, patch: Partial<Pick<DumpItemRow, "status"|"shaped"|"file_id"|"dedup_of"|"error"|"redaction_count">>): void {
+  const cur = stmtItemById.get(itemId) as unknown as DumpItemRow;
+  db.prepare("UPDATE dump_items SET status=?, shaped=?, file_id=?, dedup_of=?, error=?, redaction_count=? WHERE id=?").run(
     patch.status ?? cur.status,
     patch.shaped !== undefined ? patch.shaped : cur.shaped,
     patch.file_id !== undefined ? patch.file_id : cur.file_id,
@@ -1526,41 +1596,22 @@ export function updateDumpItem(
   );
 }
 
-const stmtDeleteOwnedFile = db.prepare(
-  "DELETE FROM files WHERE id = ? AND vault_id IN (SELECT id FROM vaults WHERE user_id = ?)",
-);
-/** Delete a file the user owns. FK CASCADE removes note_passages + dump_sources;
- *  note_edges is cleared explicitly (no FK — see deleteFileEdges). Returns true if a row was deleted. */
-export function deleteOwnedFile(userId: string, fileId: string): boolean {
-  const info = stmtDeleteOwnedFile.run(fileId, userId);
-  const deleted = Number(info.changes) > 0;
-  if (deleted) deleteFileEdges(fileId);
-  return deleted;
-}
-
 /* ---------------------------- dump sources ----------------------------- */
-
-const stmtGetDumpSource = db.prepare("SELECT * FROM dump_sources WHERE user_id = ? AND source_key = ?");
+// Dedup identity is (user_id, vault_id, source_key): the same source dumped into
+// two different vaults is two independent notes, each with its own idempotency.
+const stmtGetDumpSource = db.prepare("SELECT * FROM dump_sources WHERE user_id = ? AND vault_id = ? AND source_key = ?");
 const stmtUpsertDumpSource = db.prepare(
-  "INSERT INTO dump_sources (user_id, source_key, file_id, content_hash, job_id, created_at) VALUES (?,?,?,?,?,?) " +
-  "ON CONFLICT(user_id, source_key) DO UPDATE SET file_id=excluded.file_id, content_hash=excluded.content_hash, job_id=excluded.job_id",
+  "INSERT INTO dump_sources (user_id, vault_id, source_key, file_id, content_hash, job_id, created_at) VALUES (?,?,?,?,?,?,?) " +
+  "ON CONFLICT(user_id, vault_id, source_key) DO UPDATE SET file_id=excluded.file_id, content_hash=excluded.content_hash, job_id=excluded.job_id",
 );
-
-export function getDumpSource(userId: string, sourceKey: string): DumpSourceRow | undefined {
-  return stmtGetDumpSource.get(userId, sourceKey) as DumpSourceRow | undefined;
+export function getDumpSource(userId: string, vaultId: string, sourceKey: string): DumpSourceRow | undefined {
+  return stmtGetDumpSource.get(userId, vaultId, sourceKey) as DumpSourceRow | undefined;
 }
-export function upsertDumpSource(input: {
-  userId: string;
-  sourceKey: string;
-  fileId: string;
-  contentHash: string;
-  jobId?: string | null;
-}): void {
-  stmtUpsertDumpSource.run(input.userId, input.sourceKey, input.fileId, input.contentHash, input.jobId ?? null, now());
+export function upsertDumpSource(input: { userId: string; vaultId: string; sourceKey: string; fileId: string; contentHash: string; jobId?: string|null }): void {
+  stmtUpsertDumpSource.run(input.userId, input.vaultId, input.sourceKey, input.fileId, input.contentHash, input.jobId ?? null, Date.now());
 }
 
 /* -------------------------- connector tokens --------------------------- */
-
 const stmtGetConnector = db.prepare("SELECT * FROM connector_tokens WHERE user_id = ? AND provider = ?");
 const stmtListConnectors = db.prepare("SELECT * FROM connector_tokens WHERE user_id = ? ORDER BY created_at ASC");
 const stmtDeleteConnector = db.prepare("DELETE FROM connector_tokens WHERE user_id = ? AND provider = ?");
@@ -1568,31 +1619,17 @@ const stmtUpsertConnector = db.prepare(
   "INSERT INTO connector_tokens (id, user_id, provider, external_account, installation_id, access_token_cipher, refresh_token_cipher, expires_at, scopes, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?) " +
   "ON CONFLICT(user_id, provider) DO UPDATE SET external_account=excluded.external_account, installation_id=excluded.installation_id, access_token_cipher=excluded.access_token_cipher, refresh_token_cipher=excluded.refresh_token_cipher, expires_at=excluded.expires_at, scopes=excluded.scopes, updated_at=excluded.updated_at",
 );
-
-export function saveConnectorToken(input: {
-  userId: string;
-  provider: "github" | "notion";
-  externalAccount?: string | null;
-  installationId?: string | null;
-  accessTokenCipher?: Uint8Array | null;
-  refreshTokenCipher?: Uint8Array | null;
-  expiresAt?: number | null;
-  scopes?: string | null;
-}): void {
-  const ts = now();
-  stmtUpsertConnector.run(
-    newId(), input.userId, input.provider, input.externalAccount ?? null, input.installationId ?? null,
-    input.accessTokenCipher ?? null, input.refreshTokenCipher ?? null, input.expiresAt ?? null,
-    input.scopes ?? null, ts, ts,
-  );
+export function saveConnectorToken(input: { userId: string; provider: "github"|"notion"; externalAccount?: string|null; installationId?: string|null; accessTokenCipher?: Uint8Array|null; refreshTokenCipher?: Uint8Array|null; expiresAt?: number|null; scopes?: string|null }): void {
+  const ts = Date.now();
+  stmtUpsertConnector.run(crypto.randomUUID(), input.userId, input.provider, input.externalAccount ?? null, input.installationId ?? null, input.accessTokenCipher ?? null, input.refreshTokenCipher ?? null, input.expiresAt ?? null, input.scopes ?? null, ts, ts);
 }
-export function getConnectorToken(userId: string, provider: "github" | "notion"): ConnectorTokenRow | undefined {
+export function getConnectorToken(userId: string, provider: "github"|"notion"): ConnectorTokenRow | undefined {
   return stmtGetConnector.get(userId, provider) as ConnectorTokenRow | undefined;
 }
 export function listConnectors(userId: string): ConnectorTokenRow[] {
   return stmtListConnectors.all(userId) as unknown as ConnectorTokenRow[];
 }
-export function deleteConnector(userId: string, provider: "github" | "notion"): void {
+export function deleteConnector(userId: string, provider: "github"|"notion"): void {
   stmtDeleteConnector.run(userId, provider);
 }
 

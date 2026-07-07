@@ -21,6 +21,6 @@ export const RELEASE_LABEL = RELEASE_DATE.toLocaleDateString("en-US", {
   day: "numeric",
 });
 
-/** Real macOS build URL once the app ships. Empty string = not yet downloadable,
- *  so the launched state keeps the email-the-link form instead of a dead button. */
-export const DOWNLOAD_URL = "";
+/** PyPI package name and the one-line install command shown on the install page. */
+export const PIP_PACKAGE_NAME = "noto-app";
+export const PIP_INSTALL_COMMAND = `pip install ${PIP_PACKAGE_NAME}`;

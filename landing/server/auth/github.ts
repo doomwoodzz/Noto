@@ -38,7 +38,7 @@ function signState(payload: object): string {
   const mac = crypto.createHmac("sha256", env.SESSION_SECRET).update(body).digest("base64url");
   return `${body}.${mac}`;
 }
-function verifyState(value: string): { state?: unknown; userId?: unknown } | null {
+function verifyState(value: string): Record<string, unknown> | null {
   const dot = value.lastIndexOf(".");
   if (dot < 0) return null;
   const body = value.slice(0, dot);
@@ -48,7 +48,7 @@ function verifyState(value: string): { state?: unknown; userId?: unknown } | nul
   const b = Buffer.from(expected);
   if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
   try {
-    return JSON.parse(Buffer.from(body, "base64url").toString("utf8")) as { state?: unknown; userId?: unknown };
+    return JSON.parse(Buffer.from(body, "base64url").toString("utf8")) as Record<string, unknown>;
   } catch {
     return null;
   }
@@ -75,7 +75,7 @@ export function startGithubInstall(req: Request, res: Response): void {
   const state = b64url(crypto.randomBytes(16));
   res.cookie(STATE_COOKIE, signState({ state, userId: user.id }), {
     httpOnly: true,
-    secure: env.isProd,
+    secure: env.secureCookies,
     sameSite: "lax",
     path: "/",
     maxAge: COOKIE_TTL_MS,
@@ -144,7 +144,7 @@ export async function handleGithubCallback(req: Request, res: Response): Promise
   // sufficient for the common case (a user rarely has >30 installations).
   let installations: Array<{ id?: unknown }>;
   try {
-    const listResp = await ghFetch(API_USER_INSTALLATIONS, { token: userToken, tokenType: "Bearer" });
+    const listResp = await ghFetch(API_USER_INSTALLATIONS, { token: userToken });
     if (!listResp.ok) return fail(res, "github_install");
     const parsed = (await listResp.json()) as { installations?: Array<{ id?: unknown }> };
     installations = Array.isArray(parsed.installations) ? parsed.installations : [];
@@ -159,7 +159,7 @@ export async function handleGithubCallback(req: Request, res: Response): Promise
   let login: string | null = null;
   const userTokenCipher: Uint8Array = encryptKey(userToken);
   try {
-    const who = await ghFetch(API_USER, { token: userToken, tokenType: "Bearer" });
+    const who = await ghFetch(API_USER, { token: userToken });
     if (who.ok) login = ((await who.json()) as { login?: string }).login ?? null;
   } catch {
     // Identity display name is best-effort; ownership is already established.

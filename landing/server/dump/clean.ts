@@ -5,13 +5,16 @@
 // Order: neutralize hidden-text injection vectors → strip HTML comments → collapse
 // excess blank lines. Idempotent on already-clean text.
 
-// Zero-width + BOM: ZWSP, ZWNJ, ZWJ, word-joiner, BOM/ZWNBSP.
-// eslint-disable-next-line no-misleading-character-class -- stripping the individual code points (incl. ZWJ) IS the intent
-const ZERO_WIDTH_RE = /[\u200B\u200C\u200D\u2060\uFEFF]/g;
+// Zero-width + BOM: ZWSP (U+200B), ZWNJ (U+200C), ZWJ (U+200D),
+// word-joiner (U+2060), BOM/ZWNBSP (U+FEFF). Written as alternation (not a
+// character class) so eslint's no-misleading-character-class does not flag the
+// joining ZWJ code point. Behaviour is identical: each code point is stripped.
+const ZERO_WIDTH_RE = /\u{200B}|\u{200C}|\u{200D}|\u{2060}|\u{FEFF}/gu;
 // Unicode tag characters U+E0000–U+E007F (used to smuggle invisible instructions).
 const TAG_CHARS_RE = /[\u{E0000}-\u{E007F}]/gu;
-// Bidi overrides/isolates: LRE LRO RLE RLO PDF, and LRI RLI FSI PDI.
-const BIDI_RE = /[\u202A-\u202E\u2066-\u2069]/g;
+// Bidi overrides/isolates: LRE LRO RLE RLO PDF (U+202A–U+202E), and
+// LRI RLI FSI PDI (U+2066–U+2069).
+const BIDI_RE = /[\u{202A}-\u{202E}\u{2066}-\u{2069}]/gu;
 // HTML comments (non-greedy, multi-line).
 const HTML_COMMENT_RE = /<!--[\s\S]*?-->/g;
 // 3+ consecutive newlines → exactly one blank line.

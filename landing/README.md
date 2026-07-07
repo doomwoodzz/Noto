@@ -13,13 +13,12 @@ The web half of [Noto](../README.md): a Vite + React + TypeScript front end back
 - **Dump** — bulk-import pipeline (paste, upload, GitHub, Notion) that turns source material into atomic notes.
 - **Connectors** — GitHub App and Notion OAuth integrations.
 - **MCP bridge** — expose the workspace to MCP-compatible tools.
-- **Accounts** — password and Google authentication with sessions.
 
 Everything is local-first: notes persist to a local SQLite database on your own machine.
 
 ## Requirements
 
-- [Node.js](https://nodejs.org)
+- [Node.js](https://nodejs.org) 24+
 
 ## Setup
 
@@ -33,7 +32,7 @@ Copy the example environment file and fill in the keys you need:
 cp .env.example .env
 ```
 
-All external integrations are optional and gated on env vars in `.env.example` — the OpenAI key (for Noto AI), and Google / GitHub / Notion OAuth (for sign-in and connectors). Without them the core notes, graph, and search features still run.
+All external integrations are optional and gated on env vars in `.env.example` — the OpenAI key (for Noto AI), and GitHub / Notion OAuth (for Dump connectors). Without them the core notes, graph, and search features still run.
 
 ## Scripts
 
@@ -56,7 +55,7 @@ Run from this `landing/` directory.
 
 ## Data
 
-The server stores its state in a local SQLite database under `server/data/`. That directory is gitignored — your notes and account data never leave your machine.
+The server stores its state in a local SQLite database under `server/data/`. That directory is gitignored — there are no accounts, the app auto-provisions a single local owner, and your notes never leave your machine.
 
 ## License
 

@@ -1,19 +1,12 @@
 // scripts/mint-pat.mjs
-// Dev helper: mint a PAT for an existing user by email.
-// Usage: npm run mint-pat -- <email> [read,write,destructive]
-import { getUserByEmail, createPat } from "../server/db.ts";
+// Dev helper: mints a PAT for the local owner (Noto has no accounts — a single
+// local owner is auto-provisioned on first boot).
+// Usage: npm run mint-pat -- [read,write,destructive]
+import { ensureLocalOwner, createPat } from "../server/db.ts";
 import { generatePatToken, hashPatToken } from "../server/auth/pat.ts";
 
-const [, , email, scopesArg = "read,write"] = process.argv;
-if (!email) {
-  console.error("Usage: node scripts/mint-pat.mjs <email> [read,write,destructive]");
-  process.exit(1);
-}
-const user = getUserByEmail(email);
-if (!user) {
-  console.error(`No user with email ${email}. Sign up in the app first.`);
-  process.exit(1);
-}
+const [, , scopesArg = "read,write"] = process.argv;
+const user = ensureLocalOwner();
 const scopes = scopesArg.split(",").map((s) => s.trim()).filter(Boolean);
 const VALID = ["read", "write", "destructive"];
 const invalid = scopes.filter((s) => !VALID.includes(s));

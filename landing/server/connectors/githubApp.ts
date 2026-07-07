@@ -7,9 +7,7 @@
  * never stored. The HTTP call is injectable so it is unit-tested without network.
  */
 import crypto from "node:crypto";
-import { isPrivateIp } from "../links/fetchMeta.ts";
-import { lookup } from "node:dns/promises";
-import { isIP } from "node:net";
+import { assertPublicHost } from "../links/fetchMeta.ts";
 
 const GITHUB_API = "https://api.github.com";
 const ACCEPT_JSON = "application/vnd.github+json";
@@ -43,17 +41,6 @@ export function signAppJwt(now: number): string {
   return `${signingInput}.${signature}`;
 }
 
-/** SSRF host check for an authenticated GitHub call (mirrors safeFetch's assertPublicHost). */
-async function assertPublicHost(hostname: string): Promise<void> {
-  if (isIP(hostname)) {
-    if (isPrivateIp(hostname)) throw new Error("Refusing to fetch a private address");
-    return;
-  }
-  const addrs = await lookup(hostname, { all: true });
-  if (addrs.length === 0) throw new Error("Host did not resolve");
-  for (const a of addrs) if (isPrivateIp(a.address)) throw new Error("Refusing to fetch a private address");
-}
-
 /**
  * Authenticated GitHub JSON request: SSRF host check + fetch with method/headers/
  * body. Used for the App JWT POST and (by the provider/repo-list) installation-
@@ -63,7 +50,7 @@ async function assertPublicHost(hostname: string): Promise<void> {
  */
 export async function ghFetch(
   url: string,
-  init: { method?: string; token: string; tokenType: "Bearer"; body?: string },
+  init: { method?: string; token: string; body?: string },
   fetchImpl: FetchImpl = fetch,
 ): Promise<Response> {
   await assertPublicHost(new URL(url).hostname);
@@ -73,7 +60,7 @@ export async function ghFetch(
     return await fetchImpl(url, {
       method: init.method ?? "GET",
       headers: {
-        Authorization: `${init.tokenType} ${init.token}`,
+        Authorization: `Bearer ${init.token}`,
         Accept: ACCEPT_JSON,
         "X-GitHub-Api-Version": "2022-11-28",
         "User-Agent": "Noto-Dump",
@@ -97,7 +84,7 @@ export async function mintInstallationToken(
 ): Promise<{ token: string; expiresAt: number }> {
   const appJwt = signAppJwt(Math.floor(Date.now() / 1000));
   const url = `${GITHUB_API}/app/installations/${encodeURIComponent(installationId)}/access_tokens`;
-  const resp = await ghFetch(url, { method: "POST", token: appJwt, tokenType: "Bearer" }, fetchImpl);
+  const resp = await ghFetch(url, { method: "POST", token: appJwt }, fetchImpl);
   if (!resp.ok) throw new Error(`GitHub installation token request failed (${resp.status})`);
   const json = (await resp.json()) as { token?: string; expires_at?: string };
   if (!json.token) throw new Error("GitHub installation token response missing token");

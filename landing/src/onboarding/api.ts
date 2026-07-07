@@ -1,5 +1,5 @@
 /**
- * Thin client for the auth API.
+ * Thin client for the auth API used by the first-run tour.
  *
  * - Same-origin fetch with credentials:"include" so the httpOnly session cookie
  *   rides along (and is never touched by JS).
@@ -9,11 +9,9 @@
 
 export interface PublicUser {
   id: string;
-  email: string;
   displayName: string | null;
   avatarUrl: string | null;
   theme: "light" | "dark" | string;
-  emailVerified: boolean;
 }
 
 const CSRF_COOKIE = "noto_csrf";
@@ -27,7 +25,6 @@ function readCookie(name: string): string | null {
 async function ensureCsrfToken(): Promise<string> {
   let token = readCookie(CSRF_COOKIE);
   if (!token) {
-    // Any GET to /api issues the cookie.
     await fetch("/api/auth/me", { credentials: "include" }).catch(() => {});
     token = readCookie(CSRF_COOKIE);
   }
@@ -70,17 +67,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 }
 
 export const authApi = {
-  health: () => request<{ ok: boolean; googleConfigured: boolean }>("GET", "/api/health"),
   me: () => request<{ user: PublicUser | null }>("GET", "/api/auth/me"),
-  signup: (email: string, password: string) =>
-    request<{ user: PublicUser }>("POST", "/api/auth/signup", { email, password }),
-  login: (email: string, password: string) =>
-    request<{ user: PublicUser }>("POST", "/api/auth/login", { email, password }),
-  /** Skip sign-in: create a throwaway guest account + session. */
-  guest: () => request<{ user: PublicUser }>("POST", "/api/auth/guest"),
-  logout: () => request<void>("POST", "/api/auth/logout"),
   savePreferences: (theme: "light" | "dark") =>
     request<{ ok: true }>("PATCH", "/api/auth/preferences", { theme }),
-  /** Full-page redirect to begin the Google OAuth flow. */
-  googleLoginUrl: "/api/auth/google",
 };

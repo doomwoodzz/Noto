@@ -31,8 +31,8 @@ export function makeCookieClient(baseURL: string) {
       if (eq > 0) cookies.set(pair.slice(0, eq).trim(), pair.slice(eq + 1).trim());
     }
   }
-  async function req(method: string, path: string, body?: unknown): Promise<Response> {
-    const headers: Record<string, string> = { Origin: ORIGIN };
+  async function req(method: string, path: string, body?: unknown, extra?: Record<string, string>): Promise<Response> {
+    const headers: Record<string, string> = { Origin: ORIGIN, ...extra };
     if (body !== undefined) headers["Content-Type"] = "application/json";
     if (method !== "GET" && method !== "HEAD") headers["X-CSRF-Token"] = cookies.get("noto_csrf") ?? "";
     if (cookies.size > 0) headers["Cookie"] = cookieHeader();
@@ -63,12 +63,15 @@ export function makePatClient(baseURL: string, token: string) {
   return { req };
 }
 
-/** Sign up a fresh user, returning an authenticated cookie client. */
-export async function signup(baseURL: string, email: string) {
+/**
+ * Return an authenticated cookie client. There are no accounts anymore — every
+ * client auto-resolves to the single local owner (see auth/localSession.ts).
+ * `email` is accepted for call-site compatibility with existing tests but is
+ * otherwise unused.
+ */
+export async function signup(baseURL: string, _email: string) {
   const client = makeCookieClient(baseURL);
-  await client.req("GET", "/api/health"); // primes the CSRF cookie
-  const res = await client.req("POST", "/api/auth/signup", { email, password: "password123" });
-  if (res.status !== 201) throw new Error(`signup failed: ${res.status}`);
+  await client.req("GET", "/api/auth/me"); // establishes the session
   return client;
 }
 

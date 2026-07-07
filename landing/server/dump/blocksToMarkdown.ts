@@ -71,7 +71,13 @@ export function blocksToMarkdown(blocks: NotionBlock[]): string {
         break;
       case "code": {
         const lang = typeof payload(b).language === "string" ? (payload(b).language as string) : "";
-        out.push("```" + lang + "\n" + richText(payload(b).rich_text) + "\n```");
+        const content = richText(payload(b).rich_text);
+        // Pick a fence longer than any backtick run in the content (CommonMark
+        // rule) so code that itself contains ``` can't close the fence early and
+        // leak following text into live markdown structure.
+        const longestRun = (content.match(/`+/g) ?? []).reduce((m, s) => Math.max(m, s.length), 0);
+        const fence = "`".repeat(Math.max(3, longestRun + 1));
+        out.push(fence + lang + "\n" + content + "\n" + fence);
         break;
       }
       case "child_page": {

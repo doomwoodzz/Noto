@@ -51,6 +51,7 @@ export function isProsePath(path: string, glob?: string): boolean {
     const dirRe = globToDirRe(glob);
     if (dirRe && dirRe.test(path)) return true;
   }
+  // not docs/, not top-level prose, not under an explicit glob → excluded.
   return false;
 }
 
@@ -64,7 +65,7 @@ function parseRef(ref: unknown): { repo: string; includeIssues: boolean; glob?: 
 /** Default GhClient over the SSRF-checked authenticated ghFetch. */
 function defaultClient(): GhClient {
   async function getJson<T>(token: string, url: string): Promise<T> {
-    const resp = await ghFetch(url, { token, tokenType: "Bearer" });
+    const resp = await ghFetch(url, { token });
     if (!resp.ok) throw new Error(`GitHub ${url} → ${resp.status}`);
     return (await resp.json()) as T;
   }
@@ -75,7 +76,7 @@ function defaultClient(): GhClient {
       return (await mintInstallationToken(row.installation_id)).token;
     },
     getRepo: (token, repo) => getJson(token, `${GITHUB_API}/repos/${repo}`),
-    getTree: (token, repo, ref) => getJson(token, `${GITHUB_API}/repos/${repo}/git/trees/${encodeURIComponent(ref)}?recursive=1`),
+    getTree: (token, repo, ref) => getJson(token, `${GITHUB_API}/repos/${repo}/git/trees/${ref}?recursive=1`),
     async getBlob(token, repo, path, ref) {
       const json = await getJson<{ content?: string }>(
         token,
@@ -106,14 +107,17 @@ export function makeGithubProvider(client: GhClient = defaultClient()): SourcePr
       const { repo, includeIssues, glob } = parseRef(ctx.sourceRef);
       const token = await client.mintToken(ctx.userId);
       const { default_branch } = await client.getRepo(token, repo);
-      const { tree } = await client.getTree(token, repo, default_branch);
+      const { tree, truncated } = await client.getTree(token, repo, default_branch);
 
-      // Deterministic order: path-sorted prose blobs (code-unit order, locale-
-      // independent), truncated at cap.
+      // Deterministic order: path-sorted prose blobs, truncated at cap. Sort by
+      // codepoint (not localeCompare) so the order is locale-independent and
+      // stable across environments (e.g. README.md before docs/…).
       const prose = tree
         .filter((e) => e.type === "blob" && isProsePath(e.path, glob))
         .sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0))
         .slice(0, ctx.cap);
+
+      if (truncated) console.warn(`[dump] GitHub tree for ${repo} was truncated; some files may be omitted.`);
 
       const items: RawItem[] = [];
       let fetched = 0;
@@ -122,7 +126,9 @@ export function makeGithubProvider(client: GhClient = defaultClient()): SourcePr
           const { contentB64 } = await client.getBlob(token, repo, entry.path, default_branch);
           const body = Buffer.from(contentB64, "base64").toString("utf8");
           items.push({
-            sourceKey: `github:${repo}@${entry.sha}:${entry.path}`,
+            // Stable identity (no sha/updated_at) so re-dump detects content change
+            // via content_hash and updates in place (design D6).
+            sourceKey: `github:${repo}:${entry.path}`,
             title: entry.path.split("/").pop() ?? entry.path,
             body,
             origin: {
@@ -139,12 +145,22 @@ export function makeGithubProvider(client: GhClient = defaultClient()): SourcePr
         }
       }
 
+      // If there were prose files but EVERY blob fetch failed, this is a systemic
+      // failure (revoked scope, GitHub outage) — surface it so the job lands "failed"
+      // rather than a misleading empty "success". A repo with genuinely no prose
+      // (prose.length === 0) still returns [] normally.
+      if (prose.length > 0 && items.length === 0) {
+        throw new Error(`GitHub: all ${prose.length} content file(s) failed to fetch`);
+      }
+
       if (includeIssues && items.length < ctx.cap) {
         try {
           const issues = await client.listIssues(token, repo, ctx.cap - items.length);
           for (const issue of issues) {
             items.push({
-              sourceKey: `github:${repo}#${issue.number}@${issue.updated_at}`,
+              // Stable identity (no sha/updated_at) so re-dump detects content change
+              // via content_hash and updates in place (design D6).
+              sourceKey: `github:${repo}#${issue.number}`,
               title: `Issue #${issue.number}: ${issue.title}`,
               body: issue.body ?? "",
               origin: { type: "github", repo, path: `issues/${issue.number}`, ref: issue.updated_at, url: issue.html_url },

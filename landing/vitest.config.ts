@@ -13,9 +13,12 @@ export default defineConfig({
       SESSION_SECRET: "test-session-secret-at-least-32-chars-long",
       APP_ORIGIN: "http://localhost:5173",
       VAULT_KEY_SECRET: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
-      // Dummy key so the AI routes (gated on env.openaiConfigured) run offline
-      // and deterministically without a real OpenAI key. dotenv runs with
-      // override:false, so this also shadows any real local key during tests.
+      // A dummy, obviously-fake key so `env.openaiConfigured` is true in tests:
+      // the AI-route tests mock `openai.ts` (and the Dump tests inject enrich
+      // fakes), so no request ever reaches OpenAI — this value is never used for
+      // a real call, only to flip the config gate. Because dotenv runs with
+      // override:false, this also shadows any real key in a local `.env`, so the
+      // suite is deterministic and offline in every environment (CI included).
       OPENAI_API_KEY: "sk-test-dummy-not-a-real-key",
     },
   },

@@ -21,21 +21,25 @@ import { env } from "./env.ts";
 import { authRouter } from "./auth/routes.ts";
 import { notesRouter } from "./notes/routes.ts";
 import { aiRouter } from "./ai/routes.ts";
+import { dumpRouter } from "./dump/routes.ts";
+import { connectorsRouter } from "./connectors/routes.ts";
 import { linksRouter } from "./links/routes.ts";
 import { ensureCsrfCookie, csrfProtection } from "./auth/csrf.ts";
 import { resolveApiToken } from "./auth/pat.ts";
+import { ensureLocalSession } from "./auth/localSession.ts";
 import { tokensRouter } from "./tokens/routes.ts";
 import { memoryRouter } from "./memory/routes.ts";
 import { searchRouter } from "./search/routes.ts";
 import { activityRouter } from "./audit/routes.ts";
 import { mountMcp } from "./mcp/routes.ts";
-import { dumpRouter } from "./dump/routes.ts";
-import { connectorsRouter } from "./connectors/routes.ts";
 
 export function createApp(): Express {
   const app = express();
 
-  // Behind a reverse proxy (Render/Fly/Nginx) so req.ip and Secure cookies work.
+  // The server binds 127.0.0.1 only (see index.ts). trust proxy stays on for the
+  // one hop a local reverse proxy (TLS in front of loopback) would add; with no
+  // proxy it only means req.ip echoes X-Forwarded-For from local callers, which
+  // is harmless on a single-user loopback app.
   app.set("trust proxy", 1);
   app.disable("x-powered-by");
 
@@ -48,7 +52,6 @@ export function createApp(): Express {
   const scriptSrc = ["'self'", "'wasm-unsafe-eval'"];
   const connectSrc = [
     "'self'",
-    "https://accounts.google.com",
     "https://github.com",
     "https://api.github.com",
     "https://api.notion.com",
@@ -64,11 +67,11 @@ export function createApp(): Express {
           scriptSrc,
           styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
           fontSrc: ["'self'", "https://fonts.gstatic.com"],
-          imgSrc: ["'self'", "data:", "https://lh3.googleusercontent.com"],
+          imgSrc: ["'self'", "data:"],
           connectSrc,
           frameAncestors: ["'none'"],
           baseUri: ["'self'"],
-          formAction: ["'self'", "https://accounts.google.com"],
+          formAction: ["'self'"],
           objectSrc: ["'none'"],
         },
       },
@@ -101,6 +104,7 @@ export function createApp(): Express {
   });
 
   app.use("/api", resolveApiToken); // resolve bearer PAT → req.apiUser (before CSRF)
+  app.use("/api", ensureLocalSession); // no accounts: auto-attach the local owner
 
   /* --------------------------------- CSRF -------------------------------- */
   // Issue a CSRF cookie for any browser hitting the API, then enforce the
@@ -113,13 +117,13 @@ export function createApp(): Express {
 
   /* --------------------------------- routes ------------------------------ */
   app.get("/api/health", (_req: Request, res: Response) => {
-    res.json({ ok: true, googleConfigured: env.googleConfigured, aiConfigured: env.openaiConfigured });
+    res.json({ ok: true, aiConfigured: env.openaiConfigured });
   });
   app.use("/api/auth", authRouter);
   app.use("/api", notesRouter);
   app.use("/api/ai", aiRouter);
-  app.use("/api/dump", dumpRouter);
-  app.use("/api/connectors", connectorsRouter);
+  app.use("/api/dump", dumpRouter);          // P1
+  app.use("/api/connectors", connectorsRouter); // P4
   app.use("/api/links", linksRouter);
   app.use("/api/tokens", tokensRouter);
   app.use("/api/memory", memoryRouter);
@@ -152,7 +156,6 @@ export function createApp(): Express {
   /* ----------------------------- error handler --------------------------- */
   // Never leak stack traces or internal messages to clients. The 4-arg
   // signature is required for Express to treat this as an error handler.
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
     console.error("Unhandled error:", err);
     if (!res.headersSent) res.status(500).json({ error: "Internal server error" });

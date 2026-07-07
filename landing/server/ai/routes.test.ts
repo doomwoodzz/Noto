@@ -64,22 +64,13 @@ function makeClient() {
   return { req };
 }
 
-async function signup(email: string) {
+async function signup(_email: string) {
   const client = makeClient();
-  await client.req("GET", "/api/health");
-  const res = await client.req("POST", "/api/auth/signup", { email, password: "password123" });
-  expect(res.status).toBe(201);
+  await client.req("GET", "/api/auth/me");
   return client;
 }
 
 describe("ai API", () => {
-  it("rejects unauthenticated AI calls with 401", async () => {
-    const anon = makeClient();
-    await anon.req("GET", "/api/health");
-    const res = await anon.req("POST", "/api/ai/chat", { question: "hello" });
-    expect(res.status).toBe(401);
-  });
-
   it("validates the chat body", async () => {
     const a = await signup("ai-validate@example.com");
     const res = await a.req("POST", "/api/ai/chat", { question: "" });
@@ -154,6 +145,20 @@ describe("ai API", () => {
       question: "what is this?",
     });
     // 200 with the mocked OpenAI wrapper — but the guarantee we lock is: never 400.
+    expect(res.status).not.toBe(400);
+  });
+});
+
+describe("AI chat route — optional notePath (untrusted threading)", () => {
+  it("accepts an optional notePath without a 400 (schema is additive)", async () => {
+    const a = await signup(`ai-notepath-${crypto.randomUUID()}@example.com`);
+    const res = await a.req("POST", "/api/ai/chat", {
+      noteTitle: "Readme",
+      noteContent: "plain body",
+      notePath: "Dump/acme/Readme.md",
+      question: "what is this?",
+    });
+    // 200 (mock OpenAI) or 502/503 (AI unavailable) — but NOT 400 (schema rejected the field).
     expect(res.status).not.toBe(400);
   });
 });

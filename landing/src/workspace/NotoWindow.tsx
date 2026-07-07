@@ -2,16 +2,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "../styles/workspace.css";
 import { McpSettings } from "./McpSettings";
 import { DumpModal } from "./DumpModal";
+import type { DumpClient } from "./dumpClient";
 import { CreateVaultModal } from "./CreateVaultModal";
 import type { McpClient } from "./mcpClient";
-import type { DumpClient } from "./dumpClient";
 import { ActivityView } from "./ActivityView";
 import type { ActivityClient } from "./activityClient";
 import {
   buildGraph,
   buildMetadataCache,
   createLectureNote,
-  filterGraph,
   type VaultFile,
 } from "../noto-core";
 import type { Tab, VaultController } from "./types";
@@ -24,7 +23,8 @@ import { Sidebar } from "./Sidebar";
 import { WorkspacePanes } from "./Panes";
 import { NoteView } from "./NoteView";
 import { HomeView } from "./HomeView";
-import { GraphView } from "./GraphView";
+import { KnowledgeWeb } from "./graph/KnowledgeWeb";
+import { buildWebModel } from "./graph/webAdjacency";
 import { ContextPanel } from "./ContextPanel";
 import { NotoAI } from "./NotoAI";
 import { CommandPalette } from "./CommandPalette";
@@ -79,6 +79,11 @@ export function NotoWindow({
   const searchBoxRef = useRef<HTMLDivElement>(null);
   const [pendingReveal, setPendingReveal] = useState<{ fileId: string; text: string } | null>(null);
   const smart = useSmartSearch({ files, cache, vaultKey: persistKey ?? "demo", active: smartOpen });
+  const [smartHotId, setSmartHotId] = useState<string | null>(null);
+  const smartMatchIds = useMemo(
+    () => (smartOpen ? new Set(smart.results.map((r) => r.fileId)) : null),
+    [smartOpen, smart.results],
+  );
   const smartResetRef = useRef(smart.reset);
   useEffect(() => {
     smartOpenRef.current = smartOpen;
@@ -86,6 +91,7 @@ export function NotoWindow({
   });
   const closeSmart = useCallback(() => {
     setSmartOpen(false);
+    setSmartHotId(null);
     smartResetRef.current();
   }, []);
   const openSmartResult = useCallback(
@@ -164,10 +170,7 @@ export function NotoWindow({
   }, [files]);
 
   const currentMeta = cache.filesById[ws.currentNoteId];
-  const visibleGraph = useMemo(
-    () => filterGraph(fullGraph, ws.graphFilter, ws.currentNoteId),
-    [fullGraph, ws.graphFilter, ws.currentNoteId],
-  );
+  const webModel = useMemo(() => buildWebModel(fullGraph, files), [fullGraph, files]);
 
   const focusedTabs = ws.focused === "right" && ws.rightTabs ? ws.rightTabs : ws.leftTabs;
   const focusedActiveId = ws.focused === "right" && ws.rightTabs ? ws.rightActive : ws.leftActive;
@@ -246,12 +249,14 @@ export function NotoWindow({
     }
     if (tab.kind === "graph") {
       return (
-        <GraphView
-          graph={visibleGraph}
-          focusId={ws.currentNoteId}
-          filter={ws.graphFilter}
-          setFilter={ws.setGraphFilter}
-          onSelect={ws.openNote}
+        <KnowledgeWeb
+          model={webModel}
+          onOpenNote={ws.openNote}
+          persistKey={persistKey}
+          theme={controller.theme}
+          smartOpen={smartOpen}
+          smartMatchIds={smartMatchIds}
+          smartHotId={smartHotId}
         />
       );
     }
@@ -311,7 +316,6 @@ export function NotoWindow({
             account={controller.demo ? undefined : controller.account ?? null}
             theme={controller.theme}
             onToggleTheme={controller.onToggleTheme}
-            onLogout={controller.onLogout}
             onOpenConnect={mcpClient ? () => setMcpOpen(true) : undefined}
             onOpenDump={dumpClient ? () => setDumpOpen(true) : undefined}
             onOpenActivity={activityClient ? () => openActivity() : undefined}
@@ -360,6 +364,7 @@ export function NotoWindow({
           anchorRef={searchBoxRef}
           onClose={closeSmart}
           onOpenResult={openSmartResult}
+          onHoverResult={setSmartHotId}
         />
       )}
     </div>

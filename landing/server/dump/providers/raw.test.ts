@@ -57,8 +57,12 @@ describe("getProvider", () => {
   it("returns the raw provider for 'raw'", () => {
     expect(getProvider("raw")).toBe(rawProvider);
   });
-  it("returns providers for github and notion (registered in P4/P5)", () => {
-    expect(getProvider("github")).toBeTruthy();
-    expect(getProvider("notion")).toBeTruthy();
+  it("returns a provider for 'github' (registered in P4)", () => {
+    expect(getProvider("github")).toBeDefined();
+    expect(typeof getProvider("github").fetch).toBe("function");
+  });
+  it("returns a provider for 'notion' (registered in P5)", () => {
+    expect(getProvider("notion")).toBeDefined();
+    expect(typeof getProvider("notion").fetch).toBe("function");
   });
 });

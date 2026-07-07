@@ -55,7 +55,7 @@ describe("github provider", () => {
     const items = await provider.fetch(ctx(100));
     expect(items.map((i) => i.origin.path)).toEqual(["README.md", "docs/api.md", "docs/intro.md"]);
     expect(items[0].body).toBe("# Acme\n\nHello.");
-    expect(items[0].sourceKey).toBe("github:acme/widgets@r1:README.md");
+    expect(items[0].sourceKey).toBe("github:acme/widgets:README.md");
     expect(items[0].origin).toMatchObject({ type: "github", repo: "acme/widgets", ref: "r1", path: "README.md" });
     expect(items[0].origin.url).toBe("https://github.com/acme/widgets/blob/r1/README.md");
   });
@@ -78,7 +78,7 @@ describe("github provider", () => {
     const items = await provider.fetch({ userId: "u1", sourceRef: { repo: "acme/widgets", includeIssues: true }, cap: 100, onProgress: () => {} });
     const issue = items.find((i) => i.title.includes("Bug: crash"));
     expect(issue).toBeDefined();
-    expect(issue!.sourceKey).toBe("github:acme/widgets#7@2026-01-02T00:00:00Z");
+    expect(issue!.sourceKey).toBe("github:acme/widgets#7");
     expect(issue!.origin.url).toBe("https://github.com/acme/widgets/issues/7");
   });
 
@@ -93,5 +93,12 @@ describe("github provider", () => {
     );
     const items = await provider.fetch(ctx(100));
     expect(items.map((i) => i.origin.path)).toEqual(["README.md", "docs/intro.md"]);
+  });
+
+  it("throws when every prose blob fails (systemic failure, not an empty dump)", async () => {
+    const provider = makeGithubProvider(
+      fakeClient({ getBlob: async () => { throw new Error("500"); } }),
+    );
+    await expect(provider.fetch(ctx(100))).rejects.toThrow(/all .* content file/i);
   });
 });

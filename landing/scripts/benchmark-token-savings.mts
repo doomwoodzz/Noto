@@ -30,7 +30,6 @@ process.env.NODE_ENV ??= "development";
 import { writeFileSync, mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { randomUUID } from "node:crypto";
 import { encode } from "gpt-tokenizer/model/gpt-4o"; // o200k_base
 import { MEMORY_FIXTURE, QUERIES, makeSynthetic, NOTES_K, RECALL_K, RECALL_SCOPES, MEMORY_SCOPE, type Scenario } from "./bench-fixtures.mts";
 
@@ -50,8 +49,7 @@ const tok = (s: string) => encode(s).length;
 interface Seeded { userId: string; vaultId: string }
 
 async function seedUser(extraNotes: { path: string; title: string; content: string }[], extraMems: { text: string; type: string }[]): Promise<Seeded> {
-  const email = `bench-${randomUUID()}@example.com`;
-  const user = db.createUser({ email });
+  const user = db.ensureLocalOwner();
   const vault = db.createVault(user.id, { name: "School Vault" });
 
   const notes = [

@@ -2,14 +2,17 @@
 import { describe, it, expect } from "vitest";
 import {
   db,
-  createUser, createVault, createFile, getFilesForVault,
+  ensureLocalOwner, createVault, createFile, getFilesForVault,
   upsertNoteGraphState, getNoteGraphState, setNoteCommunities,
   replaceFileEdges, getVaultEdges, getStaleGraphVaultIds,
   deleteFile, deleteFileEdges,
 } from "./db.ts";
 
+// There is one local owner (see ensureLocalOwner in db.ts); each freshVault()
+// call gives that same owner a new, independent vault to isolate this test's
+// data, which is all these tests ever needed — none compares two users.
 function freshVault() {
-  const u = createUser({ email: `graph-${crypto.randomUUID()}@t.local` });
+  const u = ensureLocalOwner();
   const v = createVault(u.id, { name: "V" });
   return { userId: u.id, vaultId: v.id };
 }

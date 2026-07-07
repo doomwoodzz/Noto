@@ -6,7 +6,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { MetadataCache } from "../noto-core";
 import type { PaneId, PersistedWorkspace, Tab, TabKind, VaultController } from "./types";
-import type { WebFilter } from "./GraphView";
 
 interface Opts {
   controller: VaultController;
@@ -99,7 +98,6 @@ export function useWorkspace({ controller, cache, persistKey }: Opts) {
         focused: "left",
         openFolders: {},
         contextOpen: true,
-        graphFilter: "all",
       };
     };
     if (!persistKey) return fallback();
@@ -126,7 +124,6 @@ export function useWorkspace({ controller, cache, persistKey }: Opts) {
         focused: hasRight && parsed.focused === "right" ? "right" : "left",
         openFolders: parsed.openFolders ?? {},
         contextOpen: parsed.contextOpen ?? true,
-        graphFilter: parsed.graphFilter ?? "all",
       };
     } catch {
       return fallback();
@@ -141,7 +138,6 @@ export function useWorkspace({ controller, cache, persistKey }: Opts) {
   const [focused, setFocused] = useState<PaneId>(initial.focused);
   const [openFolders, setOpenFolders] = useState<Record<string, boolean>>(initial.openFolders);
   const [contextOpen, setContextOpen] = useState(initial.contextOpen);
-  const [graphFilter, setGraphFilter] = useState<WebFilter>(initial.graphFilter);
   const [query, setQuery] = useState("");
   const [lastNoteId, setLastNoteId] = useState(() => {
     const t = initial.leftTabs.find((x) => x.id === initial.leftActive);
@@ -152,14 +148,14 @@ export function useWorkspace({ controller, cache, persistKey }: Opts) {
   useEffect(() => {
     if (!persistKey) return;
     const snapshot: PersistedWorkspace = {
-      leftTabs, leftActive, rightTabs, rightActive, focused, openFolders, contextOpen, graphFilter,
+      leftTabs, leftActive, rightTabs, rightActive, focused, openFolders, contextOpen,
     };
     try {
       localStorage.setItem(`noto-ws:v1:${persistKey}`, JSON.stringify(snapshot));
     } catch {
       /* ignore quota / privacy-mode failures */
     }
-  }, [persistKey, leftTabs, leftActive, rightTabs, rightActive, focused, openFolders, contextOpen, graphFilter]);
+  }, [persistKey, leftTabs, leftActive, rightTabs, rightActive, focused, openFolders, contextOpen]);
 
   // Tabs referencing a deleted file are closed by `closeTabsForFile` (called
   // from the delete action) and pruned from any restored session in `initial`,
@@ -387,9 +383,9 @@ export function useWorkspace({ controller, cache, persistKey }: Opts) {
   return {
     // state
     leftTabs, leftActive, rightTabs, rightActive, focused,
-    openFolders, contextOpen, graphFilter, query, currentNoteId,
+    openFolders, contextOpen, query, currentNoteId,
     // setters
-    setQuery, setGraphFilter,
+    setQuery,
     toggleContext: () => setContextOpen((o) => !o),
     setContextOpen,
     toggleFolder,

@@ -42,7 +42,6 @@ export const aiRouter = Router();
 const noteContent = z.string().max(24_000); // ~6k tokens; bounds cost.
 const noteTitle = z.string().trim().max(200);
 const outline = z.string().max(12_000);
-
 const notePath = z.string().trim().max(240).optional();
 
 const chatSchema = z.object({

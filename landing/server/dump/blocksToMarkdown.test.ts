@@ -59,6 +59,21 @@ describe("blocksToMarkdown", () => {
     expect(md).toContain("\n```");
   });
 
+  it("widens the fence so code containing ``` can't break out into live markdown", () => {
+    const md = blocksToMarkdown([
+      block("code", { rich_text: rt("```\n# Injected Heading"), language: "" }),
+    ]);
+    const lines = md.split("\n");
+    // The opening + closing fences are widened to 4 backticks so the inner ```
+    // cannot terminate the block early; everything between them is code, and the
+    // "# Injected Heading" never escapes into a real markdown H1.
+    expect(lines[0]).toBe("````");
+    expect(lines[lines.length - 1]).toBe("````");
+    expect(md).toContain("# Injected Heading"); // preserved verbatim, inside the fence
+    const wideFences = lines.filter((l) => /^`{4,}$/.test(l));
+    expect(wideFences.length).toBe(2); // exactly one opening + one closing wide fence
+  });
+
   it("maps callouts to blockquotes and divider to ---", () => {
     const md = blocksToMarkdown([
       block("callout", { rich_text: rt("note this") }),

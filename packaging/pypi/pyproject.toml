@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "noto-app"
+version = "0.1.0"
+description = "Noto: a local-first Markdown notes workspace with an AI lecture-listening assistant. No accounts, no server to run — pip install noto-app, then run `noto`."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Environment :: Console",
+    "Topic :: Text Editors",
+]
+
+[project.urls]
+Homepage = "https://github.com/doomwoodzz/Noto"
+
+[project.scripts]
+noto = "noto_app.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["noto_app*"]
+exclude = ["tests*"]
+
+[tool.setuptools.package-data]
+noto_app = ["_vendor/**/*"]

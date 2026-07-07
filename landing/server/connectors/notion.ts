@@ -7,9 +7,7 @@
  * and never appears in a thrown error or a log line. `fetchImpl` is injectable
  * so unit tests run entirely offline.
  */
-import { lookup } from "node:dns/promises";
-import { isIP } from "node:net";
-import { isPrivateIp } from "../links/fetchMeta.ts";
+import { assertPublicHost } from "../links/fetchMeta.ts";
 
 const NOTION_VERSION = "2022-06-28";
 const API_BASE = "https://api.notion.com";
@@ -52,19 +50,6 @@ export interface NotionClient {
   search(input?: { query?: string; cursor?: string; pageSize?: number }): Promise<NotionSearchResult>;
   blockChildren(blockId: string, cursor?: string): Promise<NotionBlockChildren>;
   retrievePage(pageId: string): Promise<NotionPage>;
-}
-
-/** Resolve `host` and refuse if it maps to a private/loopback/link-local IP. */
-async function assertPublicHost(hostname: string): Promise<void> {
-  if (isIP(hostname)) {
-    if (isPrivateIp(hostname)) throw new Error("Refusing to reach a private address");
-    return;
-  }
-  const addrs = await lookup(hostname, { all: true });
-  if (addrs.length === 0) throw new Error("Host did not resolve");
-  for (const a of addrs) {
-    if (isPrivateIp(a.address)) throw new Error("Refusing to reach a private address");
-  }
 }
 
 export function makeNotionClient(token: string, fetchImpl: FetchImpl = fetch): NotionClient {

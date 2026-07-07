@@ -2,7 +2,7 @@
 //
 // Ported verbatim from the Claude Design handoff's `ic()` specs so the glyphs
 // match the mockup exactly, plus a few extras the real app needs (delete,
-// overflow, theme, logout, settings).
+// overflow, theme, settings).
 
 type Spec = [string, Record<string, string | number>][];
 
@@ -52,7 +52,6 @@ const ICONS: Record<string, Spec> = {
     ["path", { d: "M12 2v2" }], ["path", { d: "M12 20v2" }], ["path", { d: "M4 12H2" }], ["path", { d: "M22 12h-2" }],
     ["path", { d: "M5 5l1.5 1.5" }], ["path", { d: "M17.5 17.5L19 19" }], ["path", { d: "M19 5l-1.5 1.5" }], ["path", { d: "M6.5 17.5L5 19" }],
   ],
-  logout: [["path", { d: "M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3" }], ["path", { d: "M10 17l5-5-5-5" }], ["path", { d: "M15 12H3" }]],
   settings: [
     ["circle", { cx: 12, cy: 12, r: 3 }],
     ["path", { d: "M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.3 1a7 7 0 0 0-1.7-1l-.3-2.6h-4l-.3 2.6a7 7 0 0 0-1.7 1l-2.3-1-2 3.4 2 1.5a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.3-1a7 7 0 0 0 1.7 1l.3 2.6h4l.3-2.6a7 7 0 0 0 1.7-1l2.3 1 2-3.4-2-1.5a7 7 0 0 0 .1-1z" }],

@@ -1,5 +1,5 @@
-// Integration tests for the auth API guest path: skipping sign-in still yields
-// a real, isolated, session-backed account.
+// Integration tests for the local-first auth API: no accounts, no login — every
+// request is transparently attached to the single local-owner user.
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Server } from "node:http";
 import { createApp } from "../app.ts";
@@ -60,28 +60,19 @@ function makeClient() {
   return { req, cookies };
 }
 
-describe("auth API — guest sign-in skip", () => {
-  it("mints a session-backed guest account that /me recognises", async () => {
+describe("auth API — local-first, no accounts", () => {
+  it("auto-provisions a session-backed local owner on the first request", async () => {
     const c = makeClient();
-    await c.req("GET", "/api/health"); // prime CSRF cookie
-
-    const res = await c.req("POST", "/api/auth/guest");
-    expect(res.status).toBe(201);
-    const { user } = await res.json();
-    expect(user.id).toBeTruthy();
-    expect(user.displayName).toBe("Guest");
-    expect(c.cookies.has("noto_session")).toBe(true);
-
     const me = await c.req("GET", "/api/auth/me");
     expect(me.status).toBe(200);
-    const meBody = await me.json();
-    expect(meBody.user.id).toBe(user.id);
+    const { user } = await me.json();
+    expect(user.id).toBeTruthy();
+    expect(c.cookies.has("noto_session")).toBe(true);
   });
 
-  it("gives the guest a working, Welcome-seeded vault", async () => {
+  it("gives the local owner a working, Welcome-seeded vault", async () => {
     const c = makeClient();
-    await c.req("GET", "/api/health");
-    await c.req("POST", "/api/auth/guest");
+    await c.req("GET", "/api/auth/me"); // establishes the session
 
     const { vaults } = await (await c.req("GET", "/api/vaults")).json();
     expect(vaults).toHaveLength(1);
@@ -89,16 +80,25 @@ describe("auth API — guest sign-in skip", () => {
     expect(files.map((f: { title: string }) => f.title)).toContain("Welcome");
   });
 
-  it("isolates two guests from each other", async () => {
+  it("resolves two different browsers/clients to the same local owner", async () => {
     const a = makeClient();
-    await a.req("GET", "/api/health");
-    const aUser = (await (await a.req("POST", "/api/auth/guest")).json()).user;
+    const aUser = (await (await a.req("GET", "/api/auth/me")).json()).user;
 
     const b = makeClient();
-    await b.req("GET", "/api/health");
-    const bUser = (await (await b.req("POST", "/api/auth/guest")).json()).user;
+    const bUser = (await (await b.req("GET", "/api/auth/me")).json()).user;
 
-    expect(aUser.id).not.toBe(bUser.id);
-    expect(aUser.email).not.toBe(bUser.email);
+    // Different session cookies (each client got its own session)...
+    expect(a.cookies.get("noto_session")).not.toBe(b.cookies.get("noto_session"));
+    // ...but the same underlying local-owner user, since there is only one.
+    expect(aUser.id).toBe(bUser.id);
+  });
+
+  it("updates the local owner's theme preference", async () => {
+    const c = makeClient();
+    await c.req("GET", "/api/auth/me");
+    const res = await c.req("PATCH", "/api/auth/preferences", { theme: "dark" });
+    expect(res.status).toBe(200);
+    const me = await (await c.req("GET", "/api/auth/me")).json();
+    expect(me.user.theme).toBe("dark");
   });
 });

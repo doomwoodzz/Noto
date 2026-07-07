@@ -25,4 +25,33 @@ describe("provenance marker", () => {
     const body = "<!-- noto:source v=1 type=raw untrusted=1 -->\n" + Array(50).fill("line").join("\n");
     expect(parseProvenanceMarker(body)).toBeNull();
   });
+
+  it("finds the marker even with trailing blank lines", () => {
+    const m = buildProvenanceMarker({ type: "raw" }, 42);
+    const p = parseProvenanceMarker("# Title\n\nbody\n\n" + m + "\n\n\n\n");
+    expect(p?.type).toBe("raw");
+    expect(p?.untrusted).toBe(true);
+  });
+
+  it("fails closed: a marker with no untrusted field is still untrusted", () => {
+    // Hand-craft a marker missing the untrusted attribute.
+    const p = parseProvenanceMarker("body\n<!-- noto:source v=1 type=github repo=\"o/r\" dumpedAt=5 -->");
+    expect(p).not.toBeNull();
+    expect(p?.untrusted).toBe(true);
+    expect(p?.type).toBe("github");
+  });
+
+  it("parses a bare marker with no optional fields", () => {
+    const m = buildProvenanceMarker({ type: "notion" }, 7);
+    const p = parseProvenanceMarker(m);
+    expect(p?.type).toBe("notion");
+    expect(p?.untrusted).toBe(true);
+    expect(p?.dumpedAt).toBe(7);
+    expect(p?.repo).toBeUndefined();
+  });
+
+  it("round-trips values containing literal % and %22", () => {
+    const m = buildProvenanceMarker({ type: "raw", path: "a%b and %22c%22 literal" }, 1);
+    expect(parseProvenanceMarker(m)?.path).toBe("a%b and %22c%22 literal");
+  });
 });
