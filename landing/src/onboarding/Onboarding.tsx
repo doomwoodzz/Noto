@@ -78,7 +78,6 @@ export function Onboarding() {
             theme={theme}
             setTheme={setTheme}
             onNext={handleThemeContinue}
-            onBack={goBack}
           />
         )}
         {step === "command" && (

@@ -13,12 +13,10 @@ export function ThemeScreen({
   theme,
   setTheme,
   onNext,
-  onBack,
 }: {
   theme: Theme;
   setTheme: (t: Theme) => void;
   onNext: () => void;
-  onBack: () => void;
 }) {
   const reveal = useReveal();
   return (
@@ -48,7 +46,6 @@ export function ThemeScreen({
           Continue
           <ArrowRight size={17} />
         </button>
-        <button className="ob-btn ob-btn-quiet" onClick={onBack}>Back</button>
       </div>
     </div>
   );
