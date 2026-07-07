@@ -44,6 +44,7 @@ const PROD_DEPENDENCIES = [
   "helmet",
   "openai",
   "tsx",
+  "undici",
   "zod",
 ];
 

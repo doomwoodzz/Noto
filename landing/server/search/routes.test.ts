@@ -65,6 +65,31 @@ describe("GET /api/search — untrusted tagging (§10.3 L2)", () => {
     expect(dumped?.untrustedNote).toMatch(/untrusted/i);
     expect(normal?.untrusted).toBeUndefined();
   });
+
+  // §10.3 L2: results from dumped (Dump/-pathed) notes are tagged untrusted at
+  // the source so both MCP surfaces relay the flag.
+  it("tags Dump/ results untrusted and leaves normal notes untagged", async () => {
+    const cookie = await signup(s.baseURL, `search-untrusted-${crypto.randomUUID()}@t.local`);
+    const { vaults } = await (await cookie.req("GET", "/api/vaults")).json();
+    const vaultId = vaults[0].id;
+    await cookie.req("POST", `/api/vaults/${vaultId}/files`, {
+      path: "Dump/acme/Photon.md", title: "Photon Dump",
+      content: "# Photon Dump\n\nquantum photon energy notes.",
+    });
+    await cookie.req("POST", `/api/vaults/${vaultId}/files`, {
+      path: "Notes/Photon.md", title: "Photon Notes",
+      content: "# Photon Notes\n\nquantum photon energy notes.",
+    });
+    const pat = makePatClient(s.baseURL, await mintToken(cookie, ["read"], "r"));
+    const { results } = (await (await pat.req("GET", "/api/search?q=photon&limit=10")).json()) as {
+      results: { path: string; untrusted?: boolean; untrustedNote?: string }[];
+    };
+    const dumpHit = results.find((r) => r.path?.startsWith("Dump/"));
+    const noteHit = results.find((r) => r.path === "Notes/Photon.md");
+    expect(dumpHit?.untrusted).toBe(true);
+    expect(dumpHit?.untrustedNote).toMatch(/untrusted/i);
+    expect(noteHit?.untrusted).toBeUndefined();
+  });
 });
 
 describe("GET /api/notes", () => {

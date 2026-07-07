@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { extractMetadata, isPrivateIp } from "./fetchMeta.ts";
+import type dns from "node:dns";
+import { extractMetadata, guardedLookup, isPrivateIp } from "./fetchMeta.ts";
 
 describe("extractMetadata", () => {
   it("pulls Open Graph metadata and resolves relative URLs", () => {
@@ -88,5 +89,26 @@ describe("isPrivateIp (SSRF guard)", () => {
     for (const ip of ["2606:4700:4700::1111", "2001:4860:4860::8888"]) {
       expect(isPrivateIp(ip), ip).toBe(false);
     }
+  });
+});
+
+describe("guardedLookup (DNS-rebinding guard)", () => {
+  const resolve = (hostname: string, options: dns.LookupOptions = {}) =>
+    new Promise<{ err: NodeJS.ErrnoException | null; address: string | dns.LookupAddress[] }>(
+      (done) => {
+        guardedLookup(hostname, options, (err, address) => done({ err, address }));
+      },
+    );
+
+  it("errors instead of yielding an address when the host resolves privately", async () => {
+    // localhost resolves to loopback everywhere; the connector must never see it.
+    const { err } = await resolve("localhost");
+    expect(err).toBeTruthy();
+    expect(err?.message).toMatch(/private address/);
+  });
+
+  it("errors for hosts that do not resolve", async () => {
+    const { err } = await resolve("definitely-not-a-real-host.invalid");
+    expect(err).toBeTruthy();
   });
 });
