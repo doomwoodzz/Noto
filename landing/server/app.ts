@@ -26,6 +26,7 @@ import { connectorsRouter } from "./connectors/routes.ts";
 import { linksRouter } from "./links/routes.ts";
 import { ensureCsrfCookie, csrfProtection } from "./auth/csrf.ts";
 import { resolveApiToken } from "./auth/pat.ts";
+import { ensureLocalSession } from "./auth/localSession.ts";
 import { tokensRouter } from "./tokens/routes.ts";
 import { memoryRouter } from "./memory/routes.ts";
 import { searchRouter } from "./search/routes.ts";
@@ -101,6 +102,7 @@ export function createApp(): Express {
   });
 
   app.use("/api", resolveApiToken); // resolve bearer PAT → req.apiUser (before CSRF)
+  app.use("/api", ensureLocalSession); // no accounts: auto-attach the local owner
 
   /* --------------------------------- CSRF -------------------------------- */
   // Issue a CSRF cookie for any browser hitting the API, then enforce the
