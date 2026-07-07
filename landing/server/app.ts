@@ -36,7 +36,10 @@ import { mountMcp } from "./mcp/routes.ts";
 export function createApp(): Express {
   const app = express();
 
-  // Behind a reverse proxy (Render/Fly/Nginx) so req.ip and Secure cookies work.
+  // The server binds 127.0.0.1 only (see index.ts). trust proxy stays on for the
+  // one hop a local reverse proxy (TLS in front of loopback) would add; with no
+  // proxy it only means req.ip echoes X-Forwarded-For from local callers, which
+  // is harmless on a single-user loopback app.
   app.set("trust proxy", 1);
   app.disable("x-powered-by");
 
