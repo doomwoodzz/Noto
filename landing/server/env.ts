@@ -42,11 +42,6 @@ const schema = z.object({
   /** Session lifetime in days. */
   SESSION_TTL_DAYS: z.coerce.number().int().positive().default(30),
 
-  /** Google OAuth — optional; the button is inert until these are provided. */
-  GOOGLE_CLIENT_ID: z.string().optional(),
-  GOOGLE_CLIENT_SECRET: z.string().optional(),
-  GOOGLE_REDIRECT_URI: z.string().url().optional(),
-
   /** GitHub App connector — optional; the feature returns 503 until these are set. */
   GITHUB_APP_ID: z.string().optional(),
   GITHUB_APP_PRIVATE_KEY: z.string().optional(),   // PEM (with literal \n or real newlines)
@@ -141,9 +136,6 @@ export const env = {
   ...raw,
   isProd,
   SESSION_SECRET: sessionSecret,
-  googleConfigured: Boolean(
-    raw.GOOGLE_CLIENT_ID && raw.GOOGLE_CLIENT_SECRET && raw.GOOGLE_REDIRECT_URI,
-  ),
   openaiConfigured: Boolean(raw.OPENAI_API_KEY),
   githubConfigured: Boolean(
     raw.GITHUB_APP_ID && raw.GITHUB_APP_PRIVATE_KEY && raw.GITHUB_CLIENT_ID && raw.GITHUB_CLIENT_SECRET && raw.GITHUB_REDIRECT_URI,

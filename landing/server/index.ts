@@ -10,11 +10,9 @@ import { startDumpWorker } from "./dump/jobs.ts";
 
 const app = createApp();
 
-app.listen(env.PORT, () => {
-  console.log(`▶ Noto server on http://localhost:${env.PORT} (${env.NODE_ENV})`);
-  if (!env.googleConfigured) {
-    console.log("  Google OAuth: not configured (set GOOGLE_CLIENT_ID/SECRET/REDIRECT_URI to enable).");
-  }
+const HOST = "127.0.0.1";
+app.listen(env.PORT, HOST, () => {
+  console.log(`▶ Noto server on http://${HOST}:${env.PORT} (${env.NODE_ENV})`);
   warm();
   startDumpWorker();
   void (async () => {

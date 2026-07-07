@@ -49,7 +49,6 @@ export function createApp(): Express {
   const scriptSrc = ["'self'", "'wasm-unsafe-eval'"];
   const connectSrc = [
     "'self'",
-    "https://accounts.google.com",
     "https://github.com",
     "https://api.github.com",
     "https://api.notion.com",
@@ -65,11 +64,11 @@ export function createApp(): Express {
           scriptSrc,
           styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
           fontSrc: ["'self'", "https://fonts.gstatic.com"],
-          imgSrc: ["'self'", "data:", "https://lh3.googleusercontent.com"],
+          imgSrc: ["'self'", "data:"],
           connectSrc,
           frameAncestors: ["'none'"],
           baseUri: ["'self'"],
-          formAction: ["'self'", "https://accounts.google.com"],
+          formAction: ["'self'"],
           objectSrc: ["'none'"],
         },
       },
@@ -115,7 +114,7 @@ export function createApp(): Express {
 
   /* --------------------------------- routes ------------------------------ */
   app.get("/api/health", (_req: Request, res: Response) => {
-    res.json({ ok: true, googleConfigured: env.googleConfigured, aiConfigured: env.openaiConfigured });
+    res.json({ ok: true, aiConfigured: env.openaiConfigured });
   });
   app.use("/api/auth", authRouter);
   app.use("/api", notesRouter);
