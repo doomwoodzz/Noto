@@ -16,9 +16,12 @@ also update a hash table here.
 from __future__ import annotations
 
 import hashlib
+import os
 import platform
+import shutil
 import stat
 import tarfile
+import tempfile
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -61,7 +64,9 @@ def _archive_name(os_name: str, arch: str) -> str:
 
 
 def _download(url: str, dest: Path) -> None:
-    with urllib.request.urlopen(url) as resp, open(dest, "wb") as f:
+    # Without a timeout, urlopen inherits the global socket default (None),
+    # so a stalled connection would hang the first launch forever.
+    with urllib.request.urlopen(url, timeout=60) as resp, open(dest, "wb") as f:
         while True:
             chunk = resp.read(1024 * 1024)
             if not chunk:
@@ -133,7 +138,32 @@ def ensure_node_runtime(cache_dir: Path) -> Path:
     _download(f"{DIST_BASE}/SHASUMS256.txt", checksums_path)
     _verify_checksum(archive_path, archive_name, checksums_path)
 
-    _extract(archive_path, cache_dir)
+    # Constraint: the `node_bin.exists()` fast path above treats the presence
+    # of the node binary as proof of a complete install — and node.exe lands
+    # near the *start* of the Windows zip, so an interrupted in-place
+    # extraction could strand a node binary with no npm/node_modules that
+    # every future run would happily return. Extraction therefore stages into
+    # a temp dir under cache_dir (same filesystem) and the finished tree is
+    # moved into place with a single atomic os.replace(): install_dir either
+    # doesn't exist or is complete, never half-populated.
+    staging_dir = Path(tempfile.mkdtemp(dir=cache_dir, prefix=".node-staging-"))
+    try:
+        _extract(archive_path, staging_dir)
+        staged_root = staging_dir / install_dir.name
+        if not staged_root.is_dir():
+            raise NodeRuntimeError(
+                f"Archive {archive_name} did not contain expected root {install_dir.name}"
+            )
+        if install_dir.exists():
+            # Leftover from an interrupted run (node_bin was missing above,
+            # otherwise we'd have returned already): replace it wholesale.
+            shutil.rmtree(install_dir)
+        os.replace(staged_root, install_dir)
+    finally:
+        # On success this removes the emptied staging dir; on failure it also
+        # discards the partial extraction.
+        shutil.rmtree(staging_dir, ignore_errors=True)
+
     archive_path.unlink()
     checksums_path.unlink()
 
