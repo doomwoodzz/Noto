@@ -71,6 +71,12 @@ def _ensure_app_installed(node_bin: Path, install_dir: Path) -> None:
         return  # already installed for this exact vendored bundle
 
     print("Setting up Noto (first run only, this can take a minute)...")
+    # Replace the app-code trees rather than merging over them: a merge would
+    # accumulate stale content-hashed dist/ assets and deleted/renamed server/
+    # files across upgrades. node_modules/ stays — `npm ci` wipes and rebuilds
+    # it itself.
+    shutil.rmtree(install_dir / "dist", ignore_errors=True)
+    shutil.rmtree(install_dir / "server", ignore_errors=True)
     shutil.copytree(VENDOR_DIR, install_dir, dirs_exist_ok=True)
     subprocess.run(
         [str(node_bin), str(_npm_cli_js(node_bin)), "ci", "--omit=dev", "--no-audit", "--no-fund"],
@@ -119,6 +125,9 @@ def main() -> None:
     try:
         proc.wait()
     except KeyboardInterrupt:
+        # Ctrl+C stops the server too. If the parent is SIGKILLed instead
+        # (uncatchable), the node child is orphaned and keeps running —
+        # accepted for a foreground local tool.
         proc.terminate()
         proc.wait()
         sys.exit(0)
