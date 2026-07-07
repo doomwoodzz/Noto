@@ -26,7 +26,6 @@ process.env.NODE_ENV ??= "development";
 import { writeFileSync, mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { randomUUID } from "node:crypto";
 import { encode } from "gpt-tokenizer/model/gpt-4o";
 import { MEMORY_FIXTURE, QUERIES, NOTES_K, RECALL_K, RECALL_SCOPES, MEMORY_SCOPE } from "./bench-fixtures.mts";
 
@@ -48,7 +47,7 @@ const openai = getOpenAI();
 if (!openai) { console.error("OPENAI_API_KEY not configured — cannot run the output-token benchmark."); process.exit(1); }
 
 // ───────────────────────────────────────────────────────────── seed
-const user = db.createUser({ email: `out-bench-${randomUUID()}@example.com` });
+const user = db.ensureLocalOwner();
 const vault = db.createVault(user.id, { name: "School Vault" });
 for (const f of NotoData.files as { path: string; title: string; content: string }[]) {
   const file = db.createFile(vault.id, { path: f.path, title: f.title, content: f.content });

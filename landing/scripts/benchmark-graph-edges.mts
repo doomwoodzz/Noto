@@ -18,7 +18,7 @@ import { encode } from "gpt-tokenizer/model/gpt-4o";
 const dir = mkdtempSync(join(tmpdir(), "noto-bench-graph-"));
 process.env.DATABASE_PATH = join(dir, "bench.sqlite");
 
-const { createUser, createVault, createFile } = await import("../server/db.ts");
+const { ensureLocalOwner, createVault, createFile } = await import("../server/db.ts");
 const { setEmbedder } = await import("../server/search/embedder.ts");
 const { reembedNote } = await import("../server/search/embedNote.ts");
 const { rebuildVaultGraph } = await import("../server/graph/build.ts");
@@ -43,7 +43,7 @@ setEmbedder({
   },
 });
 
-const user = createUser({ email: `bench-${crypto.randomUUID()}@t.local` });
+const user = ensureLocalOwner();
 const vault = createVault(user.id, { name: "Bench Vault" });
 
 const TOPICS = ["Photosynthesis", "Mitochondria", "Cold War", "Logarithms", "Enzymes"];

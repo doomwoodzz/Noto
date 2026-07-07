@@ -65,7 +65,7 @@ const tok = (s: string) => encode(s).length;
 // ───────────────────────────────────────────── seeding (mirrors benchmark-token-savings.mts)
 interface FileState { id: string; path: string; title: string; content: string }
 
-const user = db.createUser({ email: `bench-agentic-${randomUUID()}@example.com` });
+const user = db.ensureLocalOwner();
 const vault = db.createVault(user.id, { name: "School Vault" });
 
 const files = new Map<string, FileState>(); // keyed by title

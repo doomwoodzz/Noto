@@ -24,7 +24,6 @@ if (!process.env.OPENAI_API_KEY) process.env.OPENAI_API_KEY = "stub";
 import { writeFileSync, mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { randomUUID } from "node:crypto";
 import { encode } from "gpt-tokenizer/model/gpt-4o";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -51,7 +50,7 @@ const STUB_OUT: Record<string, number> = {
 
 // ── seed DB ──────────────────────────────────────────────────────────────────
 
-const user = db.createUser({ email: `bench-cat-${randomUUID()}@example.com` });
+const user = db.ensureLocalOwner();
 const vault = db.createVault(user.id, { name: "Benchmark Vault" });
 const files = NotoData.files as { path: string; title: string; content: string }[];
 for (const f of files) db.createFile(vault.id, { path: f.path, title: f.title, content: f.content });
