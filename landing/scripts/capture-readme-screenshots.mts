@@ -149,6 +149,14 @@ async function captureDumpImport(page: Page): Promise<void> {
   await page.waitForSelector(".nw-dump-manifest", { state: "hidden", timeout: 20_000 });
 }
 
+async function captureKnowledgeWeb(page: Page): Promise<void> {
+  await page.getByRole("button", { name: "Knowledge Web" }).click();
+  // Canvas force-directed layout — no DOM "loaded" signal to await; a fixed
+  // settle time is the pragmatic choice here.
+  await page.waitForTimeout(3000);
+  await page.screenshot({ path: path.join(OUT_DIR, "03-knowledge-web.png") });
+}
+
 async function main(): Promise<void> {
   await mkdir(OUT_DIR, { recursive: true });
 
@@ -165,6 +173,9 @@ async function main(): Promise<void> {
 
   await captureDumpImport(page);
   console.log("captured: 06-dump-import.png");
+
+  await captureKnowledgeWeb(page);
+  console.log("captured: 03-knowledge-web.png");
 
   await browser.close();
 }
