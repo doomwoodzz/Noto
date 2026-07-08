@@ -220,6 +220,28 @@ async function captureAIAssistant(page: Page): Promise<void> {
   await page.screenshot({ path: path.join(OUT_DIR, "04-ai-assistant.png") });
 }
 
+async function captureSmartSearch(page: Page): Promise<void> {
+  await page.keyboard.press("Meta+Shift+F");
+  // Not `getByPlaceholder(/search/i)`: the title bar's own filename filter
+  // (TitleBar.tsx, aria-label "Search notes") also matches that regex and is
+  // always mounted, earlier in the DOM than this conditionally-rendered
+  // panel — `.first()` would silently resolve to the wrong input. The Smart
+  // Search panel's actual query input has a distinct, unambiguous
+  // aria-label (SmartSearchPanel.tsx: aria-label="Smart search").
+  await page.getByLabel("Smart search").fill("getting machines to agree on one answer");
+  // First activation lazily loads the local MiniLM model into the page —
+  // a fixed wait is the pragmatic choice for this one-time load + the
+  // 200ms debounce on top of it. Measured directly in this environment: the
+  // "Preparing semantic search…" progress bar and lexical-fallback results
+  // hold until ~11.4s, and the "Semantic" mode badge (source === "embedding")
+  // doesn't land until ~13.7s — 4s only ever captures the instant lexical
+  // fallback, not real semantic results. 16s gives comfortable margin above
+  // the measured settle time for the one-time model load.
+  await page.waitForTimeout(16_000);
+  await page.screenshot({ path: path.join(OUT_DIR, "05-smart-search.png") });
+  await page.keyboard.press("Escape");
+}
+
 async function main(): Promise<void> {
   await mkdir(OUT_DIR, { recursive: true });
 
@@ -242,6 +264,9 @@ async function main(): Promise<void> {
 
   await captureAIAssistant(page);
   console.log("captured: 04-ai-assistant.png");
+
+  await captureSmartSearch(page);
+  console.log("captured: 05-smart-search.png");
 
   await browser.close();
 }
