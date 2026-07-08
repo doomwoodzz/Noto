@@ -10,6 +10,7 @@
 // Usage: `npm run capture:readme`
 
 import { chromium, type Page } from "playwright";
+import { existsSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -100,6 +101,15 @@ async function captureWorkspace(page: Page): Promise<void> {
 }
 
 async function captureDumpImport(page: Page): Promise<void> {
+  const outPath = path.join(OUT_DIR, "06-dump-import.png");
+  if (existsSync(outPath)) {
+    // Dump's duplicate-detection means re-submitting the identical syllabus
+    // on a second run leaves every manifest row disabled (nothing left to
+    // commit) — this function only works once per vault. Skip it once we
+    // already have the screenshot from an earlier run.
+    console.log("06-dump-import.png already exists — skipping Dump import (not safely re-runnable)");
+    return;
+  }
   // Open the account menu, then "Dump into Noto…" (exact trailing ellipsis
   // character, not three periods — see Sidebar.tsx AccountFooter).
   await page.locator(".nw-account-btn").click();
@@ -154,6 +164,31 @@ async function captureKnowledgeWeb(page: Page): Promise<void> {
   // Canvas force-directed layout — no DOM "loaded" signal to await; a fixed
   // settle time is the pragmatic choice here.
   await page.waitForTimeout(3000);
+
+  // The graph's camera starts at a hardcoded low zoom (cam.s = 0.6, see
+  // webEngine.ts) with no auto-fit-to-content and no fit/reset button in the
+  // UI — at this vault's node count the unzoomed graph is a tiny, illegible
+  // blob. Zoom in by simulating a wheel scroll centered on the node cluster,
+  // the same interaction a real user would use (it's the only zoom
+  // mechanism the UI exposes). The engine's wheel handler computes
+  // `newScale = cam.s * exp(-deltaY * 0.0014)` (webEngine.ts's onWheel), so
+  // deltaY is chosen to land near a legible ~2x-2.5x scale from the 0.6
+  // starting point.
+  const canvas = page.locator("canvas").first();
+  const box = await canvas.boundingBox();
+  if (box) {
+    // Empirically (confirmed via a pre-zoom screenshot), the dense Lectures
+    // cluster for this vault renders left-of-center and slightly below
+    // vertical center of the canvas at the default camera position — adjust
+    // these fractions if your screenshot shows the zoom centered on empty
+    // space instead of the node cluster.
+    const zoomX = box.x + box.width * 0.32;
+    const zoomY = box.y + box.height * 0.57;
+    await page.mouse.move(zoomX, zoomY);
+    await page.mouse.wheel(0, -900);
+    await page.waitForTimeout(500);
+  }
+
   await page.screenshot({ path: path.join(OUT_DIR, "03-knowledge-web.png") });
 }
 
