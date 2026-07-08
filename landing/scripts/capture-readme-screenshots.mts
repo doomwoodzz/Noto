@@ -11,7 +11,7 @@
 
 import { chromium, type Page } from "playwright";
 import { existsSync } from "node:fs";
-import { mkdir } from "node:fs/promises";
+import { mkdir, writeFile, unlink } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -242,6 +242,32 @@ async function captureSmartSearch(page: Page): Promise<void> {
   await page.keyboard.press("Escape");
 }
 
+async function captureHeroComposite(page: Page): Promise<void> {
+  const leftPath = path.join(OUT_DIR, "02-workspace.png");
+  const rightPath = path.join(OUT_DIR, "03-knowledge-web.png");
+  const html = `<!doctype html>
+<html><head><style>
+  html, body { margin: 0; padding: 0; background: #0d0d12; }
+  .row { display: flex; width: 1600px; height: 500px; }
+  .row img { width: 800px; height: 500px; object-fit: cover; object-position: top; }
+</style></head>
+<body>
+  <div class="row">
+    <img src="file://${leftPath}" />
+    <img src="file://${rightPath}" />
+  </div>
+</body></html>`;
+  const heroHtmlPath = path.join(OUT_DIR, "_hero-compose.html");
+  await writeFile(heroHtmlPath, html, "utf8");
+
+  const heroPage = await page.context().newPage();
+  await heroPage.setViewportSize({ width: 1600, height: 500 });
+  await heroPage.goto(`file://${heroHtmlPath}`);
+  await heroPage.waitForTimeout(300); // let both <img>s finish decoding
+  await heroPage.screenshot({ path: path.join(OUT_DIR, "01-hero.png") });
+  await heroPage.close();
+}
+
 async function main(): Promise<void> {
   await mkdir(OUT_DIR, { recursive: true });
 
@@ -268,7 +294,11 @@ async function main(): Promise<void> {
   await captureSmartSearch(page);
   console.log("captured: 05-smart-search.png");
 
+  await captureHeroComposite(page);
+  console.log("captured: 01-hero.png");
+
   await browser.close();
+  await unlink(path.join(OUT_DIR, "_hero-compose.html")).catch(() => {});
 }
 
 main().catch((err) => {
