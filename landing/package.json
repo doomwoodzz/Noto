@@ -25,7 +25,9 @@
     "benchmark:output": "tsx scripts/benchmark-output-tokens.mts",
     "benchmark:output-savings": "tsx scripts/benchmark-output-savings.mts",
     "benchmark:categories": "tsx scripts/benchmark-categories.mts",
-    "benchmark:graph-edges": "tsx scripts/benchmark-graph-edges.mts"
+    "benchmark:graph-edges": "tsx scripts/benchmark-graph-edges.mts",
+    "seed:demo-vault": "tsx scripts/seed-demo-vault.mts",
+    "capture:readme": "tsx scripts/capture-readme-screenshots.mts"
   },
   "dependencies": {
     "@huggingface/transformers": "^3.8.1",
@@ -61,6 +63,7 @@
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.6.0",
     "gpt-tokenizer": "^3.4.0",
+    "playwright": "^1.61.1",
     "postcss": "^8.5.15",
     "tailwindcss": "^4.3.0",
     "tsx": "^4.22.4",
