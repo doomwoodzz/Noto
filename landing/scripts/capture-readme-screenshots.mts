@@ -193,6 +193,13 @@ async function captureKnowledgeWeb(page: Page): Promise<void> {
 }
 
 async function captureAIAssistant(page: Page): Promise<void> {
+  const outPath = path.join(OUT_DIR, "04-ai-assistant.png");
+  if (existsSync(outPath)) {
+    // This makes a real, billable OpenAI API call every time — skip it once
+    // we already have the screenshot from an earlier run.
+    console.log("04-ai-assistant.png already exists — skipping AI Assistant capture (avoids repeat API cost)");
+    return;
+  }
   await openLectureNote(page, "Consensus");
   await page.locator(".nw-ask-ai").click();
 
