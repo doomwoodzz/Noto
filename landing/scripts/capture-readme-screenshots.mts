@@ -192,6 +192,27 @@ async function captureKnowledgeWeb(page: Page): Promise<void> {
   await page.screenshot({ path: path.join(OUT_DIR, "03-knowledge-web.png") });
 }
 
+async function captureAIAssistant(page: Page): Promise<void> {
+  await openLectureNote(page, "Consensus");
+  await page.locator(".nw-ask-ai").click();
+
+  const [summarizeResponse] = await Promise.all([
+    page.waitForResponse(
+      (res) => res.url().includes("/api/ai/summarize") && res.request().method() === "POST",
+      { timeout: 30_000 },
+    ),
+    page.getByRole("button", { name: "Summarize note" }).click(),
+  ]);
+  if (!summarizeResponse.ok()) {
+    throw new Error(
+      `POST /api/ai/summarize -> ${summarizeResponse.status()}: ${await summarizeResponse.text()}. ` +
+        "Is OPENAI_API_KEY set in landing/.env and is the dev server using it?",
+    );
+  }
+  await page.waitForTimeout(500); // let the reply finish rendering into the panel
+  await page.screenshot({ path: path.join(OUT_DIR, "04-ai-assistant.png") });
+}
+
 async function main(): Promise<void> {
   await mkdir(OUT_DIR, { recursive: true });
 
@@ -211,6 +232,9 @@ async function main(): Promise<void> {
 
   await captureKnowledgeWeb(page);
   console.log("captured: 03-knowledge-web.png");
+
+  await captureAIAssistant(page);
+  console.log("captured: 04-ai-assistant.png");
 
   await browser.close();
 }
