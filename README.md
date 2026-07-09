@@ -130,8 +130,10 @@ entirely, the same way it would for any other API client.
 
 Noto's MCP memory layer (semantic retrieval + response caching) cuts token usage
 on agentic coding sessions by ~78% combined versus a naive full-vault-dump
-baseline. See [`docs/benchmarks/`](docs/benchmarks/) for the full methodology and
-the rest of the benchmark charts.
+baseline — driven mostly by input-side retrieval savings (~80%); output-side
+savings from response caching are more modest (~34%). See
+[`docs/benchmarks/`](docs/benchmarks/) for the full input/output breakdown and
+methodology.
 
 ## Developing
 
