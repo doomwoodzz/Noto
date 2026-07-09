@@ -100,7 +100,7 @@ see [Architecture](#architecture) below for how that fits together.
 | Local-first (data lives on your disk) | ✅ | ✅ | ❌ | ✅ | ❌ |
 | No account / sign-in required | ✅ | ✅ | ❌ | ✅ | ❌ |
 | Open source | ✅ | ❌ | ❌ | ✅ | ❌ |
-| Built-in AI (chat, lecture transcription, flashcards) | ✅ | plugin-only | ✅ (paid tier) | plugin-only | ✅ (25 msgs/mo free, paid for unlimited) |
+| Built-in AI (chat, lecture transcription, flashcards) | ✅ (bring your own API key) | plugin-only | ✅ (paid tier) | plugin-only | ✅ (25 msgs/mo free, paid for unlimited) |
 | Knowledge graph view | ✅ | ✅ | ❌ | ✅ | ❌ |
 | MCP / AI-agent bridge | ✅ | ❌ | ✅ (official, hosted) | ✅ (official, DB-version beta) | ✅ (official, hosted) |
 
