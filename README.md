@@ -102,7 +102,7 @@ see [Architecture](#architecture) below for how that fits together.
 | Open source | ✅ | ❌ | ❌ | ✅ | ❌ |
 | Built-in AI (chat, lecture transcription, flashcards) | ✅ | plugin-only | ✅ (paid tier) | plugin-only | ✅ (core) |
 | Knowledge graph view | ✅ | ✅ | ❌ | ✅ | ❌ |
-| MCP / AI-agent bridge | ✅ | ❌ | ❌ | ❌ | ❌ |
+| MCP / AI-agent bridge | ✅ | ❌ | ✅ (official, hosted) | ❌ | ❌ |
 
 ## Architecture
 
