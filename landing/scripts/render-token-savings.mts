@@ -18,7 +18,7 @@ const AGENTIC_PATH = resolve(OUT_DIR, "agentic-results.json");
 const agentic = existsSync(AGENTIC_PATH) ? JSON.parse(readFileSync(AGENTIC_PATH, "utf8")) : null;
 
 // palette
-const C = { base: "#e0533d", opt: "#2f9e6f", grid: "#e6e6e6", axis: "#8a8a8a", text: "#2b2b2b", muted: "#777", line2: "#3b6fd4" };
+const C = { base: "#f5a623", opt: "#863bff", grid: "#2a2635", axis: "#6a6480", text: "#ede6ff", muted: "#9a94ab", line2: "#47bfff" };
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const fmt = (n: number) => Math.round(n).toLocaleString();
 const pct = (n: number) => `${(n * 100).toFixed(1)}%`;
@@ -116,7 +116,7 @@ function chartScaling(): string {
 }
 
 // ───────────────────────────────────────────── agentic charts (input + output)
-const C2 = { noto: "#2f9e6f", obs: "#e0533d", in: "#3b6fd4", out: "#d98a1f" };
+const C2 = { noto: "#863bff", obs: "#f5a623", in: "#863bff", out: "#47bfff" };
 
 /** Platform comparison: two independently-scaled panels (input | output), Noto vs
  *  Obsidian. Separate scales so the ~28× smaller output bars stay legible. */
@@ -218,7 +218,7 @@ function chartOutputScaling(): string {
 
 function svg(w: number, h: number, title: string, body: string): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" font-family="-apple-system,Segoe UI,Roboto,sans-serif">
-<rect width="${w}" height="${h}" fill="#ffffff"/>
+<rect width="${w}" height="${h}" fill="#0d0d12"/>
 <text x="${w / 2}" y="24" text-anchor="middle" font-size="15" font-weight="600" fill="${C.text}">${esc(title)}</text>
 ${body}
 </svg>`;

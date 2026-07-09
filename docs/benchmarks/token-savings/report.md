@@ -1,6 +1,6 @@
 # Noto — Shared-Memory Token-Savings Benchmark
 
-_Generated 2026-06-30T14:28:58.830Z · tokenizer: gpt-tokenizer o200k_base (GPT-4o encoding; provider-neutral proxy) · embedder ready: **true** (real MiniLM semantic retrieval)_
+_Generated 2026-07-09T08:32:58.051Z · tokenizer: gpt-tokenizer o200k_base (GPT-4o encoding; provider-neutral proxy) · embedder ready: **true** (real MiniLM semantic retrieval)_
 
 ## Headline
 
@@ -8,8 +8,8 @@ _Generated 2026-06-30T14:28:58.830Z · tokenizer: gpt-tokenizer o200k_base (GPT-
 |---|--:|
 | Mean per-query token reduction | **78.7%** |
 | Session-total reduction | **77.7%** |
-| Tokens saved across 10 queries | **18,146** |
-| Mean tokens / query (baseline → optimized) | 2,337 → 522 |
+| Tokens saved across 10 queries | **18,305** |
+| Mean tokens / query (baseline → optimized) | 2,357 → 526 |
 
 ## What this measures
 
@@ -33,28 +33,28 @@ _Generated 2026-06-30T14:28:58.830Z · tokenizer: gpt-tokenizer o200k_base (GPT-
 |---|--:|
 | Queries | 10 |
 | Mean per-query savings | 78.7% |
-| Median per-query savings | 76.8% |
-| Min / Max per-query savings | 62.5% / 93.7% |
-| Mean baseline tokens / query | 2,337 |
-| Mean optimized tokens / query | 522 |
-| Session total — baseline | 23,366 tokens |
-| Session total — optimized | 5,220 tokens |
-| Session total — saved | 18,146 tokens (77.7%) |
+| Median per-query savings | 76.9% |
+| Min / Max per-query savings | 62.6% / 93.3% |
+| Mean baseline tokens / query | 2,357 |
+| Mean optimized tokens / query | 526 |
+| Session total — baseline | 23,569 tokens |
+| Session total — optimized | 5,264 tokens |
+| Session total — saved | 18,305 tokens (77.7%) |
 
 ## Per-query detail
 
 | # | Query | Scenario | Baseline | Optimized | Saved | % |
 |---|---|---|--:|--:|--:|--:|
-| Q1 | How do plants convert light into chemical energy? | combined | 3,338 | 950 | 2,388 | **72%** |
-| Q2 | What is the role of carbon dioxide in photosynthesis? | notes | 1,104 | 414 | 690 | **63%** |
-| Q3 | Explain how chloroplasts relate to glucose production | combined | 3,338 | 973 | 2,365 | **71%** |
-| Q4 | What were the main tensions after World War II? | notes | 1,104 | 75 | 1,029 | **93%** |
-| Q5 | How should I structure my study sessions? | memory | 2,234 | 520 | 1,714 | **77%** |
-| Q6 | What did I decide about summarizing lectures? | memory | 2,234 | 504 | 1,730 | **77%** |
-| Q7 | Themes of ambition and guilt in literature | notes | 1,104 | 70 | 1,034 | **94%** |
-| Q8 | How do enzymes affect chemical reactions in cells? | combined | 3,338 | 939 | 2,399 | **72%** |
-| Q9 | What is a logarithm and how does it relate to exponents? | combined | 3,338 | 259 | 3,079 | **92%** |
-| Q10 | Remind me of the office hours and exam details | memory | 2,234 | 516 | 1,718 | **77%** |
+| Q1 | How do plants convert light into chemical energy? | combined | 3,367 | 955 | 2,412 | **72%** |
+| Q2 | What is the role of carbon dioxide in photosynthesis? | notes | 1,107 | 414 | 693 | **63%** |
+| Q3 | Explain how chloroplasts relate to glucose production | combined | 3,367 | 978 | 2,389 | **71%** |
+| Q4 | What were the main tensions after World War II? | notes | 1,107 | 75 | 1,032 | **93%** |
+| Q5 | How should I structure my study sessions? | memory | 2,260 | 520 | 1,740 | **77%** |
+| Q6 | What did I decide about summarizing lectures? | memory | 2,260 | 515 | 1,745 | **77%** |
+| Q7 | Themes of ambition and guilt in literature | notes | 1,107 | 74 | 1,033 | **93%** |
+| Q8 | How do enzymes affect chemical reactions in cells? | combined | 3,367 | 951 | 2,416 | **72%** |
+| Q9 | What is a logarithm and how does it relate to exponents? | combined | 3,367 | 259 | 3,108 | **92%** |
+| Q10 | Remind me of the office hours and exam details | memory | 2,260 | 523 | 1,737 | **77%** |
 
 ## Output tokens?
 
@@ -69,9 +69,9 @@ A 12-turn agent working inside a Noto vault: read context → recall memory → 
 
 | Direction | Obsidian (baseline) | Noto (optimized) | Saved | % |
 |---|--:|--:|--:|--:|
-| Input (context per turn) | 43,222 | 8,614 | 34,608 | **80.1%** |
-| Output (tokens emitted) | 1,594 | 1,057 | 537 | **33.7%** |
-| **Combined** | 44,816 | 9,671 | 35,145 | **78.4%** |
+| Input (context per turn) | 43,190 | 8,515 | 34,675 | **80.3%** |
+| Output (tokens emitted) | 1,594 | 1,060 | 534 | **33.5%** |
+| **Combined** | 44,784 | 9,575 | 35,209 | **78.6%** |
 
 ![Noto vs Obsidian](chart-platform-comparison.svg)
 
@@ -84,7 +84,7 @@ Retrieval is an **input**-side win; it does not reduce output. The **output** sa
 Honesty caveats:
 - The output saving is measured against a **whole-file-rewrite** baseline. An agent harness with its own native diff/patch tool already captures part of it; Noto's contribution is providing that primitive over a *remote* notes store where the alternative is a full-body write.
 - `create_note` (new files) emits full content in **both** paths — no output saving there.
-- On this vault the notes are small (study notes), so the measured session output saving is a modest **33.7%**. The leverage grows with note size:
+- On this vault the notes are small (study notes), so the measured session output saving is a modest **33.5%**. The leverage grows with note size:
 
 ![Output savings climb with note size](chart-output-scaling.svg)
 
@@ -93,10 +93,10 @@ Honesty caveats:
 | Note size (tokens) | Rewrite (Obsidian) | Delta (Noto) | Output saved |
 |--:|--:|--:|--:|
 | 211 | 253 | 57 | **77.5%** |
-| 500 | 542 | 60 | **88.9%** |
-| 1,010 | 1,052 | 60 | **94.3%** |
-| 2,013 | 2,055 | 56 | **97.3%** |
-| 4,002 | 4,044 | 61 | **98.5%** |
+| 500 | 542 | 55 | **89.9%** |
+| 1,010 | 1,052 | 56 | **94.7%** |
+| 2,013 | 2,055 | 62 | **97.0%** |
+| 4,002 | 4,044 | 60 | **98.5%** |
 
 **Assumptions (stated honestly):** Obsidian out of the box has no agent semantic-retrieval and no MCP write-back/patch layer, so an agent driving it uses full-context reads and whole-file writes — identical to the naive baseline. A raw/no-tool agent is equal or worse, so Obsidian is the conservative baseline. Output savings are vs a whole-file-rewrite baseline. An agent harness with its own native diff/patch tool already captures part of this; Noto's contribution is providing append/section-patch primitives over a remote notes store where the alternative is a full-body write. create_note (new files) emits full content in BOTH paths — no output saving there, and the session contains none.
 
@@ -104,10 +104,10 @@ Honesty caveats:
 
 | Notes in corpus | Mean baseline | Mean optimized | Mean savings |
 |--:|--:|--:|--:|
-| 11 | 3,366 | 785 | 76.7% |
-| 31 | 7,252 | 788 | 89.1% |
-| 71 | 15,096 | 784 | 94.8% |
-| 151 | 30,639 | 779 | 97.5% |
+| 11 | 3,375 | 785 | 76.8% |
+| 31 | 7,265 | 793 | 89.1% |
+| 71 | 15,087 | 816 | 94.6% |
+| 151 | 30,723 | 836 | 97.3% |
 
 ---
 
