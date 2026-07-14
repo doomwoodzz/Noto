@@ -15,10 +15,12 @@ also update a hash table here.
 
 from __future__ import annotations
 
+import functools
 import hashlib
 import os
 import platform
 import shutil
+import ssl
 import stat
 import tarfile
 import tempfile
@@ -63,10 +65,30 @@ def _archive_name(os_name: str, arch: str) -> str:
     return f"node-v{NODE_VERSION}-{os_name}-{arch}.{ext}"
 
 
+@functools.lru_cache(maxsize=1)
+def _ssl_context() -> ssl.SSLContext:
+    """TLS context for the first-run download, trusting certifi's CA bundle.
+
+    Python's default trust store isn't always wired up: the python.org macOS
+    build ships without configured certs until its "Install Certificates.command"
+    is run, so a plain urlopen() fails there with CERTIFICATE_VERIFY_FAILED — the
+    Node.js runtime never downloads and `noto` can't start. certifi (a declared
+    dependency) gives us a known-good bundle regardless of the host Python, which
+    is exactly what pip itself relies on. Falls back to the system default if
+    certifi is somehow unavailable.
+    """
+    try:
+        import certifi
+
+        return ssl.create_default_context(cafile=certifi.where())
+    except Exception:
+        return ssl.create_default_context()
+
+
 def _download(url: str, dest: Path) -> None:
     # Without a timeout, urlopen inherits the global socket default (None),
     # so a stalled connection would hang the first launch forever.
-    with urllib.request.urlopen(url, timeout=60) as resp, open(dest, "wb") as f:
+    with urllib.request.urlopen(url, timeout=60, context=_ssl_context()) as resp, open(dest, "wb") as f:
         while True:
             chunk = resp.read(1024 * 1024)
             if not chunk:

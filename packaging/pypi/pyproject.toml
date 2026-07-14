@@ -9,6 +9,12 @@ description = "Noto: a local-first Markdown notes workspace with an AI lecture-l
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
+dependencies = [
+    # CA bundle for the first-run Node.js download; without it, urllib fails with
+    # CERTIFICATE_VERIFY_FAILED on Pythons whose trust store isn't configured
+    # (notably the python.org macOS build). See node_runtime._ssl_context.
+    "certifi>=2023.7.22",
+]
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
