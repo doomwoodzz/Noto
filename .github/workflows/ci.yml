@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    name: lint · typecheck · test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: landing
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: landing/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Smart Search's local MiniLM model, same fetch `npm run dev` does on first run.
+      - name: Fetch embedding model
+        run: node scripts/fetch-embedding-model.mjs
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck (server)
+        run: npm run typecheck:server
+
+      - name: Test
+        run: npm test
